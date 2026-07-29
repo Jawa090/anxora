@@ -1,0 +1,20 @@
+{
+  "extends": "stylelint-config-standard",
+  "rules": {
+    "at-rule-no-unknown": [
+      true,
+      {
+        "ignoreAtRules": [
+          "import",
+          "source",
+          "custom-variant",
+          "theme",
+          "utility",
+          "layer",
+          "apply",
+          "tailwind"
+        ]
+      }
+    ]
+  }
+}
