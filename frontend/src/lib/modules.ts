@@ -25,7 +25,7 @@ export type Module = {
 
 export const MODULES: Module[] = [
   
-  { key: "tasks", label: "Tasks", desc: "Track work, priorities & time", icon: ListChecks, hue: "from-cyan-500 to-sky-500",
+  { key: "tasks", label: "Project & Task", desc: "Track work, priorities & time", icon: ListChecks, hue: "from-cyan-500 to-sky-500",
     stat: { label: "Due today", value: "24", delta: "6 overdue" },
     quick: ["New Task", "New List"],
     submenu: [
@@ -34,16 +34,6 @@ export const MODULES: Module[] = [
       { label: "Kanban", slug: "kanban", icon: KanbanSquare },
       { label: "Calendar", slug: "calendar", icon: CalIcon },
       { label: "Timeline", slug: "timeline", icon: Timer },
-    ]},
-  { key: "projects", label: "Projects", desc: "Milestones, Gantt & delivery", icon: FolderKanban, hue: "from-fuchsia-500 to-pink-500",
-    stat: { label: "Active projects", value: "38", delta: "4 at risk" },
-    quick: ["New Project", "Milestone"],
-    submenu: [
-      { label: "Overview", slug: "", icon: LayoutDashboard },
-      { label: "Projects", slug: "list", icon: FolderKanban },
-      { label: "Kanban", slug: "kanban", icon: KanbanSquare },
-      { label: "Gantt", slug: "gantt", icon: Timer },
-      { label: "Milestones", slug: "milestones", icon: Milestone },
     ]},
   { key: "collaboration", label: "Collaboration", desc: "Channels, DMs & meetings", icon: MessagesSquare, hue: "from-emerald-500 to-teal-500",
     stat: { label: "Unread", value: "14", delta: "3 mentions" },

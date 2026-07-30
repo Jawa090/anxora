@@ -1,0 +1,11 @@
+#7D5CE4 es clr ko primary kah do 
+#8A8E98 es ko gray 
+
+#00ADEA task and projects
+#00BC97 collabration
+#7F57FF crm
+#FF7B00 hrms
+#FD2746 recruitment
+#45CB31 inventory
+#CF39FF marketing
+#00C26D finance
