@@ -17,7 +17,7 @@ const getEvents = async (req, res, next) => {
     const params = [req.user.orgId];
     
     // Privacy: Only show external events to the person who synced them
-    // Regular XCLATIX events (external_provider IS NULL) are shared with the org
+    // Regular ANXORA events (external_provider IS NULL) are shared with the org
     query += ' AND (external_provider IS NULL OR created_by = $2)';
     params.push(req.user.id);
     
@@ -121,7 +121,7 @@ const create = async (req, res, next) => {
           <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden;">
             <div style="background: linear-gradient(135deg, #6366f1 0%, #a855f7 100%); padding: 30px; color: white;">
               <h1 style="margin: 0; font-size: 24px;"> ${title} Event</h1>
-              <p style="margin: 10px 0 0; opacity: 0.9;">${userData.org_name || 'XCLATIX'}</p>
+              <p style="margin: 10px 0 0; opacity: 0.9;">${userData.org_name || 'ANXORA'}</p>
             </div>
             <div style="padding: 30px; background: white;">
               <h2 style="margin-top: 0; color: #1e293b;">${title}</h2>
@@ -197,7 +197,7 @@ const create = async (req, res, next) => {
             try {
               for (const recipient of uniqueRecipients) {
                 await emailService.sendEmail({
-                  from: `"${userData.org_name || 'XCLATIX'}" <${process.env.SMTP_USER}>`,
+                  from: `"${userData.org_name || 'ANXORA'}" <${process.env.SMTP_USER}>`,
                   to: recipient,
                   subject: `📅 Event Created: ${title}`,
                   html: htmlBody,

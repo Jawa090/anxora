@@ -29,18 +29,18 @@ function StatTile({
     <button
       onClick={onClick}
       className={cn(
-        "rounded-2xl border border-border/40 bg-card p-5 w-full text-left transition-all duration-300 hover:shadow-[0_8px_30px_rgb(0,0,0,0.02)] hover:border-primary/20 hover:-translate-y-0.5 group relative overflow-hidden",
+        "rounded-2xl border border-border/40 bg-card p-5 w-full text-left transition-all duration-300 hover:shadow-[0_8px_30px_rgba(0,49,54,0.08)] hover:border-[#2DD4BF]/30 hover:-translate-y-0.5 group relative overflow-hidden",
         onClick ? "cursor-pointer" : "cursor-default"
       )}
     >
-      <div className="absolute top-0 right-0 w-24 h-24 bg-gradient-to-bl from-primary/5 to-transparent rounded-bl-full pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+      <div className="absolute top-0 right-0 w-24 h-24 bg-gradient-to-bl from-[#2DD4BF]/8 to-transparent rounded-bl-full pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
       <div className="flex items-start justify-between mb-4">
-        <div className={cn("p-2.5 rounded-xl text-white shadow-md shadow-primary/10", gradient)}>
+        <div className={cn("p-2.5 rounded-xl text-white shadow-md shadow-[#003136]/15", gradient)}>
           <Icon className="h-4.5 w-4.5" />
         </div>
         {onClick && (
-          <div className="p-1 rounded-lg bg-secondary/50 group-hover:bg-primary/10 transition-colors duration-300">
-            <ArrowUpRight className="h-3.5 w-3.5 text-muted-foreground/60 group-hover:text-primary transition-colors" />
+          <div className="p-1 rounded-lg bg-secondary/50 group-hover:bg-[#2DD4BF]/10 transition-colors duration-300">
+            <ArrowUpRight className="h-3.5 w-3.5 text-muted-foreground/60 group-hover:text-[#2DD4BF] transition-colors" />
           </div>
         )}
       </div>
@@ -146,18 +146,18 @@ export default function Dashboard() {
       <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-4">
         {/* CRM */}
         <div className="col-span-2 sm:col-span-2 lg:col-span-2">
-          <StatTile label="Total Leads" value={leadOverview?.total_leads ?? "—"} sub="all time" icon={UserPlus} gradient="bg-gradient-to-tr from-blue-600 to-indigo-600" onClick={() => navigate("/crm/leads")} />
+          <StatTile label="Total Leads" value={leadOverview?.total_leads ?? "—"} sub="all time" icon={UserPlus} gradient="bg-gradient-to-tr from-[#003136] to-[#0D646B]" onClick={() => navigate("/crm/leads")} />
         </div>
         <div className="col-span-2 sm:col-span-2 lg:col-span-2">
-          <StatTile label="Open Deals" value={dealOverview?.open_deals ?? "—"} sub={`$${Number(dealOverview?.pipeline_value || 0).toLocaleString()} pipeline`} icon={Handshake} gradient="bg-gradient-to-tr from-violet-600 to-purple-600" onClick={() => navigate("/crm/deals")} />
+          <StatTile label="Open Deals" value={dealOverview?.open_deals ?? "—"} sub={`$${Number(dealOverview?.pipeline_value || 0).toLocaleString()} pipeline`} icon={Handshake} gradient="bg-gradient-to-tr from-[#0D646B] to-[#14858E]" onClick={() => navigate("/crm/deals")} />
         </div>
         {/* Tasks */}
         <div className="col-span-2 sm:col-span-2 lg:col-span-2">
-          <StatTile label="Active Tasks" value={taskStats.inProgress} sub={`${taskStats.overdue} overdue`} icon={CheckCircle2} gradient={taskStats.overdue > 0 ? "bg-gradient-to-tr from-red-500 to-rose-600" : "bg-gradient-to-tr from-emerald-500 to-teal-600"} onClick={() => navigate("/tasks")} />
+          <StatTile label="Active Tasks" value={taskStats.inProgress} sub={`${taskStats.overdue} overdue`} icon={CheckCircle2} gradient={taskStats.overdue > 0 ? "bg-gradient-to-tr from-red-500 to-rose-600" : "bg-gradient-to-tr from-[#10B981] to-[#2DD4BF]"} onClick={() => navigate("/tasks")} />
         </div>
         {/* HRMS */}
         <div className="col-span-2 sm:col-span-2 lg:col-span-2">
-          <StatTile label="Present Today" value={hrmsStats?.presentToday ?? "—"} sub={`${attendanceRate}% attendance`} icon={Users} gradient="bg-gradient-to-tr from-orange-500 to-amber-500" onClick={() => navigate("/hrms")} />
+          <StatTile label="Present Today" value={hrmsStats?.presentToday ?? "—"} sub={`${attendanceRate}% attendance`} icon={Users} gradient="bg-gradient-to-tr from-[#14858E] to-[#2DD4BF]" onClick={() => navigate("/hrms")} />
         </div>
       </div>
 
@@ -171,10 +171,10 @@ export default function Dashboard() {
         <div className="rounded-[22px] border border-border/40 bg-card overflow-hidden flex flex-col shadow-sm">
           <div className="px-5 py-4 border-b border-border/40 flex items-center justify-between shrink-0">
             <div className="flex items-center gap-2">
-              <CheckCircle2 className="h-4 w-4 text-blue-500" />
+              <CheckCircle2 className="h-4 w-4 text-[#2DD4BF]" />
               <span className="text-sm font-bold tracking-tight text-foreground">My Tasks</span>
             </div>
-            <button onClick={() => navigate("/tasks")} className="text-xs font-semibold text-blue-500 hover:text-blue-600 transition-colors flex items-center gap-0.5">
+            <button onClick={() => navigate("/tasks")} className="text-xs font-semibold text-[#2DD4BF] hover:text-[#14858E] transition-colors flex items-center gap-0.5">
               View all <ArrowUpRight className="h-3 w-3" />
             </button>
           </div>
@@ -223,11 +223,11 @@ export default function Dashboard() {
         <div className="rounded-[22px] border border-border/40 bg-card overflow-hidden shadow-sm">
           <div className="px-5 py-4 border-b border-border/40 flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <FolderKanban className="h-4 w-4 text-blue-500" />
+              <FolderKanban className="h-4 w-4 text-[#2DD4BF]" />
               <span className="text-sm font-bold tracking-tight text-foreground">Projects</span>
               <span className="text-xs text-muted-foreground font-medium">({projectStats.active} active)</span>
             </div>
-            <button onClick={() => navigate("/tasks")} className="text-xs font-semibold text-blue-500 hover:text-blue-600 transition-colors flex items-center gap-0.5">
+            <button onClick={() => navigate("/tasks")} className="text-xs font-semibold text-[#2DD4BF] hover:text-[#14858E] transition-colors flex items-center gap-0.5">
               View all <ArrowUpRight className="h-3 w-3" />
             </button>
           </div>
@@ -242,7 +242,7 @@ export default function Dashboard() {
               >
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-sm font-semibold truncate flex-1 text-foreground/90">{p.name}</span>
-                  <span className="text-xs font-bold text-blue-500 ml-2 shrink-0">{p.progress}%</span>
+                  <span className="text-xs font-bold text-[#2DD4BF] ml-2 shrink-0">{p.progress}%</span>
                 </div>
                 <Progress value={p.progress} className="h-1.5 bg-secondary/80" />
                 <div className="flex justify-between mt-2">
@@ -258,10 +258,10 @@ export default function Dashboard() {
         <div className="rounded-[22px] border border-border/40 bg-card overflow-hidden shadow-sm">
           <div className="px-5 py-4 border-b border-border/40 flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <TrendingUp className="h-4 w-4 text-violet-500" />
+              <TrendingUp className="h-4 w-4 text-[#2DD4BF]" />
               <span className="text-sm font-bold tracking-tight text-foreground">Deal Pipeline</span>
             </div>
-            <button onClick={() => navigate("/crm/deals")} className="text-xs font-semibold text-blue-500 hover:text-blue-600 transition-colors flex items-center gap-0.5">
+            <button onClick={() => navigate("/crm/deals")} className="text-xs font-semibold text-[#2DD4BF] hover:text-[#14858E] transition-colors flex items-center gap-0.5">
               View all <ArrowUpRight className="h-3 w-3" />
             </button>
           </div>
@@ -290,10 +290,10 @@ export default function Dashboard() {
         <div className="rounded-[22px] border border-border/40 bg-card overflow-hidden shadow-sm">
           <div className="px-5 py-4 border-b border-border/40 flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <Users className="h-4 w-4 text-orange-500" />
+              <Users className="h-4 w-4 text-[#2DD4BF]" />
               <span className="text-sm font-bold tracking-tight text-foreground">People</span>
             </div>
-            <button onClick={() => navigate("/hrms")} className="text-xs font-semibold text-blue-500 hover:text-blue-600 transition-colors flex items-center gap-0.5">
+            <button onClick={() => navigate("/hrms")} className="text-xs font-semibold text-[#2DD4BF] hover:text-[#14858E] transition-colors flex items-center gap-0.5">
               HRMS <ArrowUpRight className="h-3 w-3" />
             </button>
           </div>
@@ -341,7 +341,7 @@ export default function Dashboard() {
       {/* ── Row 4: Recent Activity ── */}
       <div className="rounded-[22px] border border-border/40 bg-card overflow-hidden shadow-sm">
         <div className="px-5 py-4 border-b border-border/40 flex items-center gap-2">
-          <Activity className="h-4 w-4 text-emerald-500" />
+          <Activity className="h-4 w-4 text-[#2DD4BF]" />
           <span className="text-sm font-bold tracking-tight text-foreground">Recent Activity</span>
         </div>
         <div className="divide-y divide-border/40">

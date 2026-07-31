@@ -9,7 +9,7 @@ export function LoadingScreen() {
           <div className="absolute top-0 left-0 w-16 h-16 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
         </div>
         <div className="flex flex-col items-center gap-2">
-          <h2 className="text-xl font-semibold text-foreground">XCLATIX</h2>
+          <h2 className="text-xl font-semibold text-foreground">ANXORA</h2>
           <p className="text-sm text-muted-foreground">Loading your workspace...</p>
         </div>
       </div>

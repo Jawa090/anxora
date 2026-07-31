@@ -40,14 +40,14 @@ class EmailService {
     const resetLink = `${process.env.APP_URL}/reset-password?token=${resetToken}`;
     
     const mailOptions = {
-      from: `"XCLATIX" <${process.env.SMTP_USER}>`,
+      from: `"ANXORA" <${process.env.SMTP_USER}>`,
       to: email,
-      subject: 'Password Reset Request - XCLATIX',
+      subject: 'Password Reset Request - ANXORA',
       html: this.getPasswordResetTemplate(resetLink, userName, email),
       text: `
 Hello ${userName || 'User'},
 
-You have requested to reset your password for your XCLATIX account.
+You have requested to reset your password for your ANXORA account.
 
 Please click the following link to reset your password:
 ${resetLink}
@@ -57,7 +57,7 @@ This link will expire in 1 hour for security reasons.
 If you did not request this password reset, please ignore this email.
 
 Best regards,
-XCLATIX Team
+ANXORA Team
       `.trim()
     };
 
@@ -76,7 +76,7 @@ XCLATIX Team
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e1e1e1; border-radius: 10px;">
             <h2 style="color: #4f46e5;">Password Reset Request</h2>
             <p>Hello ${userName || 'User'},</p>
-            <p>We received a request to reset the password for your XCLATIX account associated with <strong>${email}</strong>.</p>
+            <p>We received a request to reset the password for your ANXORA account associated with <strong>${email}</strong>.</p>
             <p>To reset your password, please click the button below:</p>
             <div style="text-align: center; margin: 30px 0;">
                 <a href="${resetLink}" style="background-color: #4f46e5; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; font-weight: bold;">Reset Password</a>

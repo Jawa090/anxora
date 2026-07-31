@@ -40,7 +40,7 @@ interface CreatableSelectProps {
 
 // ── persistence helpers ────────────────────────────────────────────────────
 function storageId(orgId: string | null | undefined, key: string) {
-  return `XCLATIX_select_opts_${orgId ?? "default"}_${key}`;
+  return `ANXORA_select_opts_${orgId ?? "default"}_${key}`;
 }
 
 function loadCustomOptions(orgId: string | null | undefined, key: string): SelectOption[] {

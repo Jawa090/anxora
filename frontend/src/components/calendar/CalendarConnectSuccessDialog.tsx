@@ -25,7 +25,7 @@ export function CalendarConnectSuccessDialog({
         <DialogHeader className="space-y-2">
           <DialogTitle className="text-2xl font-bold">Successfully Connected!</DialogTitle>
           <DialogDescription className="text-base">
-            Your {providerName} has been successfully linked to XCLATIX.
+            Your {providerName} has been successfully linked to ANXORA.
           </DialogDescription>
         </DialogHeader>
 

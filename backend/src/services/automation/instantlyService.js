@@ -160,7 +160,7 @@ class InstantlyService {
         body: JSON.stringify({
           target_hook_url: webhookUrl,
           event_type: eventType,
-          name: `XCLATIX Unibox — ${eventType}`,
+          name: `ANXORA Unibox — ${eventType}`,
         }),
       });
 

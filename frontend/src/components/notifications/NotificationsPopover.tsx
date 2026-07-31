@@ -113,7 +113,7 @@ export function NotificationsPopover() {
     <Popover open={open} onOpenChange={handleOpenChange}>
       <PopoverTrigger asChild>
         <Button variant="ghost" size="icon" className="relative group overflow-visible">
-          <Bell className="h-5 w-5 transition-transform group-hover:scale-110" />
+          <Bell className="h-5 w-5 transition-transform group-hover:scale-110 dark:text-[#8B6BEB]" />
           {unreadCount > 0 && (
             <Badge
               variant="destructive"

@@ -67,6 +67,8 @@ import {
   BarChart2,
   Receipt,
   Milestone,
+  ChevronsLeft,
+  ChevronsRight,
 } from "lucide-react";
 import { useProject } from "@/hooks/useProjectManagement";
 import {
@@ -804,6 +806,34 @@ export function AppSidebar({
   }, [isResizing]);
 
   const renderSubItem = (child: NavSubItem, parentTitle?: string) => {
+    if (isCollapsed) {
+      return (
+        <NavLink
+          key={child.href}
+          to={child.href}
+          onClick={() => isMobile && onClose?.()}
+          className={cn(
+            "flex items-center justify-center rounded-xl h-10 w-10 mx-auto transition-all duration-200",
+            isActive(child.href)
+              ? "bg-primary/10 text-white"
+              : "text-slate-400 hover:text-white hover:bg-white/[0.03]",
+          )}
+          title={child.title}
+        >
+          {child.icon && (
+            <child.icon
+              className={cn(
+                "h-5 w-5",
+                isActive(child.href)
+                  ? "text-primary"
+                  : "text-slate-500 group-hover:text-slate-300",
+              )}
+            />
+          )}
+        </NavLink>
+      );
+    }
+
     const hasNestedChildren =
       child.nestedChildren && child.nestedChildren.length > 0;
     const isExpanded = expandedSubItems.includes(child.title);
@@ -821,17 +851,19 @@ export function AppSidebar({
             to={child.href}
             onClick={() => isMobile && onClose?.()}
             className={cn(
-              "flex items-center gap-3 rounded-lg py-2 pl-9 pr-3 text-[13px] transition-all duration-200",
+              "flex items-center gap-3 rounded-lg py-2 pl-9 pr-3 text-[13px] transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary group",
               isActive(child.href)
-                ? "bg-primary/10 text-white font-medium"
-                : "text-slate-400 hover:text-white hover:bg-white/[0.03]",
+                ? "bg-primary/10 text-primary font-medium"
+                : "text-slate-600 dark:text-slate-400 hover:text-primary dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/[0.03]",
             )}
           >
             {child.icon && (
               <child.icon
                 className={cn(
-                  "h-4 w-4",
-                  isActive(child.href) ? "text-primary" : "text-slate-500",
+                  "h-4 w-4 transition-colors duration-200",
+                  isActive(child.href)
+                    ? "text-primary"
+                    : "text-slate-500 group-hover:text-primary dark:group-hover:text-slate-300",
                 )}
               />
             )}
@@ -850,10 +882,15 @@ export function AppSidebar({
           <div className="mt-4 mb-2">
             <button
               onClick={() => toggleCollaborationSection("Direct Messages")}
-              className="flex w-full items-center justify-between px-9 mb-2.5 group/header"
+              className="flex w-full items-center justify-between px-9 mb-2.5 group/header focus:outline-none"
             >
               <div className="flex items-center gap-2">
-                <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-500 group-hover/header:text-slate-300">
+                <span className={cn(
+                  "text-[11px] font-semibold uppercase tracking-wide transition-colors duration-200",
+                  isDMOpen
+                    ? "text-primary"
+                    : "text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
+                )}>
                   Direct Messages
                 </span>
                 {totalDMUnread > 0 && (
@@ -864,7 +901,8 @@ export function AppSidebar({
               </div>
               <ChevronDown
                 className={cn(
-                  "h-3 w-3 text-slate-600 transition-transform duration-200 group-hover/header:text-slate-400",
+                  "h-3 w-3 transition-transform duration-200",
+                  isDMOpen ? "text-primary" : "text-slate-500 dark:text-slate-600 group-hover/header:text-slate-800 dark:group-hover/header:text-slate-400",
                   !isDMOpen && "-rotate-90",
                 )}
               />
@@ -989,10 +1027,15 @@ export function AppSidebar({
           <div className="mt-6 mb-2">
             <button
               onClick={() => toggleCollaborationSection("Team Groups")}
-              className="flex w-full items-center justify-between px-9 mb-2.5 group/header"
+              className="flex w-full items-center justify-between px-9 mb-2.5 group/header focus:outline-none"
             >
               <div className="flex items-center gap-2">
-                <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-500 group-hover/header:text-slate-300">
+                <span className={cn(
+                  "text-[11px] font-semibold uppercase tracking-wide transition-colors duration-200",
+                  isTeamOpen
+                    ? "text-primary"
+                    : "text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
+                )}>
                   Team Groups
                 </span>
                 {totalWorkgroupUnread > 0 && (
@@ -1003,7 +1046,8 @@ export function AppSidebar({
               </div>
               <ChevronDown
                 className={cn(
-                  "h-3 w-3 text-slate-600 transition-transform duration-200 group-hover/header:text-slate-400",
+                  "h-3 w-3 transition-transform duration-200",
+                  isTeamOpen ? "text-primary" : "text-slate-500 dark:text-slate-600 group-hover/header:text-slate-800 dark:group-hover/header:text-slate-400",
                   !isTeamOpen && "-rotate-90",
                 )}
               />
@@ -1106,10 +1150,15 @@ export function AppSidebar({
           <div className="mt-6 mb-2">
             <button
               onClick={() => toggleCollaborationSection("Broadcasts")}
-              className="flex w-full items-center justify-between px-9 mb-2.5 group/header"
+              className="flex w-full items-center justify-between px-9 mb-2.5 group/header focus:outline-none"
             >
               <div className="flex items-center gap-2">
-                <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-500 group-hover/header:text-slate-300">
+                <span className={cn(
+                  "text-[11px] font-semibold uppercase tracking-wide transition-colors duration-200",
+                  isBroadcastOpen
+                    ? "text-primary"
+                    : "text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
+                )}>
                   Broadcasts
                 </span>
                 {totalBroadcastUnread > 0 && (
@@ -1120,7 +1169,8 @@ export function AppSidebar({
               </div>
               <ChevronDown
                 className={cn(
-                  "h-3 w-3 text-slate-600 transition-transform duration-200 group-hover/header:text-slate-400",
+                  "h-3 w-3 transition-transform duration-200",
+                  isBroadcastOpen ? "text-primary" : "text-slate-500 dark:text-slate-600 group-hover/header:text-slate-800 dark:group-hover/header:text-slate-400",
                   !isBroadcastOpen && "-rotate-90",
                 )}
               />
@@ -1222,10 +1272,10 @@ export function AppSidebar({
               }
             }}
             className={cn(
-              "flex w-full items-center justify-between rounded-xl py-2 pl-9 pr-3 text-[13px] transition-all duration-200",
+              "flex w-full items-center justify-between rounded-xl py-2 pl-9 pr-3 text-[13px] transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary",
               location.pathname.startsWith("/crm/unibox")
-                ? "bg-primary/10 text-white font-medium"
-                : "text-slate-400 hover:text-white hover:bg-white/[0.03]",
+                ? "bg-primary/10 text-primary font-medium"
+                : "text-slate-600 dark:text-slate-400 hover:text-primary dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/[0.03]",
             )}
           >
             <div className="flex items-center gap-3">
@@ -1256,11 +1306,11 @@ export function AppSidebar({
                   to="/crm/unibox"
                   onClick={() => isMobile && onClose?.()}
                   className={cn(
-                    "flex items-center rounded-lg py-1.5 pl-3 pr-2 text-[12px] transition-all",
+                    "flex items-center rounded-lg py-1.5 pl-3 pr-2 text-[12px] transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-primary",
                     location.pathname === "/crm/unibox" &&
                       !location.search.includes("campaign_id")
-                      ? "text-primary font-bold"
-                      : "text-slate-500 hover:text-slate-300",
+                      ? "text-primary font-bold bg-primary/5"
+                      : "text-slate-600 dark:text-slate-500 hover:text-primary dark:hover:text-slate-300 hover:bg-slate-100/50 dark:hover:bg-white/[0.02]",
                   )}
                 >
                   All Emails
@@ -1290,10 +1340,10 @@ export function AppSidebar({
               }
             }}
             className={cn(
-              "flex w-full items-center justify-between gap-3 rounded-xl py-2 pl-9 pr-3 text-[13px] transition-all duration-200",
+              "flex w-full items-center justify-between gap-3 rounded-xl py-2 pl-9 pr-3 text-[13px] transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary",
               isActive(child.href) || location.pathname.startsWith(child.href)
-                ? "bg-primary/10 text-white font-medium"
-                : "text-slate-400 hover:text-white hover:bg-white/[0.03]",
+                ? "bg-primary/10 text-primary font-medium"
+                : "text-slate-600 dark:text-slate-400 hover:text-primary dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/[0.03]",
             )}
           >
             <div className="flex items-center gap-3">
@@ -1338,7 +1388,7 @@ export function AppSidebar({
                           "flex w-full items-center justify-between rounded-lg py-1.5 pl-3 pr-2 text-[12px] font-medium transition-all",
                           isActive(nested.href)
                             ? "text-primary bg-primary/10"
-                            : "text-slate-500 hover:text-slate-300 hover:bg-white/5",
+                            : "text-slate-600 dark:text-slate-500 hover:text-slate-950 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/5",
                         )}
                       >
                         <span>{nested.title}</span>
@@ -1351,7 +1401,7 @@ export function AppSidebar({
                       </button>
 
                       {isNestedExpanded && (
-                        <div className="ml-3 mt-1.5 space-y-1 border-l border-white/5 pl-3 animate-in fade-in duration-300">
+                        <div className="ml-3 mt-1.5 space-y-1 border-l border-slate-200 dark:border-white/5 pl-3 animate-in fade-in duration-300">
                           {deepNested.map((deep) => (
                             <NavLink
                               key={deep.href}
@@ -1359,8 +1409,8 @@ export function AppSidebar({
                               className={cn(
                                 "flex items-center rounded-lg py-1.5 pl-3 pr-2 text-[11px] transition-all",
                                 isActive(deep.href)
-                                  ? "text-white font-bold"
-                                  : "text-slate-500 hover:text-slate-300",
+                                  ? "text-primary dark:text-white font-bold"
+                                  : "text-slate-600 dark:text-slate-500 hover:text-slate-950 dark:hover:text-slate-300",
                               )}
                             >
                               {deep.title}
@@ -1377,10 +1427,10 @@ export function AppSidebar({
                     key={nested.href}
                     to={nested.href}
                     className={cn(
-                      "flex items-center rounded-lg py-1.5 pl-3 pr-2 text-[12px] transition-all",
+                      "flex items-center rounded-lg py-1.5 pr-2 text-[12px] transition-all",
                       isActive(nested.href)
-                        ? "text-primary font-bold"
-                        : "text-slate-500 hover:text-slate-300",
+                        ? "text-primary font-bold bg-primary/5 border-l-2 border-primary pl-2.5"
+                        : "pl-3 text-slate-600 dark:text-slate-500 hover:text-slate-950 dark:hover:text-slate-300 hover:bg-slate-100/50 dark:hover:bg-white/[0.02]",
                     )}
                   >
                     {nested.title}
@@ -1399,19 +1449,19 @@ export function AppSidebar({
         to={child.href}
         onClick={() => isMobile && onClose?.()}
         className={cn(
-          "flex items-center gap-3 rounded-xl py-2 pl-9 pr-3 text-[13px] transition-all duration-200",
+          "flex items-center gap-3 rounded-xl py-2 pl-9 pr-3 text-[13px] transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary group",
           isActive(child.href)
-            ? "bg-primary/10 text-white font-medium"
-            : "text-slate-400 hover:text-white hover:bg-white/[0.03]",
+            ? "bg-primary/10 text-primary dark:text-white font-medium"
+            : "text-slate-600 dark:text-slate-400 hover:text-primary dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/[0.03]",
         )}
       >
         {child.icon && (
           <child.icon
             className={cn(
-              "h-4 w-4",
+              "h-4 w-4 transition-colors duration-200",
               isActive(child.href)
                 ? "text-primary"
-                : "text-slate-500 group-hover:text-slate-300",
+                : "text-slate-500 group-hover:text-primary dark:group-hover:text-slate-300",
             )}
           />
         )}
@@ -1427,10 +1477,12 @@ export function AppSidebar({
     );
   };
 
+  const isCollapsed = !isMobile && width <= 80;
+
   return (
     <aside
       className={cn(
-        "fixed left-0 top-0 z-50 h-screen bg-[#0c111d] border-r border-white/5 flex flex-col transition-transform duration-300 ease-in-out",
+        "fixed left-0 top-0 z-50 h-screen bg-white dark:bg-[#0c111d] border-r border-slate-200 dark:border-white/5 flex flex-col transition-all duration-300 ease-in-out",
         isMobile
           ? isOpen
             ? "translate-x-0"
@@ -1439,29 +1491,50 @@ export function AppSidebar({
       )}
       style={{ width: `${width}px` }}
     >
+      {!isMobile && (
+        <button
+          onClick={() => onWidthChange?.(isCollapsed ? 256 : 80)}
+          className="absolute -right-3.5 top-7 z-[60] flex h-7 w-7 items-center justify-center rounded-full border border-slate-200 dark:border-white/10 bg-white dark:bg-[#0c111d] text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white shadow-md active:scale-95 transition-all"
+        >
+          {isCollapsed ? (
+            <ChevronsRight className="h-4 w-4" />
+          ) : (
+            <ChevronsLeft className="h-4 w-4" />
+          )}
+        </button>
+      )}
+
       {/* Brand Header */}
-      <div className="p-6">
+      <div className={cn("p-6", isCollapsed && "px-2 py-4 flex flex-col items-center")}>
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-3 focus-outline-none">
-            <div className="flex flex-col">
-              <span className="text-base font-bold tracking-tight text-white leading-none">
-                XCLATIX
-              </span>
+            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-tr from-[#7D5CE4] to-[#9F85F0] text-white font-extrabold text-lg shadow-md shrink-0">
+              A
             </div>
+            {!isCollapsed && (
+              <div className="flex flex-col">
+                <span className="text-base font-bold tracking-tight text-slate-900 dark:text-white leading-none">
+                  Anxora OS
+                </span>
+                <span className="text-[10px] text-slate-500 dark:text-slate-400 mt-1 leading-none">
+                  Enterprise Workspace
+                </span>
+              </div>
+            )}
           </div>
           {isMobile && (
             <Button
               variant="ghost"
               size="icon"
               onClick={onClose}
-              className="text-slate-400"
+              className="text-slate-500 dark:text-slate-400"
             >
               <X className="h-5 w-5" />
             </Button>
           )}
         </div>
 
-        <div className="h-px w-full bg-gradient-to-r from-white/[0.08] to-transparent" />
+        <div className="h-px w-full bg-gradient-to-r from-slate-200 dark:from-white/[0.08] to-transparent" />
       </div>
 
       {/* Navigation Content */}
@@ -1577,6 +1650,8 @@ export function AppSidebar({
                       renderSubItem={renderSubItem}
                       isMobile={isMobile}
                       onClose={onClose}
+                      isCollapsed={isCollapsed}
+                      onWidthChange={onWidthChange}
                       badge={
                         item.title === "Collaboration"
                           ? totalCollaborationUnread > 0
@@ -1626,6 +1701,55 @@ export function AppSidebar({
             )} */}
 
           {filteredNavigation.bottomItems.map((item) => {
+            if (isCollapsed) {
+              if (item.children) {
+                const sectionActive = isSectionActive(item.children);
+                return (
+                  <button
+                    key={item.title}
+                    onClick={() => {
+                      setFocusedModule(item.title);
+                      onWidthChange?.(256);
+                    }}
+                    className={cn(
+                      "flex h-10 w-10 items-center justify-center rounded-xl mx-auto transition-all duration-200",
+                      sectionActive ? "bg-primary/10 text-white" : "text-slate-400 hover:text-white hover:bg-white/[0.03]",
+                    )}
+                    title={item.title}
+                  >
+                    <item.icon
+                      className={cn(
+                        "h-5 w-5",
+                        sectionActive ? "text-primary" : "text-slate-500",
+                      )}
+                    />
+                  </button>
+                );
+              }
+
+              return (
+                <NavLink
+                  key={item.href}
+                  to={item.href!}
+                  onClick={() => isMobile && onClose?.()}
+                  className={cn(
+                    "flex h-10 w-10 items-center justify-center rounded-xl mx-auto transition-all duration-200",
+                    isActive(item.href!)
+                      ? "bg-primary/10 text-white"
+                      : "text-slate-400 hover:text-white hover:bg-white/[0.03]",
+                  )}
+                  title={item.title}
+                >
+                  <item.icon
+                    className={cn(
+                      "h-5 w-5",
+                      isActive(item.href!) ? "text-primary" : "text-slate-500",
+                    )}
+                  />
+                </NavLink>
+              );
+            }
+
             if (item.children) {
               const sectionActive = isSectionActive(item.children);
 
@@ -1634,17 +1758,17 @@ export function AppSidebar({
                   key={item.title}
                   onClick={() => setFocusedModule(item.title)}
                   className={cn(
-                    "flex w-full items-center justify-between rounded-xl px-4 py-2.5 text-[13px] font-medium transition-all duration-200",
+                    "flex w-full items-center justify-between rounded-xl px-4 py-2.5 text-[13px] font-medium transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary group",
                     sectionActive
-                      ? "bg-primary/10 text-white"
-                      : "text-slate-400 hover:text-white hover:bg-white/[0.03]",
+                      ? "bg-primary/10 text-primary"
+                      : "text-slate-600 dark:text-slate-400 hover:text-primary dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/[0.03]",
                   )}
                 >
                   <div className="flex items-center gap-3">
                     <item.icon
                       className={cn(
-                        "h-4 w-4",
-                        sectionActive ? "text-primary" : "text-slate-500",
+                        "h-4 w-4 transition-colors duration-200",
+                        sectionActive ? "text-primary" : "text-slate-500 group-hover:text-primary dark:group-hover:text-slate-300",
                       )}
                     />
                     <span>{item.title}</span>
@@ -1659,17 +1783,17 @@ export function AppSidebar({
                 key={item.href}
                 to={item.href!}
                 className={cn(
-                  "flex items-center justify-between rounded-xl px-4 py-2.5 text-[13px] font-medium transition-all duration-200",
+                  "flex items-center justify-between rounded-xl px-4 py-2.5 text-[13px] font-medium transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary group",
                   isActive(item.href!)
-                    ? "bg-primary/10 text-white"
-                    : "text-slate-400 hover:text-white hover:bg-white/[0.03]",
+                    ? "bg-primary/10 text-primary"
+                    : "text-slate-600 dark:text-slate-400 hover:text-primary dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/[0.03]",
                 )}
               >
                 <div className="flex items-center gap-3">
                   <item.icon
                     className={cn(
-                      "h-4 w-4",
-                      isActive(item.href!) ? "text-primary" : "text-slate-500",
+                      "h-4 w-4 transition-colors duration-200",
+                      isActive(item.href!) ? "text-primary" : "text-slate-500 group-hover:text-primary dark:group-hover:text-slate-300",
                     )}
                   />
                   <span>{item.title}</span>
@@ -1735,6 +1859,8 @@ function SortableNavItem({
   renderSubItem,
   isMobile,
   onClose,
+  isCollapsed,
+  onWidthChange,
   badge,
 }: {
   item: NavItem;
@@ -1745,6 +1871,8 @@ function SortableNavItem({
   renderSubItem: (child: NavSubItem, parentTitle?: string) => React.ReactNode;
   isMobile?: boolean;
   onClose?: () => void;
+  isCollapsed?: boolean;
+  onWidthChange?: (width: number) => void;
   badge?: string;
 }) {
   const {
@@ -1763,6 +1891,59 @@ function SortableNavItem({
     position: "relative" as const,
     opacity: isDragging ? 0.5 : 1,
   };
+
+  if (isCollapsed) {
+    if (item.children) {
+      const sectionActive = isSectionActive(item.children);
+      return (
+        <div ref={setNodeRef} style={style}>
+          <button
+            onClick={() => {
+              toggleSection(item.title);
+              onWidthChange?.(256);
+            }}
+            className={cn(
+              "flex h-10 w-10 items-center justify-center rounded-xl mx-auto transition-all duration-200",
+              sectionActive
+                ? "bg-primary/10 text-primary"
+                : "text-slate-400 hover:text-white hover:bg-white/[0.03]",
+            )}
+            title={item.title}
+          >
+            <item.icon
+              className={cn(
+                "h-5 w-5",
+                sectionActive ? "text-primary" : "text-slate-500",
+              )}
+            />
+          </button>
+        </div>
+      );
+    }
+
+    return (
+      <div ref={setNodeRef} style={style}>
+        <NavLink
+          to={item.href!}
+          onClick={() => isMobile && onClose?.()}
+          className={cn(
+            "flex h-10 w-10 items-center justify-center rounded-xl mx-auto transition-all duration-200",
+            isActive(item.href!)
+              ? "bg-primary/10 text-primary"
+              : "text-slate-400 hover:text-white hover:bg-white/[0.03]",
+          )}
+          title={item.title}
+        >
+          <item.icon
+            className={cn(
+              "h-5 w-5",
+              isActive(item.href!) ? "text-primary" : "text-slate-500",
+            )}
+          />
+        </NavLink>
+      </div>
+    );
+  }
 
   if (item.children) {
     const sectionActive = isSectionActive(item.children);
@@ -1784,18 +1965,18 @@ function SortableNavItem({
           <button
             onClick={() => toggleSection(item.title)}
             className={cn(
-              "flex flex-1 items-center justify-between rounded-xl px-4 py-2.5 text-[13px] font-medium transition-all duration-200",
+              "flex flex-1 items-center justify-between rounded-xl px-4 py-2.5 text-[13px] font-medium transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary group",
               sectionActive
-                ? "bg-primary/10 text-white"
-                : "text-slate-400 hover:text-white hover:bg-white/[0.03]",
+                ? "bg-primary/10 text-primary"
+                : "text-slate-600 dark:text-slate-400 hover:text-primary dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/[0.03]",
             )}
           >
             <div className="flex flex-1 items-center justify-between mr-2">
               <div className="flex items-center gap-3">
                 <item.icon
                   className={cn(
-                    "h-4 w-4",
-                    sectionActive ? "text-primary" : "text-slate-500",
+                    "h-4 w-4 transition-colors duration-200",
+                    sectionActive ? "text-primary" : "text-slate-500 group-hover:text-primary dark:group-hover:text-slate-300",
                   )}
                 />
                 <span>{item.title}</span>
@@ -1831,17 +2012,17 @@ function SortableNavItem({
           to={item.href!}
           onClick={() => isMobile && onClose?.()}
           className={cn(
-            "flex flex-1 items-center justify-between rounded-xl px-4 py-2.5 text-[13px] font-medium transition-all duration-200",
+            "flex flex-1 items-center justify-between rounded-xl px-4 py-2.5 text-[13px] font-medium transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary group",
             isActive(item.href!)
-              ? "bg-primary/10 text-white"
-              : "text-slate-400 hover:text-white hover:bg-white/[0.03]",
+              ? "bg-primary/10 text-primary"
+              : "text-slate-600 dark:text-slate-400 hover:text-primary dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/[0.03]",
           )}
         >
           <div className="flex items-center gap-3">
             <item.icon
               className={cn(
-                "h-4 w-4",
-                isActive(item.href!) ? "text-primary" : "text-slate-500",
+                "h-4 w-4 transition-colors duration-200",
+                isActive(item.href!) ? "text-primary" : "text-slate-500 group-hover:text-primary dark:group-hover:text-slate-300",
               )}
             />
             <span>{item.title}</span>

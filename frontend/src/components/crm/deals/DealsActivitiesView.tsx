@@ -92,7 +92,7 @@ export function DealsActivitiesView() {
   const handleConfigure = () => {
     toast({
       title: "Configuration",
-      description: "XCLATIX configuration panel will be available soon!",
+      description: "ANXORA configuration panel will be available soon!",
     });
     // You can navigate to a configuration page when it's ready
     // navigate('/crm/configure');

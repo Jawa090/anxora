@@ -16,7 +16,7 @@ async function setupDatabase() {
   const client = await pool.connect();
   
   try {
-    console.log('Running XCLATIX Database Migration...\n');
+    console.log('Running ANXORA Database Migration...\n');
     console.log(' Safe Mode: Only adds missing tables/columns');
     console.log('Existing data will NOT be deleted\n');
     

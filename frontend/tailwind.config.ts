@@ -87,7 +87,7 @@ export default {
         'card': 'var(--shadow-card)',
         'elevated': 'var(--shadow-lg)',
         'glass': '0 8px 32px 0 rgba(0, 0, 0, 0.37)',
-        'premium': '0 20px 40px -12px rgba(59, 130, 246, 0.25)',
+        'premium': '0 20px 40px -12px rgba(0, 49, 54, 0.25)',
       },
       keyframes: {
         "accordion-down": {

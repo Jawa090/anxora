@@ -90,7 +90,7 @@ export function CalendarSettingsDialog({ open, onOpenChange }: CalendarSettingsD
 
             {/* CRM Calendar */}
             <div className="space-y-2 mb-6">
-              <Label className="text-sm text-muted-foreground">XCLATIX Calendar</Label>
+              <Label className="text-sm text-muted-foreground">ANXORA Calendar</Label>
               <Select value={crmCalendar} onValueChange={setCrmCalendar}>
                 <SelectTrigger className="w-full">
                   <SelectValue placeholder="Select calendar" />
@@ -98,7 +98,7 @@ export function CalendarSettingsDialog({ open, onOpenChange }: CalendarSettingsD
                 <SelectContent>
                   <SelectItem value="default">user@example.com</SelectItem>
                   <SelectItem value="work">work@company.com</SelectItem>
-                  <SelectItem value="crm">XCLATIX@company.com</SelectItem>
+                  <SelectItem value="crm">ANXORA@company.com</SelectItem>
                 </SelectContent>
               </Select>
             </div>

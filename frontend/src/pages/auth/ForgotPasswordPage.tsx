@@ -42,163 +42,128 @@ export default function ForgotPasswordPage() {
   };
 
   return (
-    <div className="min-h-screen w-full flex bg-[#F8FAFC] selection:bg-blue-600 selection:text-white font-sans antialiased overflow-hidden">
-      {/* Left Side: Brand & Feature Highlights */}
-      <div className="hidden lg:flex w-1/2 relative bg-[#0B1020] flex-col justify-between p-16 overflow-hidden">
-        <div className="absolute inset-0 z-0">
-          <img
-            src="https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&q=80&w=2000"
-            alt="Workspace Background"
-            className="w-full h-full object-cover opacity-[0.06] filter grayscale"
-          />
-          <div className="absolute inset-0 bg-gradient-to-b from-[#0B1020]/90 via-[#0B1020]/95 to-[#0B1020]" />
+    <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-slate-950 px-4 py-12 font-sans antialiased">
+      {/* Background decorative glows */}
+      <div className="absolute top-1/4 left-1/4 h-96 w-96 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#7D5CE4]/20 blur-[120px] pointer-events-none" />
+      <div className="absolute bottom-1/4 right-1/4 h-96 w-96 translate-x-1/2 translate-y-1/2 rounded-full bg-[#8A8E98]/10 blur-[100px] pointer-events-none" />
+
+      <div className="relative w-full max-w-md z-10">
+        {/* Logo & Header */}
+        <div className="mb-8 text-center animate-fade-in">
+          <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-tr from-[#7D5CE4] to-[#9F85F0] text-white shadow-lg shadow-[#7D5CE4]/20">
+            <Sparkles className="h-6 w-6 animate-pulse" />
+          </div>
+          <h2 className="text-3xl font-extrabold tracking-tight text-white sm:text-4xl">
+            Anxora<span className="text-[#7D5CE4]">OS</span>
+          </h2>
+          <p className="mt-2 text-sm text-[#8A8E98]">
+            {emailSent
+              ? "Recovery link dispatched successfully"
+              : "Enter your email to receive a recovery link"}
+          </p>
         </div>
 
-        {/* Ambient light glow shapes */}
-        <div className="absolute top-[-20%] left-[-20%] w-[80%] h-[80%] rounded-full bg-blue-500/10 blur-[120px] pointer-events-none" />
-        <div className="absolute bottom-[-10%] right-[-10%] w-[60%] h-[60%] rounded-full bg-indigo-600/10 blur-[100px] pointer-events-none" />
-
-        <div className="relative z-10 flex items-center gap-3 animate-fade-in">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center shadow-lg shadow-blue-500/20">
-            <Sparkles className="w-5 h-5 text-white animate-pulse" />
-          </div>
-          <span className="text-5xl font-bold tracking-wider text-white bg-clip-text bg-gradient-to-r from-white via-slate-100 to-slate-300">
-            XCLATIX
-          </span>
-        </div>
-
-        <div className="relative z-10 my-auto max-w-lg space-y-12">
-          <div className="space-y-4">
-            <h1 className="text-4xl xl:text-5xl font-extrabold text-white leading-tight tracking-tight">
-              Workflows that <span className="bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-indigo-300">stay out</span> of the way.
-            </h1>
-            <p className="text-lg text-slate-400 font-normal leading-relaxed">
-              A straightforward space to manage leads, calls, follow-ups, and the rest of your day.
-            </p>
-          </div>
-
-          <div className="space-y-6">
-            <div className="flex gap-5 items-start group">
-              <div className="p-3 rounded-xl bg-slate-800/40 border border-slate-700/30 text-blue-400 shadow-inner group-hover:bg-slate-800/60 group-hover:border-blue-500/30 transition-all duration-300">
-                <Layers className="w-5 h-5" />
-              </div>
-              <div className="space-y-1">
-                <h4 className="text-base font-semibold text-slate-100">Lead Management</h4>
-                <p className="text-sm text-slate-400 leading-relaxed">Keep contacts, notes and follow-ups organized.</p>
-              </div>
-            </div>
-            <div className="flex gap-5 items-start group">
-              <div className="p-3 rounded-xl bg-slate-800/40 border border-slate-700/30 text-blue-400 shadow-inner group-hover:bg-slate-800/60 group-hover:border-blue-500/30 transition-all duration-300">
-                <Zap className="w-5 h-5" />
-              </div>
-              <div className="space-y-1">
-                <h4 className="text-base font-semibold text-slate-100">Lightning Fast</h4>
-                <p className="text-sm text-slate-400 leading-relaxed">Simple workflows without unnecessary complexity.</p>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div className="relative z-10 text-xs text-white">
-          &copy; {new Date().getFullYear()} XCLATIX. All rights reserved.
-        </div>
-      </div>
-
-      {/* Right Side: Form */}
-      <div className="w-full lg:w-1/2 flex items-center justify-center p-6 md:p-12 bg-[#F8FAFC]">
-        <div className="w-full max-w-[440px] bg-white rounded-[24px] shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-slate-100 p-8 md:p-10 space-y-8 transition-all duration-500">
-          {/* Mobile Logo Visibility */}
-          <div className="flex lg:hidden items-center justify-center gap-3 mb-2">
-            <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center shadow-md">
-              <Sparkles className="w-4.5 h-4.5 text-white" />
-            </div>
-            <span className="text-4x font-bold tracking-wider text-slate-900">
-              XCLATIX
-            </span>
-          </div>
-
-          <div className="space-y-2 text-center">
-            <h2 className="text-2xl md:text-3xl font-bold tracking-tight text-slate-900">
-              Forgot Password
-            </h2>
-            <p className="text-sm text-slate-500">
-              {emailSent
-                ? "Recovery link dispatched successfully"
-                : "Enter your email to receive a recovery link"}
-            </p>
-          </div>
-
+        {/* Card with Glassmorphism */}
+        <div className="rounded-3xl border border-white/10 bg-white/[0.03] p-8 shadow-2xl backdrop-blur-xl">
           {error && (
-            <Alert variant="destructive" className="border-red-100 bg-red-50/60 rounded-xl p-4">
-              <AlertCircle className="h-4 w-4 text-red-600" />
-              <AlertDescription className="text-red-700 text-sm font-medium">
-                {error}
-              </AlertDescription>
-            </Alert>
+            <div className="rounded-xl border border-red-500/20 bg-red-500/10 p-3.5 text-center text-xs font-medium text-red-400 mb-6">
+              {error}
+            </div>
           )}
 
           {emailSent ? (
             <div className="space-y-6">
-              <div className="p-6 border border-green-100 bg-green-50/60 rounded-2xl text-center">
-                <div className="inline-flex items-center justify-center w-16 h-16 bg-green-100 rounded-full mb-4">
-                  <CheckCircle2 className="h-8 w-8 text-green-600" />
+              <div className="p-6 border border-emerald-500/25 bg-emerald-500/10 rounded-2xl text-center">
+                <div className="inline-flex items-center justify-center w-16 h-16 bg-emerald-500/15 rounded-full mb-4">
+                  <CheckCircle2 className="h-8 w-8 text-emerald-500" />
                 </div>
-                <h3 className="text-lg font-bold text-slate-900 mb-2">Success</h3>
-                <p className="text-sm text-slate-600 leading-relaxed mb-4">
-                  A secure link has been sent to <strong className="text-slate-900">{sentTo}</strong>. Please check your inbox.
+                <h3 className="text-lg font-bold text-white mb-2">Success</h3>
+                <p className="text-sm text-slate-300 leading-relaxed mb-4">
+                  A secure link has been sent to <strong className="text-white">{sentTo}</strong>. Please check your inbox.
                 </p>
               </div>
 
               <Link to="/auth" className="block">
-                <Button variant="outline" className="w-full h-[52px] border-slate-200 text-slate-700 font-semibold rounded-[14px] hover:bg-slate-50 hover:text-slate-900 transition-all duration-300 flex items-center justify-center gap-2">
-                  <ArrowLeft className="h-4 w-4" />
+                <button className="group flex w-full items-center justify-center gap-2 rounded-xl border border-white/10 bg-slate-900/50 py-3 text-sm font-semibold text-white shadow-lg transition-all hover:bg-slate-800 active:scale-[0.98] h-[52px]">
+                  <ArrowLeft className="h-4 w-4 transition-transform group-hover:-translate-x-1" />
                   Back to Login
-                </Button>
+                </button>
               </Link>
             </div>
           ) : (
-            <form onSubmit={handleSubmit} className="space-y-5">
+            <form onSubmit={handleSubmit} className="space-y-6">
+              {/* Email Input */}
               <div className="space-y-2">
-                <Label htmlFor="email" className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+                <label className="text-xs font-semibold uppercase tracking-wider text-slate-300">
                   Email Address
-                </Label>
+                </label>
                 <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-400">
-                    <Mail className="h-5 w-5" />
-                  </div>
-                  <Input
+                  <span className="absolute inset-y-0 left-0 flex items-center pl-3.5 text-[#8A8E98]">
+                    <Mail className="h-4 w-4" />
+                  </span>
+                  <input
                     id="email"
                     name="email"
                     type="email"
-                    placeholder="name@company.com"
                     required
                     disabled={isLoading}
-                    className="h-[52px] pl-11 pr-4 bg-slate-50 border-slate-200 text-slate-900 placeholder:text-slate-400 focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 rounded-xl transition-all w-full text-sm font-medium"
+                    placeholder="name@company.com"
+                    className="w-full rounded-xl border border-white/10 bg-slate-900/50 py-3 pl-11 pr-4 text-sm text-white placeholder-slate-500 outline-none transition-all focus:border-[#7D5CE4] focus:ring-2 focus:ring-[#7D5CE4]/25 disabled:opacity-50 h-[52px]"
                   />
                 </div>
               </div>
 
               <div className="space-y-4 pt-2">
-                <Button
+                {/* Submit Button */}
+                <button
                   type="submit"
                   disabled={isLoading}
-                  className="w-full h-[52px] bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-semibold rounded-[14px] shadow-lg shadow-blue-500/10 hover:shadow-blue-500/25 transition-all duration-300 active:scale-[0.98] flex items-center justify-center gap-2 text-base"
+                  className="group flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[#7D5CE4] to-[#9F85F0] py-3 text-sm font-semibold text-white shadow-lg shadow-[#7D5CE4]/20 transition-all hover:opacity-95 active:scale-[0.98] disabled:opacity-50 h-[52px]"
                 >
                   {isLoading ? (
-                    <Loader2 className="h-5 w-5 animate-spin" />
+                    <span className="h-5 w-5 animate-spin rounded-full border-2 border-white border-t-transparent" />
                   ) : (
                     'Send Recovery Link'
                   )}
-                </Button>
+                </button>
 
-                <Link to="/auth" className="block text-center">
-                  <Button variant="ghost" className="text-sm font-semibold text-primary bg-slate-200 hover:text-white hover:bg-primary transition-colors h-auto py-2">
+                <Link to="/auth" className="block text-center pt-2">
+                  <span className="text-xs font-semibold text-slate-400 hover:text-slate-200 transition-colors cursor-pointer">
                     Cancel and Return
-                  </Button>
+                  </span>
                 </Link>
               </div>
             </form>
           )}
+        </div>
+
+        {/* Footer Link & Policies */}
+        <div className="mt-8 text-center text-xs text-[#8A8E98] space-y-3">
+          <div>
+            Anxora OS is secure and encrypted. Need help? Contact admin.
+          </div>
+          <div className="flex items-center justify-center gap-2">
+            <Link
+              to="/privacy"
+              className="hover:text-slate-300 transition-colors underline decoration-slate-700 underline-offset-2"
+            >
+              Privacy Policy
+            </Link>
+            <span className="text-slate-700">|</span>
+            <Link
+              to="/terms"
+              className="hover:text-slate-300 transition-colors underline decoration-slate-700 underline-offset-2"
+            >
+              Terms of Service
+            </Link>
+            <span className="text-slate-700">|</span>
+            <Link
+              to="/contact"
+              className="hover:text-slate-300 transition-colors underline decoration-slate-700 underline-offset-2"
+            >
+              Contact
+            </Link>
+          </div>
         </div>
       </div>
     </div>

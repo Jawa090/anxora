@@ -202,8 +202,8 @@ export default function AdminDashboard() {
             <p className="text-[10px] text-[#8A8E98] uppercase tracking-wider font-bold">Total Users</p>
             <p className="text-3xl font-bold mt-1 text-foreground">{stats.total || activeUsers.length}</p>
           </div>
-          <div className="h-11 w-11 rounded-full bg-[#7D5CE4]/10 flex items-center justify-center">
-            <Users className="h-5 w-5 text-[#7D5CE4]" />
+          <div className="h-11 w-11 rounded-full bg-[#0D646B]/10 flex items-center justify-center">
+            <Users className="h-5 w-5 text-[#0D646B] dark:text-[#2DD4BF]" />
           </div>
         </Card>
 
@@ -301,7 +301,7 @@ export default function AdminDashboard() {
                           toast.error('Something went wrong')
                         }
                       }}
-                      className="h-8 w-8 text-[#8A8E98] hover:text-[#7D5CE4] hover:bg-[#7D5CE4]/10 rounded-lg border border-border flex items-center justify-center transition-colors"
+                      className="h-8 w-8 text-[#8A8E98] hover:text-[#0D646B] dark:hover:text-[#2DD4BF] hover:bg-[#0D646B]/10 rounded-lg border border-border flex items-center justify-center transition-colors"
                     >
                       <RefreshCw className="h-4 w-4" />
                     </button>
@@ -331,7 +331,7 @@ export default function AdminDashboard() {
             placeholder="Search users..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full rounded-xl border border-border bg-surface py-2 pl-9 pr-4 text-xs font-medium focus:border-[#7D5CE4] focus:outline-none"
+            className="w-full rounded-xl border border-border bg-surface py-2 pl-9 pr-4 text-xs font-medium focus:border-[#0D646B] focus:outline-none"
           />
         </div>
 
@@ -414,7 +414,7 @@ export default function AdminDashboard() {
                 activeUsers.map((member) => (
                   <tr key={member.id} className="hover:bg-muted/20 transition-colors">
                     <td className="px-6 py-3.5 flex items-center gap-3">
-                      <div className="grid h-8 w-8 place-items-center rounded-full bg-[#7D5CE4]/10 text-xs font-bold text-[#7D5CE4]">
+                      <div className="grid h-8 w-8 place-items-center rounded-full bg-[#0D646B]/15 text-xs font-bold text-[#0D646B] dark:text-[#2DD4BF]">
                         {member.full_name?.charAt(0).toUpperCase()}
                       </div>
                       <div>
@@ -496,7 +496,7 @@ export default function AdminDashboard() {
 
             {/* Header */}
             <div className="flex items-start gap-4 mb-6">
-              <div className="rounded-xl bg-[#7D5CE4]/10 p-2.5 text-[#7D5CE4] border border-[#7D5CE4]/20">
+              <div className="rounded-xl bg-[#0D646B]/10 p-2.5 text-[#0D646B] dark:text-[#2DD4BF] border border-[#0D646B]/20">
                 <UserPlus className="h-5 w-5" />
               </div>
               <div>
@@ -637,11 +637,11 @@ export default function AdminDashboard() {
                   type="button"
                   variant='outline'
                   onClick={() => setIsInviteOpen(false)}
-                  className="text-xs font-bold text-[#7D5CE4] hover:text-[#7D5CE4] hover:border-[#7D5CE4] bg-white hover:bg-white/80 transition-colors"
+                  className="text-xs font-bold text-[#0D646B] dark:text-[#2DD4BF] hover:text-[#0D646B] bg-surface transition-colors"
                 >
                   Cancel
                 </Button>
-                <Button type="submit" className="h-9 px-4 text-xs font-bold bg-[#7D5CE4] hover:bg-[#7D5CE4]/80 shadow-md shadow-[#7D5CE4]/20">
+                <Button type="submit" className="h-9 px-4 text-xs font-bold bg-[#0D646B] hover:bg-[#053B3F] text-white shadow-md">
                   <Users className="h-4 w-4" /> Create Account
                 </Button>
               </div>

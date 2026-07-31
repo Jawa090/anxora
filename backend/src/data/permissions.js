@@ -1,6 +1,6 @@
 
 /**
- * Per-module permission configuration for XCLATIX.
+ * Per-module permission configuration for ANXORA.
  * This is the source of truth for both backend validation and frontend display.
  */
 const MODULE_PERMISSIONS = {

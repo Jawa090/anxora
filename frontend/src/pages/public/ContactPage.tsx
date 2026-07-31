@@ -13,9 +13,9 @@ export default function ContactPage() {
       <header className="border-b border-slate-800/80 bg-slate-950/80 backdrop-blur-md sticky top-0 z-50">
         <div className="max-w-5xl mx-auto px-6 h-16 flex items-center justify-between">
           <Link to="/home" className="flex items-center gap-3 group">
-            <img src={rushLogo} alt="XCLATIX" className="h-7 w-auto transition-transform group-hover:scale-105" />
+            <img src={rushLogo} alt="ANXORA" className="h-7 w-auto transition-transform group-hover:scale-105" />
             <span className="font-bold text-xl tracking-tight text-white group-hover:text-slate-200 transition-colors">
-              XCLATIX
+              ANXORA
             </span>
           </Link>
           <Link to="/auth">
@@ -40,7 +40,7 @@ export default function ContactPage() {
             Contact Us
           </h1>
           <p className="text-sm text-slate-400">
-            Have questions about XCLATIX or need assistance? Reach out to our team.
+            Have questions about ANXORA or need assistance? Reach out to our team.
           </p>
         </div>
 
@@ -52,8 +52,8 @@ export default function ContactPage() {
             </div>
             <h3 className="text-lg font-bold text-white">Email Us</h3>
             <p className="text-slate-400 text-sm">For general inquiries, support, or feedback:</p>
-            <a href="mailto:support@xclatix.com" className="text-indigo-400 font-semibold hover:underline block pt-1">
-              support@xclatix.com
+            <a href="mailto:support@ANXORA.com" className="text-indigo-400 font-semibold hover:underline block pt-1">
+              support@ANXORA.com
             </a>
             <a href="mailto:privacy@rushcorporation.com" className="text-indigo-400 font-semibold hover:underline block">
               privacy@rushcorporation.com
@@ -77,7 +77,7 @@ export default function ContactPage() {
             Administrator Account Requests
           </h2>
           <p className="text-slate-300">
-            If you need access to an organization workspace on XCLATIX, please contact your organization administrator or IT department directly to issue an invite link.
+            If you need access to an organization workspace on ANXORA, please contact your organization administrator or IT department directly to issue an invite link.
           </p>
         </div>
       </main>
@@ -85,7 +85,7 @@ export default function ContactPage() {
       {/* Footer */}
       <footer className="border-t border-slate-800/80 py-8 bg-slate-950 text-slate-500 text-sm">
         <div className="max-w-5xl mx-auto px-6 flex flex-col sm:flex-row items-center justify-between gap-4">
-          <p>© {new Date().getFullYear()} XCLATIX. All rights reserved.</p>
+          <p>© {new Date().getFullYear()} ANXORA. All rights reserved.</p>
           <div className="flex items-center gap-6">
             <Link to="/home" className="hover:text-slate-300 transition-colors">Home</Link>
             <Link to="/privacy" className="hover:text-slate-300 transition-colors">Privacy Policy</Link>

@@ -22,22 +22,18 @@ export function ThemeToggle() {
       size="sm"
       onClick={toggleTheme}
       className={cn(
-        "gap-2 px-3 py-2 h-9 transition-all duration-200 hover:scale-105",
-        "border border-transparent hover:border-border",
-        "hover:bg-muted/50 active:scale-95"
+        "gap-2 px-2.5 py-2 h-10 w-10 flex items-center justify-center active:scale-95 transition-all duration-200",
+        !isDark ? "text-black hover:text-white hover:bg-primary" : "text-primary hover:text-primary hover:bg-gray-800/100 border border-transparent hover:border-border"
       )}
       title={`Current: ${isDark ? 'Dark' : 'Light'} - Click to switch themes`}
     >
       <div className="transition-transform duration-300 hover:rotate-12">
         {isDark ? (
-          <Moon className="h-5 w-5 text-blue-400" />
+          <Moon className="h-5 w-5" />
         ) : (
-          <Sun className="h-5 w-5 text-yellow-500" />
+          <Sun className="h-5 w-5" />
         )}
       </div>
-      <span className="text-xs font-medium text-muted-foreground hidden sm:block">
-        {isDark ? 'Dark' : 'Light'}
-      </span>
     </Button>
   );
 }

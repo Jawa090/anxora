@@ -34,7 +34,7 @@ async function seedSuperAdmin() {
 
     // 2. Create Super Admin Organization
     const orgId = uuidv4();
-    const orgName = 'Bitwords';
+    const orgName = 'Anxora';
 
     console.log('Creating System Organization...');
     await db.query(
@@ -48,7 +48,7 @@ async function seedSuperAdmin() {
 
     // 3. Create Super Admin User
     const userId = uuidv4();
-    const email = 'superadmin2@bitwords.com';
+    const email = 'superadmin2@anxora.com';
     const password = 'password123';
 
     const hashedPassword = await bcrypt.hash(password, 10);

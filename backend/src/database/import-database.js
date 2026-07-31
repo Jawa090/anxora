@@ -6,7 +6,7 @@ require('dotenv').config();
 console.log('\n--- IMPORTING DATABASE ---\n');
 
 async function importDatabase() {
-  // Try database.sql first (consolidated schema), then XCLATIX.sql as fallback
+  // Try database.sql first (consolidated schema), then ANXORA.sql as fallback
   let sqlFile = path.join(__dirname, 'schema.sql');
 
   if (!fs.existsSync(sqlFile)) {

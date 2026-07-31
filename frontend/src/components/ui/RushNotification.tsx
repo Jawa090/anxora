@@ -88,9 +88,9 @@ function NotifCard({
       {/* Header */}
       <div className="flex items-center justify-between px-3 py-1.5 bg-zinc-100 dark:bg-zinc-800 border-b border-zinc-200 dark:border-zinc-700">
         <div className="flex items-center gap-1.5">
-          <img src="/x-logo.svg" alt="XCLATIX" className="w-4 h-4 rounded" />
+          <img src="/anxora.jpeg" alt="Anxora" className="w-4 h-4 rounded" />
           <span className="text-[11px] font-semibold text-zinc-500 dark:text-zinc-400">
-            XCLATIX Management
+            ANXORA Management
           </span>
         </div>
         <button

@@ -53,10 +53,10 @@ export default function DesktopAppPage() {
         <div className="text-center max-w-3xl mx-auto mb-16">
         
           <h1 className="text-5xl md:text-6xl font-semibold tracking-tight mb-6 text-foreground">
-            XCLATIX
+            ANXORA
           </h1>
           <p className="text-muted-foreground text-lg md:text-xl leading-relaxed mb-8">
-            Experience XCLATIX optimized for your hardware. Enjoy system integration, offline functionality, and responsive speed.
+            Experience ANXORA optimized for your hardware. Enjoy system integration, offline functionality, and responsive speed.
           </p>
 
           {/* Segment Control / Tabs */}

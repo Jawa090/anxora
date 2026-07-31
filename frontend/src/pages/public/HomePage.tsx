@@ -76,9 +76,9 @@ export default function HomePage() {
       <header className="border-b border-slate-800/80 bg-slate-950/80 backdrop-blur-md sticky top-0 z-50">
         <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
           <Link to="/home" className="flex items-center gap-3 group">
-            <img src={rushLogo} alt="XCLATIX" className="h-7 w-auto transition-transform group-hover:scale-105" />
+            <img src={rushLogo} alt="ANXORA" className="h-7 w-auto transition-transform group-hover:scale-105" />
             <span className="font-bold text-xl tracking-tight text-white group-hover:text-slate-200 transition-colors">
-              XCLATIX
+              ANXORA
             </span>
           </Link>
           <nav className="flex items-center gap-6">
@@ -108,7 +108,7 @@ export default function HomePage() {
           </div>
           
           <h1 className="text-4xl sm:text-6xl font-extrabold tracking-tight text-white mb-4">
-            XCLATIX
+            ANXORA
           </h1>
           
           <h2 className="text-2xl sm:text-3xl font-semibold bg-clip-text text-transparent bg-gradient-to-r from-indigo-300 via-white to-indigo-200 mb-8">
@@ -116,7 +116,7 @@ export default function HomePage() {
           </h2>
 
           <p className="text-lg sm:text-xl text-slate-300 max-w-3xl mx-auto leading-relaxed mb-10">
-            XCLATIX is an AI-powered CRM & ERP platform that helps businesses manage:
+            ANXORA is an AI-powered CRM & ERP platform that helps businesses manage:
           </p>
 
           {/* Module Pill Grid */}
@@ -135,7 +135,7 @@ export default function HomePage() {
           {/* Google Integration Highlight Banner */}
           <div className="p-6 sm:p-8 rounded-2xl bg-gradient-to-b from-slate-900 to-slate-900/60 border border-slate-800 text-slate-300 max-w-3xl mx-auto shadow-2xl mb-12 text-left">
             <p className="text-base sm:text-lg font-medium text-slate-200 mb-4">
-              Users can securely connect their Google Account to synchronize Gmail, Google Calendar and Google Drive with their XCLATIX workspace.
+              Users can securely connect their Google Account to synchronize Gmail, Google Calendar and Google Drive with their ANXORA workspace.
             </p>
             <div className="grid sm:grid-cols-2 gap-3 pt-2">
               {googleIntegrations.map((text) => (
@@ -185,8 +185,8 @@ export default function HomePage() {
       <footer className="border-t border-slate-800/80 py-8 bg-slate-950 text-slate-500 text-sm">
         <div className="max-w-6xl mx-auto px-6 flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-3">
-            <img src={rushLogo} alt="XCLATIX" className="h-6 w-auto" />
-            <span className="font-bold text-white tracking-wide">XCLATIX</span>
+            <img src={rushLogo} alt="ANXORA" className="h-6 w-auto" />
+            <span className="font-bold text-white tracking-wide">ANXORA</span>
             <span className="text-xs text-slate-600">| AI Powered CRM & ERP</span>
           </div>
           <div className="flex items-center gap-6">
@@ -195,7 +195,7 @@ export default function HomePage() {
             <Link to="/contact" className="hover:text-slate-300 transition-colors">Contact</Link>
             <Link to="/auth" className="hover:text-slate-300 transition-colors">Sign In</Link>
           </div>
-          <p>© {new Date().getFullYear()} XCLATIX. All rights reserved.</p>
+          <p>© {new Date().getFullYear()} ANXORA. All rights reserved.</p>
         </div>
       </footer>
     </div>

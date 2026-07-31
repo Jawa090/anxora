@@ -1,5 +1,5 @@
 /**
- * Shared constants for the XCLATIX frontend.
+ * Shared constants for the ANXORA frontend.
  * Keep department names in sync with the Admin Dashboard.
  */
 

@@ -1,4 +1,4 @@
-// Database types for XCLATIX
+// Database types for ANXORA
 export interface Database {
   public: {
     Tables: {

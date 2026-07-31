@@ -13,9 +13,9 @@ export default function TermsOfServicePage() {
       <header className="border-b border-slate-800/80 bg-slate-950/80 backdrop-blur-md sticky top-0 z-50">
         <div className="max-w-5xl mx-auto px-6 h-16 flex items-center justify-between">
           <Link to="/home" className="flex items-center gap-3 group">
-            <img src={rushLogo} alt="XCLATIX" className="h-7 w-auto transition-transform group-hover:scale-105" />
+            <img src={rushLogo} alt="ANXORA" className="h-7 w-auto transition-transform group-hover:scale-105" />
             <span className="font-bold text-xl tracking-tight text-white group-hover:text-slate-200 transition-colors">
-              XCLATIX
+              ANXORA
             </span>
           </Link>
           <Link to="/auth">
@@ -51,7 +51,7 @@ export default function TermsOfServicePage() {
               1. Acceptance of Terms
             </h2>
             <p className="text-slate-300 leading-relaxed">
-              By accessing or using XCLATIX ("Service"), you agree to be bound by these Terms of Service ("Terms"). If you disagree with any part of these terms, you may not access the Service. These Terms apply to all visitors, users, and others who access or use the Service.
+              By accessing or using ANXORA ("Service"), you agree to be bound by these Terms of Service ("Terms"). If you disagree with any part of these terms, you may not access the Service. These Terms apply to all visitors, users, and others who access or use the Service.
             </p>
           </section>
 
@@ -60,7 +60,7 @@ export default function TermsOfServicePage() {
               2. Description of Service
             </h2>
             <p className="text-slate-300 leading-relaxed mb-3">
-              XCLATIX is a multi-tenant CRM and business management platform that provides:
+              ANXORA is a multi-tenant CRM and business management platform that provides:
             </p>
             <ul className="list-disc pl-5 space-y-2 text-slate-300">
               <li>Customer Relationship Management (CRM) tools</li>
@@ -123,7 +123,7 @@ export default function TermsOfServicePage() {
               6. Intellectual Property
             </h2>
             <p className="text-slate-300 leading-relaxed">
-              The Service, including software, design, text, graphics, and underlying source code, is owned by XCLATIX and protected by copyright, trademark, and other intellectual property laws. You retain ownership of all business data uploaded to your tenant.
+              The Service, including software, design, text, graphics, and underlying source code, is owned by ANXORA and protected by copyright, trademark, and other intellectual property laws. You retain ownership of all business data uploaded to your tenant.
             </p>
           </section>
 
@@ -141,7 +141,7 @@ export default function TermsOfServicePage() {
               8. Limitation of Liability
             </h2>
             <p className="text-slate-300 leading-relaxed">
-              In no event shall XCLATIX, its directors, employees, or partners be liable for indirect, incidental, special, consequential, or punitive damages resulting from your use of or inability to use the Service.
+              In no event shall ANXORA, its directors, employees, or partners be liable for indirect, incidental, special, consequential, or punitive damages resulting from your use of or inability to use the Service.
             </p>
           </section>
 
@@ -153,9 +153,9 @@ export default function TermsOfServicePage() {
               If you have any questions about these Terms, please contact us at:
             </p>
             <div className="p-5 rounded-xl bg-slate-950/70 border border-slate-800/80 text-sm">
-              <p className="font-semibold text-white">XCLATIX Legal Team</p>
+              <p className="font-semibold text-white">ANXORA Legal Team</p>
               <p className="text-slate-400 mt-1">Email: legal@rushcorporation.com</p>
-              <p className="text-slate-400">Website: xclatix.com</p>
+              <p className="text-slate-400">Website: ANXORA.com</p>
             </div>
           </section>
         </div>
@@ -164,7 +164,7 @@ export default function TermsOfServicePage() {
       {/* Footer */}
       <footer className="border-t border-slate-800/80 py-8 bg-slate-950 text-slate-500 text-sm">
         <div className="max-w-5xl mx-auto px-6 flex flex-col sm:flex-row items-center justify-between gap-4">
-          <p>© {new Date().getFullYear()} XCLATIX. All rights reserved.</p>
+          <p>© {new Date().getFullYear()} ANXORA. All rights reserved.</p>
           <div className="flex items-center gap-6">
             <Link to="/home" className="hover:text-slate-300 transition-colors">Home</Link>
             <Link to="/privacy" className="hover:text-slate-300 transition-colors">Privacy Policy</Link>

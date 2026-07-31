@@ -1,5 +1,5 @@
 -- ============================================================
--- XCLATIX: Unified Notifications System
+-- ANXORA: Unified Notifications System
 -- Enhanced migration to handle potential legacy table conflicts
 -- ============================================================
 

@@ -94,7 +94,7 @@ export function TopBar({
             variant="ghost" 
             size="icon" 
             onClick={() => navigate(-1)}
-            className="text-muted-foreground hover:text-foreground rounded-xl transition-colors hover:bg-muted shrink-0"
+            className="text-[#2DD4BF] hover:text-[#14858E] rounded-xl transition-colors hover:bg-muted shrink-0"
             title="Go Back"
           >
             <ArrowLeft className="h-5 w-5" />
@@ -106,10 +106,10 @@ export function TopBar({
           </span>
         )}
         <div className="relative flex-1 group min-w-[120px]">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground group-focus-within:text-blue-500 transition-colors" />
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground group-focus-within:text-[#2DD4BF] transition-colors" />
           <Input
-            placeholder="Search..."
-            className="pl-9 h-10 bg-secondary/60 border-transparent hover:bg-secondary focus-visible:bg-background focus-visible:ring-2 focus-visible:ring-blue-500/20 focus-visible:border-blue-500 rounded-xl transition-all w-full text-xs sm:text-sm font-medium"
+            placeholder="Search Any Thing Task, Leads.."
+            className="pl-9 h-10 bg-secondary/70 border-transparent hover:bg-secondary focus-visible:bg-background focus-visible:ring-2 focus-visible:ring-[#2DD4BF]/25 focus-visible:border-[#2DD4BF] rounded-xl transition-all w-full text-xs sm:text-sm font-medium"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             onFocus={() => setSearchFocused(true)}
@@ -127,7 +127,7 @@ export function TopBar({
                 )}
                 {searchResults?.leads?.length ? (
                   <div className="px-3 py-2 space-y-1">
-                    <p className="text-[10px] uppercase text-blue-500 font-bold tracking-wider px-2">Leads</p>
+                    <p className="text-[10px] uppercase text-[#2DD4BF] font-bold tracking-wider px-2">Leads</p>
                     {searchResults.leads.map((lead: any) => (
                       <button
                         key={lead.id}
@@ -142,7 +142,7 @@ export function TopBar({
                 ) : null}
                 {searchResults?.contacts?.length ? (
                   <div className="px-3 py-2 space-y-1">
-                    <p className="text-[10px] uppercase text-blue-500 font-bold tracking-wider px-2">Contacts</p>
+                    <p className="text-[10px] uppercase text-[#2DD4BF] font-bold tracking-wider px-2">Contacts</p>
                     {searchResults.contacts.map((contact: any) => (
                       <button
                         key={contact.id}
@@ -157,7 +157,7 @@ export function TopBar({
                 ) : null}
                 {searchResults?.companies?.length ? (
                   <div className="px-3 py-2 space-y-1">
-                    <p className="text-[10px] uppercase text-blue-500 font-bold tracking-wider px-2">Companies</p>
+                    <p className="text-[10px] uppercase text-[#2DD4BF] font-bold tracking-wider px-2">Companies</p>
                     {searchResults.companies.map((company: any) => (
                       <button
                         key={company.id}
@@ -172,7 +172,7 @@ export function TopBar({
                 ) : null}
                 {searchResults?.deals?.length ? (
                   <div className="px-3 py-2 space-y-1">
-                    <p className="text-[10px] uppercase text-blue-500 font-bold tracking-wider px-2">Deals</p>
+                    <p className="text-[10px] uppercase text-[#2DD4BF] font-bold tracking-wider px-2">Deals</p>
                     {searchResults.deals.map((deal: any) => (
                       <button
                         key={deal.id}
@@ -195,14 +195,14 @@ export function TopBar({
       <div className="flex items-center gap-1.5 sm:gap-3 ml-2 sm:ml-4 shrink-0">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button className="h-10 px-3 sm:px-4 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-semibold rounded-xl shadow-md shadow-blue-500/10 hover:shadow-blue-500/25 transition-all duration-300 active:scale-[0.98] flex items-center justify-center gap-1.5">
+            <Button className="h-10 px-3 sm:px-4 bg-gradient-to-r from-[#003136] to-[#0D646B] text-white font-semibold rounded-xl shadow-md shadow-[#003136]/15 hover:shadow-[#2DD4BF]/25 transition-all duration-300 active:scale-[0.98] flex items-center justify-center gap-1.5">
               <Plus className="h-4 w-4" />
               <span className="hidden sm:inline">Quick Add</span>
               <ChevronDown className="h-3.5 w-3.5 opacity-80" />
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-52 rounded-2xl p-1.5 border border-border/80 shadow-xl">
-            <DropdownMenuLabel className="px-3 py-2 text-[10px] uppercase tracking-wider font-bold text-muted-foreground">Create New</DropdownMenuLabel>
+            <DropdownMenuLabel className="px-3 py-2 text-[10px] uppercase tracking-wider font-bold text-[#2DD4BF]">Create New</DropdownMenuLabel>
             <DropdownMenuSeparator className="my-1" />
             <DropdownMenuItem className="rounded-xl px-3 py-2 font-medium" onClick={() => navigate('/crm/leads/create')}>New Lead</DropdownMenuItem>
             <DropdownMenuItem className="rounded-xl px-3 py-2 font-medium" onClick={() => navigate('/crm/customers/contacts/create')}>New Contact</DropdownMenuItem>
@@ -229,10 +229,10 @@ export function TopBar({
             <Button variant="ghost" className="gap-1 md:gap-2.5 p-1 sm:pl-2.5 sm:pr-3 h-10 rounded-xl hover:bg-muted/80 transition-colors">
               <Avatar className="h-8 w-8 ring-2 ring-primary/10">
                 <AvatarImage src={getAvatarUrl(profile?.avatar_url)} />
-                <AvatarFallback className="bg-gradient-to-tr from-blue-600 to-indigo-600 text-white text-xs font-bold">{getInitials(profile?.full_name || 'User')}</AvatarFallback>
+                <AvatarFallback className="bg-gradient-to-tr from-[#003136] to-[#0D646B] text-white text-xs font-bold">{getInitials(profile?.full_name || 'User')}</AvatarFallback>
               </Avatar>
               <div className="hidden md:flex flex-col items-start leading-tight">
-                <span className="text-sm font-semibold">{profile?.full_name || 'User'}</span>
+                <span className="text-sm font-semibold text-black dark:text-white">{profile?.full_name || 'User'}</span>
                 <span className="text-[10px] font-medium text-muted-foreground">{getRoleDisplay(userRole?.role)}</span>
               </div>
               <ChevronDown className="hidden sm:inline h-3.5 w-3.5 text-muted-foreground opacity-80" />
@@ -245,7 +245,7 @@ export function TopBar({
             {(userRole?.role === 'super_admin' || userRole?.role === 'admin') && (
               <DropdownMenuItem className="rounded-xl px-3 py-2 font-medium" onClick={() => navigate('/admin-dashboard')}>Admin Dashboard</DropdownMenuItem>
             )}
-            <DropdownMenuItem className="rounded-xl px-3 py-2 font-medium">Billing</DropdownMenuItem>
+            {/* <DropdownMenuItem className="rounded-xl px-3 py-2 font-medium">Billing</DropdownMenuItem> */}
             <DropdownMenuSeparator className="my-1" />
             <DropdownMenuItem className="rounded-xl px-3 py-2 font-semibold text-destructive focus:bg-destructive/10 focus:text-destructive" onClick={handleSignOut}>
               Sign Out
