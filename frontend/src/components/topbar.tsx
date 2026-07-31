@@ -1,17 +1,53 @@
-import { Bell, Calendar, Command, Plus, Search, Sparkles } from "lucide-react";
-import { Link, useLocation } from "react-router-dom";
+import { Bell, Calendar, Command, Plus, Search, Sparkles, LogOut, Settings, ShieldAlert, CreditCard, ChevronDown } from "lucide-react";
+import { API_URL, BASE_URL } from "@/lib/api";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { findModule } from "@/lib/modules";
-import { useMemo } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
+
+
 
 export function TopBar() {
   const location = useLocation();
+  const navigate = useNavigate();
   const pathname = location.pathname;
   const parts = pathname.split("/").filter(Boolean);
   const modKey = parts[0];
   const mod = modKey ? findModule(modKey) : null;
   const subSlug = parts[1] ?? "";
   const sub = mod?.submenu.find((s) => s.slug === subSlug) ?? null;
+  
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [user, setUser] = useState<any>(null);
+
+  useEffect(() => {
+    const fetchUser = async () => {
+      try {
+        const token = localStorage.getItem("token");
+        if (!token) return;
+        const response = await fetch(`${API_URL}/auth/profile`, {
+          headers: {
+            "Authorization": `Bearer ${token}`
+          }
+        });
+        if (response.ok) {
+          const data = await response.json();
+          setUser(data);
+          localStorage.setItem("user", JSON.stringify(data));
+        }
+      } catch (e) {
+        console.error(e);
+      }
+    };
+
+    fetchUser();
+    
+    // Listen for custom profile update events
+    window.addEventListener("profile-updated", fetchUser);
+    return () => {
+      window.removeEventListener("profile-updated", fetchUser);
+    };
+  }, []);
 
   const crumbs = useMemo(() => {
     const arr: { label: string; to: string }[] = [{ label: "Dashboard", to: "/" }];
@@ -19,6 +55,25 @@ export function TopBar() {
     if (sub && sub.slug) arr.push({ label: sub.label, to: "/" + mod!.key + "/" + sub.slug });
     return arr;
   }, [mod, sub]);
+
+  const handleSignOut = () => {
+    localStorage.removeItem("token");
+    localStorage.removeItem("user");
+    navigate("/login");
+  };
+
+  const getInitials = (name: string) => {
+    if (!name) return "AK";
+    return name
+      .split(" ")
+      .map((n) => n[0])
+      .join("")
+      .toUpperCase()
+      .slice(0, 2);
+  };
+
+  const displayName = user?.fullName || user?.full_name || "Super Admin";
+  const displayRole = user?.role ? user.role.replace(/_/g, " ").toUpperCase() : "SUPER ADMIN";
 
   return (
     <header className="sticky top-0 z-30 flex h-16 items-center gap-3 border-b border-border/70 bg-background/80 px-6 backdrop-blur-xl">
@@ -57,16 +112,93 @@ export function TopBar() {
       </div>
 
       <div className="ml-auto flex items-center gap-1.5">
-        <button className="hidden h-9 items-center gap-1.5 rounded-xl border border-border bg-surface px-3 text-sm font-medium shadow-sm hover:bg-muted md:inline-flex">
-          <Plus className="h-4 w-4" /> Quick create
-        </button>
         <IconBtn><Sparkles className="h-4 w-4 text-primary" /></IconBtn>
         <IconBtn><Calendar className="h-4 w-4" /></IconBtn>
         <IconBtn badge>
           <Bell className="h-4 w-4" />
         </IconBtn>
-        <div className="ml-1 grid h-9 w-9 place-items-center rounded-full grad-primary text-[12px] font-semibold text-white shadow-glow ring-2 ring-background">
-          AK
+
+        {/* Clickable Profile Dropdown */}
+        <div className="relative">
+          <button
+            onClick={() => setDropdownOpen(!dropdownOpen)}
+            className="ml-1 flex items-center gap-2 rounded-xl p-1 hover:bg-muted/80 transition-all focus:outline-none"
+          >
+            <div className="grid h-9 w-9 place-items-center rounded-full grad-primary text-[12px] font-semibold text-white shadow-glow ring-2 ring-background overflow-hidden">
+              {user?.avatar_url || user?.avatarUrl ? (
+                <img src={`${BASE_URL}${user.avatar_url || user.avatarUrl}`} alt="Avatar" className="h-full w-full object-cover" />
+              ) : (
+                getInitials(displayName)
+              )}
+            </div>
+            <div className="hidden text-left md:block">
+              <div className="text-xs font-semibold leading-none">{displayName}</div>
+              <div className="mt-0.5 text-[9px] font-medium text-muted-foreground leading-none">{displayRole}</div>
+            </div>
+            <ChevronDown className="h-3 w-3 text-muted-foreground" />
+          </button>
+
+          {dropdownOpen && (
+            <>
+              {/* Overlay to close on click outside */}
+              <div
+                className="fixed inset-0 z-40"
+                onClick={() => setDropdownOpen(false)}
+              />
+              <div className="absolute right-0 mt-2 w-56 origin-top-right rounded-2xl border border-border bg-surface p-1.5 shadow-xl backdrop-blur-xl z-50 animate-in fade-in slide-in-from-top-1 duration-200">
+                <div className="px-3 py-2 text-[10px] font-bold uppercase tracking-wider text-muted-foreground border-b border-border/50 mb-1">
+                  My Account
+                </div>
+                <button
+                  onClick={() => {
+                    setDropdownOpen(false);
+                    navigate("/settings");
+                  }}
+                  className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-xs font-medium text-foreground hover:bg-muted transition-colors text-left"
+                >
+                  <Settings className="h-3.5 w-3.5 text-[#8A8E98]" />
+                  Profile Settings
+                </button>
+                
+                {(user?.role === 'super_admin' || user?.role === 'admin' || !user?.role) && (
+                  <button
+                    onClick={() => {
+                      setDropdownOpen(false);
+                      navigate("/admin-dashboard");
+                    }}
+                    className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-xs font-medium text-foreground hover:bg-muted transition-colors text-left"
+                  >
+                    <ShieldAlert className="h-3.5 w-3.5 text-[#7D5CE4]" />
+                    Admin Dashboard
+                  </button>
+                )}
+
+                <button
+                  onClick={() => {
+                    setDropdownOpen(false);
+                    navigate("/settings/billing");
+                  }}
+                  className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-xs font-medium text-foreground hover:bg-muted transition-colors text-left"
+                >
+                  <CreditCard className="h-3.5 w-3.5 text-[#8A8E98]" />
+                  Billing
+                </button>
+
+                <div className="my-1 border-t border-border/50" />
+                
+                <button
+                  onClick={() => {
+                    setDropdownOpen(false);
+                    handleSignOut();
+                  }}
+                  className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-xs font-bold text-destructive hover:bg-destructive/10 transition-colors text-left"
+                >
+                  <LogOut className="h-3.5 w-3.5" />
+                  Sign Out
+                </button>
+              </div>
+            </>
+          )}
         </div>
       </div>
     </header>

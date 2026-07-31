@@ -1,7 +1,12 @@
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom'
 import DashboardLayout from './pages/DashboardLayout'
 import Home from './pages/Home'
+import Login from './pages/Login'
+import AdminDashboard from './pages/AdminDashboard'
+import SettingsPage from './pages/SettingsPage'
 import NotFound from './pages/NotFound'
+import AcceptInvitePage from './pages/AcceptInvitePage'
+import { Toaster } from 'sonner'
 
 // CRM Routes
 import CRMIndex from './routes/_app.crm.index'
@@ -129,9 +134,13 @@ import SettingsNotifications from './routes/_app.settings.notifications'
 function App() {
     return (
         <Router>
+            <Toaster richColors position="bottom-right" />
             <Routes>
+                <Route path="/login" element={<Login />} />
+                <Route path="/accept-invite" element={<AcceptInvitePage />} />
                 <Route element={<DashboardLayout />}>
                     <Route index element={<Home />} />
+                    <Route path="/admin-dashboard" element={<AdminDashboard />} />
 
                     {/* CRM Routes */}
                     <Route path="/crm" element={<CRMIndex />} />
@@ -250,7 +259,7 @@ function App() {
                     <Route path="/knowledge-base/categories" element={<KnowledgeBaseCategories />} />
 
                     {/* Settings Routes */}
-                    <Route path="/settings" element={<SettingsIndex />} />
+                    <Route path="/settings" element={<SettingsPage />} />
                     <Route path="/settings/team" element={<SettingsTeam />} />
                     <Route path="/settings/billing" element={<SettingsBilling />} />
                     <Route path="/settings/integrations" element={<SettingsIntegrations />} />
