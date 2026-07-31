@@ -15,8 +15,10 @@ const getAll = async (req, res, next) => {
     conditions.push(`u.org_id = $${params.length + 1}`);
     params.push(req.user.orgId);
 
-    // Filter out super_admins completely
-    conditions.push(`u.role != 'super_admin'`);
+    // Filter out super_admins unless requested
+    if (includeSuperAdmin !== 'true') {
+      conditions.push(`u.role != 'super_admin'`);
+    }
     
     // Filter out the requester themselves unless requested
     if (includeSelf !== 'true') {
@@ -24,74 +26,52 @@ const getAll = async (req, res, next) => {
       params.push(req.user.id);
     }
 
-    // Status filter
-    let statusFilterCondition = '';
+    // Status filter — default shows ALL (active + inactive)
     if (status && status !== 'all') {
       if (status === 'active') {
-        statusFilterCondition = 'AND is_active = true AND invite_status = \'active\'';
+        conditions.push(`u.is_active = true`);
       } else if (status === 'inactive') {
-        statusFilterCondition = 'AND (is_active = false OR is_active IS NULL) AND invite_status = \'active\'';
-      } else if (status === 'pending') {
-        statusFilterCondition = 'AND invite_status IN (\'pending\', \'expired\')';
+        conditions.push(`(u.is_active = false OR u.is_active IS NULL)`);
       }
     }
 
     // Role filter
-    let roleFilterCondition = '';
     if (role && role !== 'all') {
-      roleFilterCondition = `AND role = $${params.length + 1}`;
+      conditions.push(`u.role = $${params.length + 1}`);
       params.push(role);
     }
 
-    // Department filter (case-insensitive)
-    let deptFilterCondition = '';
+    // Department filter (case-insensitive, supports comma-separated list)
     if (department && department !== 'all') {
       const deptList = department.split(',').map(d => d.trim().toLowerCase());
       if (deptList.length > 1) {
-        deptFilterCondition = `AND LOWER(department) = ANY($${params.length + 1})`;
+        conditions.push(`LOWER(u.department) = ANY($${params.length + 1})`);
         params.push(deptList);
       } else {
-        deptFilterCondition = `AND LOWER(department) = LOWER($${params.length + 1})`;
+        conditions.push(`LOWER(u.department) = LOWER($${params.length + 1})`);
         params.push(deptList[0]);
       }
     }
 
     // Search filter
-    let searchFilterCondition = '';
     if (search) {
       const idx = params.length + 1;
-      searchFilterCondition = `AND (full_name ILIKE $${idx} OR email ILIKE $${idx})`;
+      conditions.push(`(u.full_name ILIKE $${idx} OR u.email ILIKE $${idx})`);
       params.push(`%${search}%`);
     }
 
-    // Union query for users and invites
     let query = `
-      SELECT * FROM (
-        SELECT u.id, u.email, u.full_name, u.role::text as role, u.department, u.phone, u."position", u.is_active,
-               u.avatar_url, u.created_at, u.updated_at, u.module_permissions, u.password_change_required,
-               'active'::text as invite_status, u.org_id
-        FROM public.users u
-        WHERE ${conditions.join(' AND ')}
-
-        UNION ALL
-
-        SELECT i.id, i.email, i.full_name, i.role::text as role, i.department, i.phone, i."position", false as is_active,
-               null as avatar_url, i.created_at, i.created_at as updated_at, i.module_permissions, false as password_change_required,
-               CASE WHEN i.expires_at > CURRENT_TIMESTAMP THEN 'pending' ELSE 'expired' END as invite_status, i.org_id
-        FROM public.invites i
-        WHERE i.org_id = $1
-      ) combined
-      WHERE 1=1
-      ${statusFilterCondition}
-      ${roleFilterCondition}
-      ${deptFilterCondition}
-      ${searchFilterCondition}
-      ORDER BY created_at DESC
+      SELECT u.id, u.email, u.full_name, u.role, u.department, u.phone, u."position", u.is_active,
+             u.avatar_url, u.created_at, u.updated_at, u.module_permissions, u.password_change_required
+      FROM public.users u
+      WHERE ${conditions.join(' AND ')}
+      ORDER BY u.created_at DESC
       LIMIT $${params.length + 1} OFFSET $${params.length + 2}
     `;
     params.push(limit, offset);
 
     const result = await db.query(query, params);
+    result.rows.forEach(row => { delete row.password_hash; });
     res.json(result.rows);
   } catch (err) {
     next(err);
@@ -101,7 +81,7 @@ const getAll = async (req, res, next) => {
 // GET /api/members/stats — dashboard stats (total, active, inactive, admins)
 const getStats = async (req, res, next) => {
   try {
-    const usersResult = await db.query(
+    const result = await db.query(
       `SELECT
         COUNT(*)                                                        AS total,
         COUNT(*) FILTER (WHERE is_active = true)                       AS active,
@@ -109,19 +89,11 @@ const getStats = async (req, res, next) => {
         COUNT(*) FILTER (WHERE role = 'admin')                         AS admins
        FROM public.users
        WHERE org_id = $1
-         AND role != 'super_admin'`,
-      [req.user.orgId]
+         AND role != 'super_admin'
+         AND id != $2`,
+      [req.user.orgId, req.user.id]
     );
-
-    const invitesResult = await db.query(
-      `SELECT COUNT(*) AS pending FROM public.invites WHERE org_id = $1`,
-      [req.user.orgId]
-    );
-
-    const stats = usersResult.rows[0];
-    stats.pending = parseInt(invitesResult.rows[0]?.pending || 0);
-
-    res.json(stats);
+    res.json(result.rows[0]);
   } catch (err) {
     next(err);
   }
@@ -283,7 +255,7 @@ const update = async (req, res, next) => {
       await client.query(
         `UPDATE public.profiles SET ${profFields.join(', ')} WHERE id = $${pIdx} AND org_id = $${pIdx + 1}`,
         profValues
-      ).catch((e) => console.log('Profiles table skip (not found)'));
+      );
     }
 
     if (fullName) {
@@ -314,6 +286,9 @@ const update = async (req, res, next) => {
     );
 
     const updatedUser = finalResult.rows[0];
+    const realtimeService = require('../../services/realtimeService');
+    realtimeService.emitUserUpdated(id, updatedUser);
+
     res.json(updatedUser);
   } catch (err) {
     await client.query('ROLLBACK').catch(() => {});
@@ -349,14 +324,7 @@ const remove = async (req, res, next) => {
 
     const targetResult = await client.query('SELECT role FROM public.users WHERE id = $1', [id]);
     if (targetResult.rows.length === 0) {
-      // Check invites table
-      const inviteResult = await client.query('SELECT id FROM public.invites WHERE id = $1 AND org_id = $2', [id, req.user.orgId]);
-      if (inviteResult.rows.length === 0) {
-        return res.status(404).json({ error: 'User or invitation not found' });
-      }
-
-      await client.query('DELETE FROM public.invites WHERE id = $1 AND org_id = $2', [id, req.user.orgId]);
-      return res.json({ message: 'Invitation deleted successfully' });
+      return res.status(404).json({ error: 'User not found' });
     }
     const targetRole = targetResult.rows[0].role;
 
@@ -365,6 +333,77 @@ const remove = async (req, res, next) => {
     }
 
     await client.query('BEGIN');
+
+    // Step 1: Dynamically find and handle ALL foreign key references to the users table
+    const fkQuery = `
+      SELECT 
+        tc.table_name, 
+        kcu.column_name
+      FROM information_schema.table_constraints tc
+      JOIN information_schema.key_column_usage kcu 
+        ON tc.constraint_name = kcu.constraint_name
+      JOIN information_schema.constraint_column_usage ccu 
+        ON tc.constraint_name = ccu.constraint_name
+      WHERE tc.constraint_type = 'FOREIGN KEY'
+        AND ccu.table_name = 'users'
+        AND ccu.column_name = 'id'
+        AND tc.table_schema = 'public'
+    `;
+    const fkResult = await db.query(fkQuery);
+    
+    // Step 2: For each referencing table/column, either SET NULL or DELETE
+    const deleteTargets = [
+      'attendance', 'leave_requests', 'salary_slips', 'employee_documents',
+      'crm_activities', 'workgroup_posts', 'workgroup_post_reads',
+      'workgroup_files', 'workgroup_members', 'workgroup_notifications',
+      'workgroup_activities', 'connected_mailboxes', 'calendar_connections',
+      'calendar_event_attendees', 'profiles', 'push_subscriptions',
+      'fcm_tokens', 'user_settings'
+    ];
+
+    for (const fk of fkResult.rows) {
+      const tableName = fk.table_name;
+      const columnName = fk.column_name;
+      
+      // Skip the users table itself
+      if (tableName === 'users') continue;
+      
+      try {
+        if (deleteTargets.includes(tableName)) {
+          // Delete records from tables that are user-specific data
+          await db.query(`DELETE FROM public."${tableName}" WHERE "${columnName}" = $1`, [id]);
+        } else {
+          // For shared tables (workgroups, channels, etc.), reassign to the deleting admin
+          try {
+            await db.query(`UPDATE public."${tableName}" SET "${columnName}" = $2 WHERE "${columnName}" = $1`, [id, req.user.id]);
+          } catch (updateErr) {
+            // If UPDATE fails (e.g. NOT NULL + unique), try SET NULL
+            try {
+              await db.query(`UPDATE public."${tableName}" SET "${columnName}" = NULL WHERE "${columnName}" = $1`, [id]);
+            } catch (nullErr) {
+              // Last resort: delete the referencing rows  
+              await db.query(`DELETE FROM public."${tableName}" WHERE "${columnName}" = $1`, [id]);
+            }
+          }
+        }
+      } catch (e) {
+        console.log(`Cleanup: skipping ${tableName}.${columnName} - ${e.message}`);
+      }
+    }
+
+    // Step 3: Explicit cleanup for known tables with multiple user references
+    await db.query('DELETE FROM public.leads WHERE assigned_to = $1', [id]);
+    await db.query('DELETE FROM public.deals WHERE assigned_to = $1', [id]);
+    await db.query('DELETE FROM public.tasks WHERE assigned_to = $1 OR created_by = $1', [id]);
+    
+    // Get user email to delete from employees table properly
+    const userEmailResult = await client.query('SELECT email FROM public.users WHERE id = $1', [id]);
+    const userEmail = userEmailResult.rows[0]?.email;
+    if (userEmail) {
+      await client.query('DELETE FROM public.employees WHERE user_id = $1 OR LOWER(email) = LOWER($2)', [id, userEmail]);
+    } else {
+      await client.query('DELETE FROM public.employees WHERE user_id = $1', [id]);
+    }
 
     // Step 4: Final delete of the user
     const result = await db.query(
@@ -378,7 +417,7 @@ const remove = async (req, res, next) => {
     }
 
     await client.query('COMMIT');
-    res.json({ message: 'User deleted permanently' });
+    res.json({ message: 'User and all related records deleted permanently' });
   } catch (err) {
     await client.query('ROLLBACK').catch(() => {});
     next(err);
@@ -396,42 +435,6 @@ const resetPassword = async (req, res, next) => {
   }
 };
 
-const resendInvite = async (req, res, next) => {
-  try {
-    const { id } = req.params;
-    const inviteResult = await db.query(
-      'SELECT * FROM public.invites WHERE id = $1 AND org_id = $2',
-      [id, req.user.orgId]
-    );
-
-    if (inviteResult.rows.length === 0) {
-      return res.status(404).json({ error: 'Invitation not found' });
-    }
-
-    const invite = inviteResult.rows[0];
-    const newExpiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
-    const newInviteToken = uuidv4();
-
-    // Update invite token and expires_at
-    await db.query(
-      'UPDATE public.invites SET invite_token = $1, expires_at = $2, created_at = CURRENT_TIMESTAMP WHERE id = $3',
-      [newInviteToken, newExpiresAt, id]
-    );
-
-    // Resend invite email
-    try {
-      const systemEmailService = require('../../services/systemEmailService');
-      await systemEmailService.sendInvite(invite.email, invite.full_name, newInviteToken);
-    } catch (emailErr) {
-      console.error('Failed to send invite email:', emailErr.message);
-    }
-
-    res.json({ message: 'Invitation resent successfully' });
-  } catch (err) {
-    next(err);
-  }
-};
-
 module.exports = {
   getAll,
   getStats,
@@ -441,5 +444,4 @@ module.exports = {
   remove,
   resetPassword,
   getProfile,
-  resendInvite
 };

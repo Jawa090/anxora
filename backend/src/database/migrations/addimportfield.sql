@@ -1,0 +1,1 @@
+ALTER TABLE lead_imports ADD COLUMN IF NOT EXISTS entity_type VARCHAR(50) DEFAULT 'lead';

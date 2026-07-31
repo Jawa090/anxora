@@ -16,13 +16,7 @@ async function runMigrations() {
     `);
 
     // Get list of migration files
-    const migrationsDir = path.join(__dirname, 'migrations');
-    
-    // Create migrations directory if it doesn't exist
-    if (!fs.existsSync(migrationsDir)) {
-      fs.mkdirSync(migrationsDir, { recursive: true });
-    }
-
+    const migrationsDir = path.join(__dirname, '.', 'migrations');
     const migrationFiles = fs.readdirSync(migrationsDir)
       .filter(file => file.endsWith('.sql'))
       .sort();
@@ -46,6 +40,15 @@ async function runMigrations() {
       // Read and execute migration
       const migrationPath = path.join(migrationsDir, file);
       const migrationSQL = fs.readFileSync(migrationPath, 'utf8');
+      
+      if (process.env.NODE_ENV === 'production' && /\bdrop\b/i.test(migrationSQL)) {
+        console.warn(`⚠️ [Migration Guard] Skipping drop command in migration "${file}" on production. Logging and marking as processed.`);
+        await db.query(
+          'INSERT INTO migrations (filename) VALUES ($1)',
+          [file]
+        );
+        continue;
+      }
       
       try {
         await db.query(migrationSQL);

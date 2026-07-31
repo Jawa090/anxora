@@ -138,10 +138,8 @@ const login = async (req, res, next) => {
 const getProfile = async (req, res, next) => {
   try {
     const userResult = await db.query(
-      `SELECT u.id, u.email, u.full_name, u.organization_id, u.org_id, u.avatar_url, u.role, u.phone, u.position, u.department, u.bio, u.timezone, u.languages, u.module_permissions, u.notification_settings,
-              o.name as org_name, o.domain as org_domain, o.address as org_address, o.settings as org_settings
+      `SELECT u.id, u.email, u.full_name, u.organization_id, u.org_id, u.avatar_url, u.role, u.phone, u.position, u.department, u.bio, u.timezone, u.languages, u.module_permissions, u.notification_settings
        FROM users u
-       LEFT JOIN organizations o ON o.id = COALESCE(u.organization_id, u.org_id)
        WHERE u.id = $1`,
       [req.user.id]
     );
@@ -305,6 +303,8 @@ const forgotPassword = async (req, res, next) => {
       console.log(`✅ Password reset email sent to ${email}`);
     } catch (emailError) {
       console.error(`❌ Failed to send password reset email to ${email}:`, emailError.message);
+      // Don't fail the request if email fails, but log it
+      // In production, you might want to queue this for retry
     }
 
     res.json({ message: 'If an account with that email exists, a password reset link has been sent.' });
@@ -355,6 +355,8 @@ const resetPassword = async (req, res, next) => {
     next(err);
   }
 };
+
+
 
 const verifyInvite = async (req, res, next) => {
   try {

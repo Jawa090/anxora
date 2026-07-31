@@ -1,3 +1,4 @@
+
 const nodemailer = require('nodemailer');
 
 class SystemEmailService {
@@ -17,14 +18,14 @@ class SystemEmailService {
     const inviteUrl = `${process.env.APP_URL}/accept-invite?token=${inviteToken}`;
 
     const mailOptions = {
-      from: `"ANXORA" <${process.env.SMTP_USER}>`,
+      from: `"XCLATIX" <${process.env.SMTP_USER}>`,
       to: email,
-      subject: 'You have been invited to join ANXORA',
+      subject: 'You have been invited to join XCLATIX',
       html: `
             <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e1e1e1; border-radius: 10px;">
-                <h2 style="color: #4f46e5;">Welcome to ANXORA!</h2>
+                <h2 style="color: #4f46e5;">Welcome to XCLATIX!</h2>
                 <p>Hello ${fullName},</p>
-                <p>An administrator has invited you to join their team on ANXORA.</p>
+                <p>An administrator has invited you to join their team on XCLATIX.</p>
                 <p>To get started and set your password, please click the button below:</p>
                 <div style="text-align: center; margin: 30px 0;">
                     <a href="${inviteUrl}" style="background-color: #4f46e5; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; font-weight: bold;">Accept Invitation & Set Password</a>

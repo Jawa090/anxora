@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { auth, requireOrg } = require('../../middleware/auth');
+const { checkPermission } = require('../../middleware/permissionAccess');
 const employeeController = require('../../controllers/auth/employeeController');
 
 router.use(auth, requireOrg);
@@ -13,6 +14,5 @@ router.post('/',employeeController.create);
 router.put('/:id',employeeController.update);
 router.delete('/:id',employeeController.remove);
 router.post('/:id/reset-password',employeeController.resetPassword);
-router.post('/:id/resend-invite', employeeController.resendInvite);
 
 module.exports = router;

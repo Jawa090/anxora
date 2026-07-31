@@ -1,0 +1,15 @@
+# Force no-cache for index.html to bust cache on new deployments
+<FilesMatch "index\.html$">
+  <IfModule mod_headers.c>
+    Header set Cache-Control "no-cache, no-store, must-revalidate"
+    Header set Pragma "no-cache"
+    Header set Expires 0
+  </IfModule>
+</FilesMatch>
+
+# Allow caching for hashed assets (Vite output folder e.g., assets/)
+<FilesMatch "\.(css|js|woff|woff2|png|jpg|jpeg|gif|svg|ico)$">
+  <IfModule mod_headers.c>
+    Header set Cache-Control "max-age=31536000, public, immutable"
+  </IfModule>
+</FilesMatch>

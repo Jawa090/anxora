@@ -1,843 +1,934 @@
-import { useState, useEffect, useRef } from 'react'
-import { Page, PageHeader, Card, Pill } from '@/components/page'
-import { User, Bell, Save, KeyRound, Eye, EyeOff, Building, Users, Camera, Copy, Check } from 'lucide-react'
-import { toast } from 'sonner'
-import { DEPARTMENTS } from '@/lib/departments'
-import { Button } from '@/components/ui/button'
-import { API_URL, BASE_URL } from '@/lib/api'
+import { useState, useEffect, useRef } from "react";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Separator } from "@/components/ui/separator";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  User,
+  Building2,
+  Bell,
+  Palette,
+  Shield,
+  Globe,
+  Mail,
+  Phone,
+  Camera,
+  Save,
+  KeyRound,
+  Eye,
+  EyeOff,
+  Loader2,
+  Users,
+  Copy,
+  Plug,
+} from "lucide-react";
+import InstantlyIntegrationPanel from "@/components/admin/InstantlyIntegrationPanel";
+import { useQuery } from "@tanstack/react-query";
+import { format } from "date-fns";
+import { useAuth } from "@/contexts/AuthContext";
+import { useOrganization } from "@/contexts/OrganizationContext";
+import { api } from "@/lib/api";
+import { getAvatarUrl } from "@/lib/utils";
+import { toast } from "sonner";
+
+const SETTINGS_TAB_KEY = "settings_active_tab";
 
 export default function SettingsPage() {
-  const [activeTab, setActiveTab] = useState('profile')
-  const [user, setUser] = useState<any>(null)
-  const [org, setOrg] = useState<any>(null)
-  const [members, setMembers] = useState<any[]>([])
-  
-  // Profile state
-  const [fullName, setFullName] = useState('')
-  const [email, setEmail] = useState('')
-  const [phone, setPhone] = useState('')
-  const [position, setPosition] = useState('')
-  const [department, setDepartment] = useState('')
-  const [bio, setBio] = useState('')
-  const [avatarUrl, setAvatarUrl] = useState('')
-  const [savingProfile, setSavingProfile] = useState(false)
-  const [uploadingAvatar, setUploadingAvatar] = useState(false)
-  const [isDeptOpen, setIsDeptOpen] = useState(false)
-  const fileInputRef = useRef<HTMLInputElement>(null)
+  const { profile, user, refreshProfile, userRole } = useAuth();
+  const { organization, currentRole, refreshOrganization } = useOrganization();
 
-  // Password state
-  const [currentPassword, setCurrentPassword] = useState('')
-  const [newPassword, setNewPassword] = useState('')
-  const [confirmPassword, setConfirmPassword] = useState('')
-  const [showCurrent, setShowCurrent] = useState(false)
-  const [showNew, setShowNew] = useState(false)
-  const [showConfirm, setShowConfirm] = useState(false)
-  const [changingPassword, setChangingPassword] = useState(false)
+  const isAdmin =
+    userRole?.role === "admin" || userRole?.role === "super_admin";
 
-  // Notifications state
-  const [emailNotifications, setEmailNotifications] = useState(true)
-  const [pushNotifications, setPushNotifications] = useState(false)
-  const [savingNotifications, setSavingNotifications] = useState(false)
+  const [activeTab, setActiveTab] = useState(
+    () => localStorage.getItem(SETTINGS_TAB_KEY) || "profile"
+  );
 
-  // Org Settings state
-  const [orgName, setOrgName] = useState('')
-  const [orgDomain, setOrgDomain] = useState('')
-  const [orgAddress, setOrgAddress] = useState('')
-  const [savingOrg, setSavingOrg] = useState(false)
-  const [copied, setCopied] = useState(false)
-
-  const fetchProfile = async () => {
-    try {
-      const token = localStorage.getItem('token')
-      const response = await fetch(`${API_URL}/auth/profile`, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      })
-      if (response.ok) {
-        const data = await response.json()
-        setUser(data)
-        setFullName(data.full_name || '')
-        setEmail(data.email || '')
-        setPhone(data.phone || '')
-        setPosition(data.position || data.job_title || '')
-        setDepartment(data.department || '')
-        setBio(data.bio || '')
-        setAvatarUrl(data.avatar_url || '')
-        if (data.notification_settings) {
-          const settings = typeof data.notification_settings === 'string' 
-            ? JSON.parse(data.notification_settings) 
-            : data.notification_settings
-          setEmailNotifications(settings.email ?? true)
-          setPushNotifications(settings.push ?? false)
-        }
-      }
-    } catch (e) {
-      console.error(e)
-    }
-  }
-
-  const fetchOrgDetails = async () => {
-    try {
-      const token = localStorage.getItem('token')
-      const response = await fetch(`${API_URL}/organizations`, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      })
-      if (response.ok) {
-        const data = await response.json()
-        setOrg(data)
-        setOrgName(data.name || '')
-        setOrgDomain(data.domain || '')
-        setOrgAddress(data.address || '')
-      }
-    } catch (e) {
-      console.error(e)
-    }
-  }
-
-  const fetchOrgMembers = async () => {
-    try {
-      const token = localStorage.getItem('token')
-      const response = await fetch(`${API_URL}/organizations/members`, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      })
-      if (response.ok) {
-        const data = await response.json()
-        setMembers(data.members || [])
-      }
-    } catch (e) {
-      console.error(e)
-    }
-  }
-
-  useEffect(() => {
-    fetchProfile()
-    fetchOrgDetails()
-    fetchOrgMembers()
-  }, [])
-
-  const handleProfileSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (user?.role !== 'super_admin') {
-      alert('Only Super Admin can update profile information.')
-      return
-    }
-    setSavingProfile(true)
-    try {
-      const token = localStorage.getItem('token')
-      const response = await fetch(`${API_URL}/auth/profile`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({
-          fullName,
-          phone,
-          position,
-          department,
-          bio
-        })
-      })
-
-      if (response.ok) {
-        const updatedUser = await response.json()
-        const storedUser = JSON.parse(localStorage.getItem('user') || '{}')
-        localStorage.setItem('user', JSON.stringify({ ...storedUser, fullName: updatedUser.full_name }))
-        window.dispatchEvent(new Event('profile-updated'))
-        toast.success('Profile updated successfully!')
-        fetchProfile()
-      } else {
-        toast.error('Failed to update profile')
-      }
-    } catch (e) {
-      console.error(e)
-    } finally {
-      setSavingProfile(false)
-    }
-  }
-
-  const handlePasswordSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (newPassword !== confirmPassword) {
-      toast.error('New password and confirm password do not match')
-      return
-    }
-    setChangingPassword(true)
-    try {
-      const token = localStorage.getItem('token')
-      const response = await fetch(`${API_URL}/auth/change-password`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({
-          currentPassword,
-          newPassword
-        })
-      })
-
-      if (response.ok) {
-        setCurrentPassword('')
-        setNewPassword('')
-        setConfirmPassword('')
-        toast.success('Password updated successfully!')
-      } else {
-        const err = await response.json()
-        toast.error(err.error || 'Failed to change password')
-      }
-    } catch (e) {
-      console.error(e)
-    } finally {
-      setChangingPassword(false)
-    }
-  }
-
-  const handleNotificationSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setSavingNotifications(true)
-    try {
-      const token = localStorage.getItem('token')
-      const response = await fetch(`${API_URL}/auth/notification-settings`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({
-          settings: {
-            email: emailNotifications,
-            push: pushNotifications
-          }
-        })
-      })
-
-      if (response.ok) {
-        toast.success('Notification settings updated!')
-      } else {
-        toast.error('Failed to update notification settings')
-      }
-    } catch (e) {
-      console.error(e)
-    } finally {
-      setSavingNotifications(false)
-    }
-  }
-
-  const handleOrgSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (user?.role !== 'super_admin') {
-      console.warn('Only Super Admin can edit organization details.')
-      return
-    }
-    setSavingOrg(true)
-    try {
-      const token = localStorage.getItem('token')
-      const response = await fetch(`${API_URL}/organizations/${org.id}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({
-          name: orgName,
-          domain: orgDomain,
-          address: orgAddress
-        })
-      })
-
-      if (response.ok) {
-        toast.success('Organization details updated!')
-        fetchOrgDetails()
-      } else {
-        toast.error('Failed to update organization details')
-      }
-    } catch (e) {
-      console.error(e)
-    } finally {
-      setSavingOrg(false)
-    }
-  }
-
-  const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (!file) return
-
-    const formData = new FormData()
-    formData.append('avatar', file)
-
-    setUploadingAvatar(true)
-    try {
-      const token = localStorage.getItem('token')
-      const response = await fetch(`${API_URL}/auth/upload-avatar`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`
-        },
-        body: formData
-      })
-      if (response.ok) {
-        window.dispatchEvent(new Event('profile-updated'))
-        toast.success('Profile picture updated successfully!')
-        fetchProfile()
-      } else {
-        toast.error('Failed to upload profile picture')
-      }
-    } catch (err) {
-      console.error(err)
-    } finally {
-      setUploadingAvatar(false)
-    }
-  }
-
-  const copyOrgId = () => {
-    if (org?.id) {
-      navigator.clipboard.writeText(org.id)
-      setCopied(true)
-      setTimeout(() => setCopied(false), 2000)
-    }
-  }
-
-  const isSuperAdmin = user?.role === 'super_admin'
-
-  const initials = fullName
-    ? fullName.split(' ').map((n) => n[0]).join('').toUpperCase().slice(0, 2)
-    : 'SA'
+  const handleTabChange = (value: string) => {
+    setActiveTab(value);
+    localStorage.setItem(SETTINGS_TAB_KEY, value);
+  };
 
   return (
-    <Page>
-      <PageHeader
-        title="Settings"
-        description="Manage your account preferences, profile details, and security."
-      />
-
-      {/* Tabs list */}
-      <div className="flex border-b border-border/80">
-        <button
-          onClick={() => setActiveTab('profile')}
-          className={`flex items-center gap-1.5 border-b-2 px-4 py-2.5 text-xs font-semibold focus:outline-none transition-all ${
-            activeTab === 'profile'
-              ? 'border-[#7D5CE4] text-[#7D5CE4]'
-              : 'border-transparent text-[#8A8E98] hover:text-foreground'
-          }`}
-        >
-          <User className="h-4 w-4" /> Profile Details
-        </button>
-
-        <button
-          onClick={() => setActiveTab('org')}
-          className={`flex items-center gap-1.5 border-b-2 px-4 py-2.5 text-xs font-semibold focus:outline-none transition-all ${
-            activeTab === 'org'
-              ? 'border-[#7D5CE4] text-[#7D5CE4]'
-              : 'border-transparent text-[#8A8E98] hover:text-foreground'
-          }`}
-        >
-          <Building className="h-4 w-4" /> Organization Settings
-        </button>
-
-        <button
-          onClick={() => setActiveTab('notifications')}
-          className={`flex items-center gap-1.5 border-b-2 px-4 py-2.5 text-xs font-semibold focus:outline-none transition-all ${
-            activeTab === 'notifications'
-              ? 'border-[#7D5CE4] text-[#7D5CE4]'
-              : 'border-transparent text-[#8A8E98] hover:text-foreground'
-          }`}
-        >
-          <Bell className="h-4 w-4" /> Notifications
-        </button>
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-3xl font-bold text-foreground">Settings</h1>
+        <p className="text-muted-foreground">
+          Manage your account and preferences
+        </p>
       </div>
 
-      {/* Tab Contents - Width is Full */}
-      <div className="mt-6 w-full space-y-6">
-        {activeTab === 'profile' && (
-          <div className="space-y-6">
-            <Card className="p-6">
-              <h3 className="text-sm font-bold text-foreground">Personal Information</h3>
-              <p className="text-xs text-[#8A8E98] mt-0.5">Update your personal details and contact information</p>
+      <Tabs value={activeTab} onValueChange={handleTabChange}>
+        <TabsList
+          className={`grid w-full lg:w-auto lg:inline-grid ${isAdmin ? "grid-cols-4" : "grid-cols-3"}`}
+        >
+          <TabsTrigger value="profile" className="gap-2">
+            <User className="h-4 w-4" />
+            <span className="hidden sm:inline">Profile</span>
+          </TabsTrigger>
+          <TabsTrigger value="organization" className="gap-2">
+            <Building2 className="h-4 w-4" />
+            <span className="hidden sm:inline">Organization</span>
+          </TabsTrigger>
+          <TabsTrigger value="notifications" className="gap-2">
+            <Bell className="h-4 w-4" />
+            <span className="hidden sm:inline">Notifications</span>
+          </TabsTrigger>
+          {isAdmin && (
+            <TabsTrigger value="integrations" className="gap-2">
+              <Plug className="h-4 w-4" />
+              <span className="hidden sm:inline">Integrations</span>
+            </TabsTrigger>
+          )}
+        </TabsList>
 
-              {/* Photo Upload Section */}
-              <div className="flex items-center gap-6 mt-6 pb-6 border-b border-border/50">
-                <div className="relative group">
-                  <div className="grid h-20 w-20 place-items-center rounded-full bg-[#7D5CE4]/10 text-xl font-bold text-[#7D5CE4] border-2 border-[#7D5CE4]/20 overflow-hidden">
-                    {avatarUrl ? (
-                      <img src={`${BASE_URL}${avatarUrl}`} alt="Avatar" className="h-full w-full object-cover" />
-                    ) : (
-                      initials
-                    )}
-                  </div>
-                  <button
-                    onClick={() => fileInputRef.current?.click()}
-                    disabled={uploadingAvatar}
-                    className="absolute inset-0 flex items-center justify-center bg-black/40 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity disabled:cursor-not-allowed"
-                  >
-                    <Camera className="h-5 w-5" />
-                  </button>
-                  <input
-                    type="file"
-                    ref={fileInputRef}
-                    onChange={handleAvatarChange}
-                    className="hidden"
-                    accept="image/*"
-                  />
-                </div>
-                <div>
-                  <p className="font-bold text-lg text-foreground">{fullName || 'Super Admin'}</p>
-                  <p className="text-xs text-muted-foreground">{email}</p>
-                  <div className="flex items-center gap-2 mt-2">
-                    <Pill tone="primary">{user?.role ? user.role.replace(/_/g, ' ').toUpperCase() : 'SUPER ADMIN'}</Pill>
-                    <button
-                      type="button"
-                      onClick={() => fileInputRef.current?.click()}
-                      disabled={uploadingAvatar}
-                      className="rounded-lg border border-border bg-surface px-2.5 py-1 text-[10px] font-bold text-foreground hover:bg-muted"
-                    >
-                      {uploadingAvatar ? 'Uploading...' : 'Change Photo'}
-                    </button>
-                  </div>
-                </div>
-              </div>
-
-              <form onSubmit={handleProfileSubmit} className="mt-6 space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Full Name</label>
-                    <input
-                      type="text"
-                      required
-                      value={fullName}
-                      onChange={(e) => setFullName(e.target.value)}
-                      disabled={!isSuperAdmin}
-                      className="w-full rounded-xl border border-border bg-surface-2/40 px-3 py-2 text-xs font-semibold focus:border-[#7D5CE4] focus:outline-none disabled:bg-muted/30 disabled:text-muted-foreground"
-                    />
-                  </div>
-
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Email</label>
-                    <input
-                      type="email"
-                      disabled
-                      value={email}
-                      className="w-full rounded-xl border border-border bg-muted/30 px-3 py-2 text-xs font-semibold focus:outline-none cursor-not-allowed text-muted-foreground"
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Phone</label>
-                    <input
-                      type="text"
-                      value={phone}
-                      onChange={(e) => setPhone(e.target.value)}
-                      placeholder="+1 (555) 000-0000"
-                      disabled={!isSuperAdmin}
-                      className="w-full rounded-xl border border-border bg-surface-2/40 px-3 py-2 text-xs font-semibold focus:border-[#7D5CE4] focus:outline-none disabled:bg-muted/30 disabled:text-muted-foreground"
-                    />
-                  </div>
-
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Job Title</label>
-                    <input
-                      type="text"
-                      value={position}
-                      onChange={(e) => setPosition(e.target.value)}
-                      placeholder="Software Engineer"
-                      disabled={!isSuperAdmin}
-                      className="w-full rounded-xl border border-border bg-surface-2/40 px-3 py-2 text-xs font-semibold focus:border-[#7D5CE4] focus:outline-none disabled:bg-muted/30 disabled:text-muted-foreground"
-                    />
-                  </div>
-                </div>
-
-                <div className="space-y-1 relative">
-                  <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Department</label>
-                  <button
-                    type="button"
-                    disabled={!isSuperAdmin}
-                    onClick={() => setIsDeptOpen(!isDeptOpen)}
-                    className="w-full rounded-xl border border-border bg-surface-2/40 px-3 py-2 text-xs font-semibold focus:outline-none flex items-center justify-between text-foreground disabled:bg-muted/30 disabled:text-muted-foreground disabled:cursor-not-allowed"
-                  >
-                    <span>{department || 'Select Department'}</span>
-                    <span className="text-[#8A8E98] text-[10px]">▼</span>
-                  </button>
-                  {isDeptOpen && isSuperAdmin && (
-                    <>
-                      <div className="fixed inset-0 z-10" onClick={() => setIsDeptOpen(false)} />
-                      <div className="absolute left-0 right-0 bottom-full mb-1 z-20 max-h-48 overflow-y-auto rounded-xl border border-border bg-surface p-1 shadow-2xl">
-                        {DEPARTMENTS.map((dept) => (
-                          <button
-                            key={dept}
-                            type="button"
-                            onClick={() => {
-                              setDepartment(dept)
-                              setIsDeptOpen(false)
-                            }}
-                            className="w-full text-left rounded-lg px-3 py-2 text-xs font-semibold text-foreground hover:bg-[#7D5CE4]/10 hover:text-[#7D5CE4] transition-colors"
-                          >
-                            {dept}
-                          </button>
-                        ))}
-                      </div>
-                    </>
-                  )}
-                </div>
-
-                <div className="space-y-1">
-                  <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Bio</label>
-                  <textarea
-                    value={bio}
-                    onChange={(e) => setBio(e.target.value)}
-                    placeholder="Tell us about yourself..."
-                    rows={3}
-                    disabled={!isSuperAdmin}
-                    className="w-full rounded-xl border border-border bg-surface-2/40 px-3 py-2 text-xs font-semibold focus:border-[#7D5CE4] focus:outline-none resize-none disabled:bg-muted/30 disabled:text-muted-foreground"
-                  />
-                </div>
-
-                {isSuperAdmin && (
-                  <Button
-                    type="submit"
-                    disabled={savingProfile}
-                    className="h-9 px-4 text-xs font-bold bg-[#7D5CE4] hover:bg-[#7D5CE4]/80 shadow-md shadow-[#7D5CE4]/20"
-                  >
-                    <Save className="h-3.5 w-3.5" /> {savingProfile ? 'Saving...' : 'Save Changes'}
-                  </Button>
-                )}
-              </form>
-            </Card>
-
-            {/* Change Password Card directly below profile information */}
-            <Card className="p-6">
-              <h3 className="text-sm font-bold text-foreground">Change Password</h3>
-              <p className="text-xs text-[#8A8E98] mt-0.5">Update your account password</p>
-
-              <form onSubmit={handlePasswordSubmit} className="mt-6 space-y-4">
-                <div className="space-y-1">
-                  <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Current Password</label>
-                  <div className="relative">
-                    <input
-                      type={showCurrent ? 'text' : 'password'}
-                      required
-                      value={currentPassword}
-                      onChange={(e) => setCurrentPassword(e.target.value)}
-                      placeholder="••••••••"
-                      className="w-full rounded-xl border border-border bg-surface-2/40 py-2 pl-3 pr-10 text-xs font-semibold focus:border-[#7D5CE4] focus:outline-none"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowCurrent(!showCurrent)}
-                      className="absolute inset-y-0 right-0 flex items-center pr-3 text-slate-400"
-                    >
-                      {showCurrent ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                    </button>
-                  </div>
-                </div>
-
-                <div className="space-y-1">
-                  <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">New Password</label>
-                  <div className="relative">
-                    <input
-                      type={showNew ? 'text' : 'password'}
-                      required
-                      value={newPassword}
-                      onChange={(e) => setNewPassword(e.target.value)}
-                      placeholder="Minimum 8 characters"
-                      className="w-full rounded-xl border border-border bg-surface-2/40 py-2 pl-3 pr-10 text-xs font-semibold focus:border-[#7D5CE4] focus:outline-none"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowNew(!showNew)}
-                      className="absolute inset-y-0 right-0 flex items-center pr-3 text-slate-400"
-                    >
-                      {showNew ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                    </button>
-                  </div>
-                </div>
-
-                <div className="space-y-1">
-                  <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Confirm New Password</label>
-                  <div className="relative">
-                    <input
-                      type={showConfirm ? 'text' : 'password'}
-                      required
-                      value={confirmPassword}
-                      onChange={(e) => setConfirmPassword(e.target.value)}
-                      placeholder="••••••••"
-                      className="w-full rounded-xl border border-border bg-surface-2/40 py-2 pl-3 pr-10 text-xs font-semibold focus:border-[#7D5CE4] focus:outline-none"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowConfirm(!showConfirm)}
-                      className="absolute inset-y-0 right-0 flex items-center pr-3 text-slate-400"
-                    >
-                      {showConfirm ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                    </button>
-                  </div>
-                </div>
-
-                <button
-                  type="submit"
-                  disabled={changingPassword}
-                  className="flex items-center gap-1.5 rounded-xl bg-[#7D5CE4] px-4 py-2 text-xs font-bold text-white shadow-md shadow-[#7D5CE4]/20 hover:opacity-95 disabled:opacity-50"
-                >
-                  <KeyRound className="h-3.5 w-3.5" /> {changingPassword ? 'Updating...' : 'Update Password'}
-                </button>
-              </form>
-            </Card>
-          </div>
+        <TabsContent value="profile" className="mt-6">
+          <ProfileSettings />
+        </TabsContent>
+        <TabsContent value="organization" className="mt-6">
+          <OrganizationSettings />
+        </TabsContent>
+        <TabsContent value="notifications" className="mt-6">
+          <NotificationSettings />
+        </TabsContent>
+        {isAdmin && (
+          <TabsContent value="integrations" className="mt-6">
+            <InstantlyIntegrationPanel />
+          </TabsContent>
         )}
+        <TabsContent value="appearance" className="mt-6">
+          <AppearanceSettings />
+        </TabsContent>
+      </Tabs>
+    </div>
+  );
+}
 
-        {activeTab === 'org' && org && (
-          <div className="space-y-6">
-            <Card className="p-6">
-              <h3 className="text-sm font-bold text-foreground">Organization Details</h3>
-              <p className="text-xs text-[#8A8E98] mt-0.5">
-                {isSuperAdmin ? 'Only Super Admin can change organization settings.' : 'View your organization details.'}
+function ProfileSettings() {
+  const { profile, user, refreshProfile, userRole } = useAuth();
+  const { currentRole } = useOrganization();
+  const isAdmin =
+    userRole?.role === "admin" || userRole?.role === "super_admin";
+  const [saving, setSaving] = useState(false);
+  const [fullName, setFullName] = useState(profile?.full_name || "");
+  const [phone, setPhone] = useState((profile as any)?.phone || "");
+  const [jobTitle, setJobTitle] = useState(
+    (profile as any)?.position || (profile as any)?.job_title || "",
+  );
+  const [department, setDepartment] = useState(
+    (profile as any)?.department || "",
+  );
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [changingPassword, setChangingPassword] = useState(false);
+  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+
+  useEffect(() => {
+    if (profile) {
+      setFullName(profile.full_name || "");
+      setPhone((profile as any).phone || "");
+      setJobTitle(
+        (profile as any).position || (profile as any).job_title || "",
+      );
+      setDepartment((profile as any).department || "");
+    }
+  }, [profile]);
+
+  const saveProfile = async () => {
+    if (!profile) return;
+    setSaving(true);
+    try {
+      await api.put(`/auth/profile`, {
+        fullName: fullName,
+        phone,
+        position: jobTitle,
+        department,
+      });
+      toast.success("Profile updated");
+      await refreshProfile();
+    } catch {
+      toast.error("Failed to update profile");
+    }
+    setSaving(false);
+  };
+
+  const changePassword = async () => {
+    if (newPassword !== confirmPassword) {
+      toast.error("Passwords do not match");
+      return;
+    }
+    if (newPassword.length < 8) {
+      toast.error("Password must be at least 8 characters");
+      return;
+    }
+    setChangingPassword(true);
+    try {
+      await api.post(`/auth/change-password`, {
+        currentPassword,
+        newPassword,
+      });
+      toast.success("Password updated successfully");
+      setCurrentPassword("");
+      setNewPassword("");
+      setConfirmPassword("");
+    } catch (err: any) {
+      toast.error(err.message);
+    }
+    setChangingPassword(false);
+  };
+
+  const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("Image size must be less than 5MB");
+      return;
+    }
+
+    const formData = new FormData();
+    formData.append("avatar", file);
+
+    setUploadingAvatar(true);
+    try {
+      await api.post("/auth/upload-avatar", formData);
+      toast.success("Profile photo updated");
+      await refreshProfile();
+    } catch (err: any) {
+      toast.error(err.response?.data?.error || "Failed to upload photo");
+    } finally {
+      setUploadingAvatar(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  };
+
+  const initials =
+    profile?.full_name
+      ?.split(" ")
+      .map((n) => n[0])
+      .join("")
+      .toUpperCase()
+      .slice(0, 2) || "U";
+
+  return (
+    <div className="space-y-6">
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <User className="h-5 w-5 text-primary" />
+            Personal Information
+          </CardTitle>
+          <CardDescription>
+            Update your personal details and contact information
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          <div className="flex items-center gap-6">
+            <div className="relative group">
+              <Avatar className="h-24 w-24 border-2 border-primary/20">
+                <AvatarImage src={getAvatarUrl(profile?.avatar_url)} />
+                <AvatarFallback className="text-2xl bg-primary text-primary-foreground">
+                  {initials}
+                </AvatarFallback>
+              </Avatar>
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                disabled={uploadingAvatar}
+                className="absolute inset-0 flex items-center justify-center bg-black/40 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity disabled:cursor-not-allowed"
+              >
+                {uploadingAvatar ? (
+                  <Loader2 className="h-6 w-6 animate-spin" />
+                ) : (
+                  <Camera className="h-6 w-6" />
+                )}
+              </button>
+              <input
+                type="file"
+                ref={fileInputRef}
+                onChange={handleAvatarChange}
+                className="hidden"
+                accept="image/*"
+              />
+            </div>
+            <div>
+              <p className="font-bold text-xl text-foreground">
+                {profile?.full_name}
               </p>
-
-              <form onSubmit={handleOrgSubmit} className="mt-6 space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Organization Name</label>
-                    <input
-                      type="text"
-                      required
-                      value={orgName}
-                      onChange={(e) => setOrgName(e.target.value)}
-                      disabled={!isSuperAdmin}
-                      className="w-full rounded-xl border border-border bg-surface-2/40 px-3 py-2 text-xs font-semibold focus:border-[#7D5CE4] focus:outline-none disabled:bg-muted/30 disabled:text-muted-foreground"
-                    />
-                  </div>
-
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Domain</label>
-                    <input
-                      type="text"
-                      value={orgDomain}
-                      onChange={(e) => setOrgDomain(e.target.value)}
-                      disabled={!isSuperAdmin}
-                      placeholder="@company.com"
-                      className="w-full rounded-xl border border-border bg-surface-2/40 px-3 py-2 text-xs font-semibold focus:border-[#7D5CE4] focus:outline-none disabled:bg-muted/30 disabled:text-muted-foreground"
-                    />
-                  </div>
-                </div>
-
-                <div className="space-y-1">
-                  <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Address</label>
-                  <input
-                    type="text"
-                    value={orgAddress}
-                    onChange={(e) => setOrgAddress(e.target.value)}
-                    disabled={!isSuperAdmin}
-                    placeholder="Headquarters Address"
-                    className="w-full rounded-xl border border-border bg-surface-2/40 px-3 py-2 text-xs font-semibold focus:border-[#7D5CE4] focus:outline-none disabled:bg-muted/30 disabled:text-muted-foreground"
-                  />
-                </div>
-
-                {/* Organization ID - Non-editable, only copyable */}
-                <div className="space-y-1">
-                  <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Organization ID</label>
-                  <div className="relative">
-                    <input
-                      type="text"
-                      readOnly
-                      value={org?.id || ''}
-                      className="w-full rounded-xl border border-border bg-muted/30 py-2 pl-3 pr-10 text-xs font-semibold text-muted-foreground focus:outline-none cursor-default"
-                    />
-                    <button
-                      type="button"
-                      onClick={copyOrgId}
-                      className="absolute inset-y-0 right-0 flex items-center pr-3 text-slate-400 hover:text-foreground"
-                    >
-                      {copied ? <Check className="h-4 w-4 text-emerald-500" /> : <Copy className="h-4 w-4" />}
-                    </button>
-                  </div>
-                </div>
-
-                {isSuperAdmin && (
-                  <Button
-                    type="submit"
-                    disabled={savingOrg}
-                    className="h-9 px-4 text-xs font-bold bg-[#7D5CE4] hover:bg-[#7D5CE4]/80 shadow-md shadow-[#7D5CE4]/20"
-                  >
-                    <Save className="h-3.5 w-3.5" /> {savingOrg ? 'Saving...' : 'Save Changes'}
-                  </Button>
+              <p className="text-sm text-muted-foreground">{user?.email}</p>
+              <div className="flex flex-wrap gap-2 mt-2">
+                {currentRole && (
+                  <span className="inline-block text-xs px-2 py-0.5 rounded-full bg-primary/10 text-primary font-medium">
+                    {currentRole.name}
+                  </span>
                 )}
-              </form>
-            </Card>
-
-            <Card className="p-6">
-              <div className="flex items-center gap-2 mb-4">
-                <Users className="h-4.5 w-4.5 text-[#7D5CE4]" />
-                <h3 className="text-sm font-bold text-foreground">Organization Members</h3>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-7 text-xs"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={uploadingAvatar}
+                >
+                  Change Photo
+                </Button>
               </div>
-              <div className="overflow-hidden rounded-xl border border-border">
-                <table className="w-full border-collapse text-left text-xs">
-                  <thead>
-                    <tr className="border-b border-border bg-muted/30 font-semibold uppercase tracking-wider text-[#8A8E98]">
-                      <th className="px-4 py-2">Member</th>
-                      <th className="px-4 py-2">Role</th>
-                      <th className="px-4 py-2">Status</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-border">
-                    {members.map((m: any) => (
-                      <tr key={m.id} className="hover:bg-muted/10 transition-colors">
-                        <td className="px-4 py-2 flex items-center gap-2">
-                          <div className="grid h-6 w-6 place-items-center rounded-full bg-[#7D5CE4]/10 text-[10px] font-bold text-[#7D5CE4]">
-                            {m.full_name?.charAt(0).toUpperCase()}
-                          </div>
-                          <div>
-                            <div className="font-semibold text-foreground">{m.full_name}</div>
-                            <div className="text-[9px] text-[#8A8E98]">{m.email}</div>
-                          </div>
-                        </td>
-                        <td className="px-4 py-2">
-                          <Pill tone={m.role === 'super_admin' ? 'danger' : m.role === 'admin' ? 'warning' : 'primary'}>
-                            {m.role?.replace('_', ' ').toUpperCase()}
-                          </Pill>
-                        </td>
-                        <td className="px-4 py-2">
-                          <span className={`inline-flex items-center gap-1 text-[9px] font-bold ${m.is_active ? 'text-emerald-500' : 'text-rose-500'}`}>
-                            {m.is_active ? '● Active' : '○ Inactive'}
-                          </span>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </Card>
+            </div>
           </div>
-        )}
 
-        {activeTab === 'security' && (
-          <Card className="p-6">
-            <h3 className="text-sm font-bold text-foreground">Update Password</h3>
-            <p className="text-xs text-[#8A8E98] mt-0.5">Ensure your account stays secure by updating your credentials.</p>
+          <Separator />
 
-            <form onSubmit={handlePasswordSubmit} className="mt-6 space-y-4">
-              <div className="space-y-1">
-                <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Current Password</label>
-                <div className="relative">
-                  <input
-                    type={showCurrent ? 'text' : 'password'}
-                    required
-                    value={currentPassword}
-                    onChange={(e) => setCurrentPassword(e.target.value)}
-                    placeholder="••••••••"
-                    className="w-full rounded-xl border border-border bg-surface-2/40 py-2 pl-3 pr-10 text-xs font-semibold focus:border-[#7D5CE4] focus:outline-none"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowCurrent(!showCurrent)}
-                    className="absolute inset-y-0 right-0 flex items-center pr-3 text-slate-400"
-                  >
-                    {showCurrent ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                  </button>
-                </div>
-              </div>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="space-y-2">
+              <Label htmlFor="fullName">Full Name</Label>
+              <Input
+                id="fullName"
+                value={fullName}
+                onChange={(e) => setFullName(e.target.value)}
+                disabled={!isAdmin}
+                className={!isAdmin ? "bg-muted" : ""}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="email">Email</Label>
+              <Input
+                id="email"
+                value={user?.email || ""}
+                disabled
+                className="bg-muted"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="phone">Phone</Label>
+              <Input
+                id="phone"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                placeholder="+1 (555) 000-0000"
+                disabled={!isAdmin}
+                className={!isAdmin ? "bg-muted" : ""}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="jobTitle">Job Title</Label>
+              <Input
+                id="jobTitle"
+                value={jobTitle}
+                onChange={(e) => setJobTitle(e.target.value)}
+                placeholder="e.g. Sales Manager"
+                disabled={!isAdmin}
+                className={!isAdmin ? "bg-muted" : ""}
+              />
+            </div>
+            <div className="space-y-2 sm:col-span-2">
+              <Label htmlFor="department">Department</Label>
+              <Input
+                id="department"
+                value={department}
+                onChange={(e) => setDepartment(e.target.value)}
+                placeholder="e.g. Sales"
+                disabled={!isAdmin}
+                className={!isAdmin ? "bg-muted" : ""}
+              />
+            </div>
+          </div>
 
-              <div className="space-y-1">
-                <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">New Password</label>
-                <div className="relative">
-                  <input
-                    type={showNew ? 'text' : 'password'}
-                    required
-                    value={newPassword}
-                    onChange={(e) => setNewPassword(e.target.value)}
-                    placeholder="••••••••"
-                    className="w-full rounded-xl border border-border bg-surface-2/40 py-2 pl-3 pr-10 text-xs font-semibold focus:border-[#7D5CE4] focus:outline-none"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowNew(!showNew)}
-                    className="absolute inset-y-0 right-0 flex items-center pr-3 text-slate-400"
-                  >
-                    {showNew ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                  </button>
-                </div>
-              </div>
-
-              <div className="space-y-1">
-                <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Confirm New Password</label>
-                <div className="relative">
-                  <input
-                    type={showConfirm ? 'text' : 'password'}
-                    required
-                    value={confirmPassword}
-                    onChange={(e) => setConfirmPassword(e.target.value)}
-                    placeholder="••••••••"
-                    className="w-full rounded-xl border border-border bg-surface-2/40 py-2 pl-3 pr-10 text-xs font-semibold focus:border-[#7D5CE4] focus:outline-none"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowConfirm(!showConfirm)}
-                    className="absolute inset-y-0 right-0 flex items-center pr-3 text-slate-400"
-                  >
-                    {showConfirm ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                  </button>
-                </div>
-              </div>
-
-              <Button
-                type="submit"
-                disabled={changingPassword}
-                className="h-9 px-4 text-xs font-bold bg-[#7D5CE4] hover:bg-[#7D5CE4]/80 shadow-md shadow-[#7D5CE4]/20"
-              >
-                <KeyRound className="h-3.5 w-3.5" /> {changingPassword ? 'Updating...' : 'Change Password'}
+          {isAdmin && (
+            <div className="flex justify-end">
+              <Button onClick={saveProfile} disabled={saving}>
+                <Save className="h-4 w-4 mr-2" />
+                {saving ? "Saving..." : "Save Changes"}
               </Button>
-            </form>
-          </Card>
-        )}
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
-        {activeTab === 'notifications' && (
-          <Card className="p-6">
-            <h3 className="text-sm font-bold text-foreground">Notification Preferences</h3>
-            <p className="text-xs text-[#8A8E98] mt-0.5">Control how you receive updates and alerts.</p>
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <KeyRound className="h-5 w-5 text-primary" />
+            Change Password
+          </CardTitle>
+          <CardDescription>Update your account password</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="space-y-2 sm:col-span-2">
+              <Label htmlFor="currentPassword">Current Password</Label>
+              <div className="relative">
+                <Input
+                  id="currentPassword"
+                  type={showCurrentPassword ? "text" : "password"}
+                  value={currentPassword}
+                  onChange={(e) => setCurrentPassword(e.target.value)}
+                  className="pr-12"
+                />
+                <a
+                  type="button"
+                  className="absolute right-0 top-0 h-10 w-10 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 flex items-center justify-center cursor-pointer"
+                  onClick={() => setShowCurrentPassword(!showCurrentPassword)}
+                >
+                  {showCurrentPassword ? (
+                    <EyeOff className="h-4 w-4" />
+                  ) : (
+                    <Eye className="h-4 w-4" />
+                  )}
+                </a>
+              </div>
+            </div>
+            <div className="space-y-2 sm:col-span-2">
+              <Label htmlFor="newPassword">New Password</Label>
+              <div className="relative">
+                <Input
+                  id="newPassword"
+                  type={showNewPassword ? "text" : "password"}
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  placeholder="Minimum 8 characters"
+                  className="pr-12"
+                />
+                <a
+                  type="button"
+                  className="absolute right-0 top-0 h-10 w-10 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 flex items-center justify-center cursor-pointer"
+                  onClick={() => setShowNewPassword(!showNewPassword)}
+                >
+                  {showNewPassword ? (
+                    <EyeOff className="h-4 w-4" />
+                  ) : (
+                    <Eye className="h-4 w-4" />
+                  )}
+                </a>
+              </div>
+            </div>
+            <div className="space-y-2 sm:col-span-2">
+              <Label htmlFor="confirmPassword">Confirm New Password</Label>
+              <div className="relative">
+                <Input
+                  id="confirmPassword"
+                  type={showConfirmPassword ? "text" : "password"}
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  className="pr-12"
+                />
+                <a
+                  type="button"
+                  className="absolute right-0 top-0 h-10 w-10 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 flex items-center justify-center cursor-pointer"
+                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                >
+                  {showConfirmPassword ? (
+                    <EyeOff className="h-4 w-4" />
+                  ) : (
+                    <Eye className="h-4 w-4" />
+                  )}
+                </a>
+              </div>
+            </div>
+          </div>
+          <div className="flex justify-end">
+            <Button
+              onClick={changePassword}
+              disabled={changingPassword || !newPassword || !currentPassword}
+            >
+              {changingPassword ? "Updating..." : "Update Password"}
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
 
-            <form onSubmit={handleNotificationSubmit} className="mt-6 space-y-4">
-              <div className="flex items-center justify-between border-b border-border/40 pb-3">
-                <div>
-                  <div className="text-xs font-semibold">Email Notifications</div>
-                  <div className="text-[10px] text-[#8A8E98]">Receive weekly summary reports and activity digests.</div>
-                </div>
-                <input
-                  type="checkbox"
-                  checked={emailNotifications}
-                  onChange={(e) => setEmailNotifications(e.target.checked)}
-                  className="rounded border-border text-[#7D5CE4] focus:ring-[#7D5CE4] h-4 w-4"
+const ROLE_LABELS: Record<string, string> = {
+  super_admin: "Super Admin",
+  admin: "Admin",
+  manager: "Manager",
+  member: "Member",
+  viewer: "Viewer",
+};
+
+function OrganizationSettings() {
+  const { organization, refreshOrganization } = useOrganization();
+  const { userRole } = useAuth();
+  const isSuperAdmin = userRole?.role === "super_admin";
+  const isAdmin = userRole?.role === "admin" || userRole?.role === "super_admin";
+
+  const [orgName, setOrgName] = useState(organization?.name || "");
+  const [attendanceMachineIp, setAttendanceMachineIp] = useState((organization as any)?.attendance_machine_ip || "");
+  const [workingHoursPerDay, setWorkingHoursPerDay] = useState((organization as any)?.working_hours_per_day || 9.0);
+  const [breakTimeHours, setBreakTimeHours] = useState((organization as any)?.break_time_hours || 1.0);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (organization) {
+      if (organization.name) setOrgName(organization.name);
+      setAttendanceMachineIp((organization as any).attendance_machine_ip || "");
+      setWorkingHoursPerDay((organization as any).working_hours_per_day || 9.0);
+      setBreakTimeHours((organization as any).break_time_hours || 1.0);
+    }
+  }, [organization]);
+
+  const { data: membersData, isLoading: membersLoading } = useQuery({
+    queryKey: ["org-members"],
+    queryFn: () => api.get<{ members: any[] }>("/organizations/members"),
+    staleTime: 30000,
+  });
+  const members = membersData?.members || [];
+
+  const saveOrg = async () => {
+    if (!organization || !isSuperAdmin) return;
+    setSaving(true);
+    try {
+      await api.put(`/organizations/${organization.id}`, { 
+        name: orgName,
+        attendance_machine_ip: attendanceMachineIp,
+        working_hours_per_day: Number(workingHoursPerDay),
+        break_time_hours: Number(breakTimeHours)
+      });
+      toast.success("Organization updated");
+      await refreshOrganization();
+    } catch {
+      toast.error("Failed to update organization");
+    }
+    setSaving(false);
+  };
+
+  const copyId = () => {
+    navigator.clipboard.writeText(organization?.id || "");
+    toast.success("Organization ID copied");
+  };
+
+  return (
+    <div className="space-y-6">
+      {/* Organization Details */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Building2 className="h-5 w-5 text-primary" />
+            Organization Details
+          </CardTitle>
+          <CardDescription>
+            {isSuperAdmin
+              ? "Only Super Admin can change organization name"
+              : "View your organization information"}
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid gap-4 sm:grid-cols-2">
+            {/* Org Name — editable only by super_admin */}
+            <div className="space-y-2">
+              <Label htmlFor="orgName">Organization Name</Label>
+              <Input
+                id="orgName"
+                value={orgName}
+                onChange={(e) => setOrgName(e.target.value)}
+                disabled={!isSuperAdmin}
+                className={!isSuperAdmin ? "bg-muted" : ""}
+              />
+            </div>
+
+            {/* Domain — always read-only */}
+            <div className="space-y-2">
+              <Label>Domain</Label>
+              <Input
+                value={organization?.domain || "—"}
+                disabled
+                className="bg-muted"
+              />
+            </div>
+            
+            {/* ZKTeco IP (ADMS Server Setting) */}
+            {isAdmin && (
+              <div className="space-y-2">
+                <Label htmlFor="attendanceMachineIp">Biometric ADMS Push IP/URL</Label>
+                <Input
+                  id="attendanceMachineIp"
+                  value={attendanceMachineIp}
+                  onChange={(e) => setAttendanceMachineIp(e.target.value)}
+                  disabled={!isSuperAdmin}
+                  className={!isSuperAdmin ? "bg-muted" : ""}
+                  placeholder="e.g. 192.168.25.118"
                 />
               </div>
+            )}
 
-              <div className="flex items-center justify-between pb-3">
-                <div>
-                  <div className="text-xs font-semibold">Push Notifications</div>
-                  <div className="text-[10px] text-[#8A8E98]">Receive real-time notifications inside the browser window.</div>
-                </div>
-                <input
-                  type="checkbox"
-                  checked={pushNotifications}
-                  onChange={(e) => setPushNotifications(e.target.checked)}
-                  className="rounded border-border text-[#7D5CE4] focus:ring-[#7D5CE4] h-4 w-4"
+            {/* Attendance Rules */}
+            <div className="space-y-2">
+              <Label htmlFor="workingHoursPerDay">Total Working Hours/Day</Label>
+              <Input
+                id="workingHoursPerDay"
+                type="number"
+                step="0.5"
+                value={workingHoursPerDay}
+                onChange={(e) => setWorkingHoursPerDay(e.target.value)}
+                disabled={!isSuperAdmin}
+                className={!isSuperAdmin ? "bg-muted" : ""}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="breakTimeHours">Break Time (Hours)</Label>
+              <Input
+                id="breakTimeHours"
+                type="number"
+                step="0.25"
+                value={breakTimeHours}
+                onChange={(e) => setBreakTimeHours(e.target.value)}
+                disabled={!isSuperAdmin}
+                className={!isSuperAdmin ? "bg-muted" : ""}
+              />
+            </div>
+
+            {/* Org ID — display only, copyable */}
+            <div className="space-y-2 sm:col-span-2">
+              <Label>Organization ID</Label>
+              <div className="flex gap-2">
+                <Input
+                  value={organization?.id || "—"}
+                  disabled
+                  className="bg-muted font-mono text-xs"
                 />
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={copyId}
+                  title="Copy ID"
+                >
+                  <Copy className="h-4 w-4" />
+                </Button>
               </div>
+            </div>
+          </div>
 
-              <Button
-                type="submit"
-                disabled={savingNotifications}
-                className="h-9 px-4 text-xs font-bold bg-[#7D5CE4] hover:bg-[#7D5CE4]/80 shadow-md shadow-[#7D5CE4]/20"
-              >
-                <Save className="h-3.5 w-3.5" /> {savingNotifications ? 'Saving...' : 'Save Preferences'}
+          {isSuperAdmin && (
+            <div className="flex justify-end">
+              <Button onClick={saveOrg} disabled={saving}>
+                <Save className="h-4 w-4 mr-2" />
+                {saving ? "Saving..." : "Save Changes"}
               </Button>
-            </form>
-          </Card>
-        )}
-      </div>
-    </Page>
-  )
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Security & Access */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Shield className="h-5 w-5 text-primary" />
+            Security & Access
+          </CardTitle>
+          <CardDescription>Organization security overview</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid gap-4 sm:grid-cols-3">
+            <div className="rounded-lg border border-border p-4 text-center">
+              <p className="text-2xl font-bold text-foreground">
+                {organization?.id ? "Active" : "—"}
+              </p>
+              <p className="text-sm text-muted-foreground">Status</p>
+            </div>
+            <div className="rounded-lg border border-border p-4 text-center">
+              <p className="text-2xl font-bold text-foreground capitalize">
+                {userRole?.role?.replace("_", " ") || "—"}
+              </p>
+              <p className="text-sm text-muted-foreground">Your Role</p>
+            </div>
+            <div className="rounded-lg border border-border p-4 text-center">
+              <p className="text-2xl font-bold text-foreground">API</p>
+              <p className="text-sm text-muted-foreground">Data Protection</p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+function NotificationSettings() {
+  const { profile, refreshProfile } = useAuth();
+  const [saving, setSaving] = useState(false);
+  const [settings, setSettings] = useState<any>({
+    crm: true,
+    tasks: true,
+    hrms: true,
+    recruitment: true,
+    collaboration: true,
+    general: true,
+  });
+
+  useEffect(() => {
+    if (profile?.notification_settings) {
+      setSettings(profile.notification_settings);
+    }
+  }, [profile]);
+
+  const toggleSetting = (key: string) => {
+    setSettings((prev: any) => ({
+      ...prev,
+      [key]: !prev[key],
+    }));
+  };
+
+  const saveNotifications = async () => {
+    setSaving(true);
+    try {
+      await api.patch("/auth/notification-settings", { settings });
+      toast.success("Notification preferences saved");
+      await refreshProfile();
+    } catch (err) {
+      toast.error("Failed to save preferences");
+    }
+    setSaving(false);
+  };
+
+  const notifItems = [
+    {
+      id: "crm",
+      label: "CRM & Deals",
+      desc: "Leads, deals, and assignment updates",
+      icon: Globe,
+      value: settings.crm,
+    },
+    {
+      id: "tasks",
+      label: "Projects & Tasks",
+      desc: "Task assignments and status changes",
+      icon: Bell,
+      value: settings.tasks,
+    },
+    {
+      id: "hrms",
+      label: "HR & Leave",
+      desc: "Leave requests and attendance alerts",
+      icon: User,
+      value: settings.hrms,
+    },
+    {
+      id: "recruitment",
+      label: "Recruitment",
+      desc: "Candidate status and interview updates",
+      icon: Building2,
+      value: settings.recruitment,
+    },
+    {
+      id: "collaboration",
+      label: "Collaboration",
+      desc: "Direct messages and mentions",
+      icon: Mail,
+      value: settings.collaboration,
+    },
+    {
+      id: "general",
+      label: "System Alerts",
+      desc: "Important general system notifications",
+      icon: Shield,
+      value: settings.general,
+    },
+  ];
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <Bell className="h-5 w-5 text-primary" />
+          Notification Preferences
+        </CardTitle>
+        <CardDescription>
+          Choose which real-time notifications you'd like to receive
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-1">
+        {notifItems.map((item) => (
+          <div
+            key={item.id}
+            className="flex items-center justify-between py-3 px-2 rounded-lg hover:bg-muted/50 transition-colors"
+          >
+            <div className="flex items-center gap-3">
+              <item.icon className="h-4 w-4 text-muted-foreground" />
+              <div>
+                <p className="text-sm font-medium text-foreground">
+                  {item.label}
+                </p>
+                <p className="text-xs text-muted-foreground">{item.desc}</p>
+              </div>
+            </div>
+            <Switch
+              checked={item.value}
+              onCheckedChange={() => toggleSetting(item.id)}
+            />
+          </div>
+        ))}
+        <Separator className="my-4" />
+        <div className="flex justify-end">
+          <Button onClick={saveNotifications} disabled={saving}>
+            <Save className="h-4 w-4 mr-2" />
+            {saving ? "Saving..." : "Save Preferences"}
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function AppearanceSettings() {
+  const [language, setLanguage] = useState("en");
+  const [dateFormat, setDateFormat] = useState("MM/DD/YYYY");
+  const [timeFormat, setTimeFormat] = useState("12h");
+  const [timezone, setTimezone] = useState(
+    Intl.DateTimeFormat().resolvedOptions().timeZone,
+  );
+  const [compactMode, setCompactMode] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+
+  const saveAppearance = () => {
+    toast.success("Appearance settings saved");
+  };
+
+  return (
+    <div className="space-y-6">
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Globe className="h-5 w-5 text-primary" />
+            Regional Settings
+          </CardTitle>
+          <CardDescription>
+            Configure language, date, and time preferences
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="space-y-2">
+              <Label>Language</Label>
+              <Select value={language} onValueChange={setLanguage}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="en">English</SelectItem>
+                  <SelectItem value="es">Español</SelectItem>
+                  <SelectItem value="fr">Français</SelectItem>
+                  <SelectItem value="de">Deutsch</SelectItem>
+                  <SelectItem value="ar">العربية</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Timezone</Label>
+              <Select value={timezone} onValueChange={setTimezone}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="America/New_York">Eastern (ET)</SelectItem>
+                  <SelectItem value="America/Chicago">Central (CT)</SelectItem>
+                  <SelectItem value="America/Denver">Mountain (MT)</SelectItem>
+                  <SelectItem value="America/Los_Angeles">
+                    Pacific (PT)
+                  </SelectItem>
+                  <SelectItem value="Europe/London">London (GMT)</SelectItem>
+                  <SelectItem value="Europe/Berlin">Berlin (CET)</SelectItem>
+                  <SelectItem value="Asia/Dubai">Dubai (GST)</SelectItem>
+                  <SelectItem value="Asia/Kolkata">India (IST)</SelectItem>
+                  <SelectItem value="Asia/Tokyo">Tokyo (JST)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Date Format</Label>
+              <Select value={dateFormat} onValueChange={setDateFormat}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="MM/DD/YYYY">MM/DD/YYYY</SelectItem>
+                  <SelectItem value="DD/MM/YYYY">DD/MM/YYYY</SelectItem>
+                  <SelectItem value="YYYY-MM-DD">YYYY-MM-DD</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Time Format</Label>
+              <Select value={timeFormat} onValueChange={setTimeFormat}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="12h">12-hour (AM/PM)</SelectItem>
+                  <SelectItem value="24h">24-hour</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Palette className="h-5 w-5 text-primary" />
+            Display Preferences
+          </CardTitle>
+          <CardDescription>Customize how the application looks</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex items-center justify-between py-2">
+            <div>
+              <p className="text-sm font-medium text-foreground">
+                Compact Mode
+              </p>
+              <p className="text-xs text-muted-foreground">
+                Reduce spacing for denser information display
+              </p>
+            </div>
+            <Switch checked={compactMode} onCheckedChange={setCompactMode} />
+          </div>
+          <div className="flex items-center justify-between py-2">
+            <div>
+              <p className="text-sm font-medium text-foreground">
+                Sidebar Collapsed by Default
+              </p>
+              <p className="text-xs text-muted-foreground">
+                Start with the sidebar minimized
+              </p>
+            </div>
+            <Switch
+              checked={sidebarCollapsed}
+              onCheckedChange={setSidebarCollapsed}
+            />
+          </div>
+          <Separator />
+          <div className="flex justify-end">
+            <Button onClick={saveAppearance}>
+              <Save className="h-4 w-4 mr-2" />
+              Save Preferences
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
 }

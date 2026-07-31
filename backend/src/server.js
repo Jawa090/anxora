@@ -5,7 +5,6 @@ const helmet = require('helmet');
 const morgan = require('morgan');
 const cookieParser = require('cookie-parser');
 const path = require('path');
-const db = require('./config/database');
 const rateLimit = require('express-rate-limit');
 
 const appRoutes = require('./app');
@@ -19,7 +18,7 @@ app.use(helmet({
   crossOriginResourcePolicy: { policy: "cross-origin" }
 }));
 app.use(cors({
-  origin: [process.env.APP_URL || 'http://localhost:3000'],
+  origin: ['http://localhost:3000'], // Allow frontend ports + desktop app
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
@@ -32,9 +31,22 @@ app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 app.use('/uploads', express.static(path.join(__dirname, '../public/uploads')));
 
+// const limiter = rateLimit({
+//   windowMs: 15 * 60 * 1000, // 15 minutes
+//   max: 1000, // Increased from 100 to 1000 requests per window
+//   message: { error: 'Too many requests, please try again later.' },
+//   standardHeaders: true,
+//   legacyHeaders: false,
+// });
+// app.use('/api', limiter);
+
 app.use(appRoutes);
 
-
+const db = require('./config/database');
+const realtimeService = require('./services/realtimeService');
+const scheduledWorkflows = require('./services/scheduledWorkflows');
+const imapIdleService = require('./services/imapIdleService');
+const cronJobs = require('./cron');
 
 async function bootstrap() {
   try {
@@ -47,6 +59,17 @@ async function bootstrap() {
       console.log(`API Health Check: http://localhost:${PORT}/api/health`);
     });
 
+    // Initialize WebSocket
+    realtimeService.initialize(server);
+
+    // Start scheduled workflows
+    scheduledWorkflows.start();
+
+    // Start real-time IMAP IDLE watchers for all active IMAP mailboxes
+    imapIdleService.startAll();
+
+    // Start cron jobs
+    cronJobs.start();
 
   } catch (error) {
     console.error('Failed to connect to the database. Server shutting down...', error);

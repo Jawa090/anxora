@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>RingCentral Auth</title>
+</head>
+<body>
+  <script>
+    // Pass the full callback URI (including code + state) back to the widget.
+    // The widget will exchange the code itself via the authProxy backend
+    // (which adds client_secret on the server side).
+    var callbackMessage = {
+      callbackUri: window.location.href,
+      status: 'callback'
+    };
+
+    if (window.opener && window.opener !== window) {
+      window.opener.postMessage(callbackMessage, '*');
+      window.close();
+    } else {
+      localStorage.setItem('rc-web-phone-callback-uri', window.location.href);
+      window.close();
+    }
+  </script>
+</body>
+</html>

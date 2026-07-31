@@ -30,10 +30,13 @@ const update = async (req, res, next) => {
            logo_url = COALESCE($3, logo_url),
            settings = COALESCE($4, settings),
            address = COALESCE($5, address),
+           attendance_machine_ip = COALESCE($6, attendance_machine_ip),
+           working_hours_per_day = COALESCE($7, working_hours_per_day),
+           break_time_hours = COALESCE($8, break_time_hours),
            updated_at = now()
-       WHERE id = $6
+       WHERE id = $9
        RETURNING *`,
-      [name, domain, logoUrl, settings, address, req.user.orgId]
+      [name, domain, logoUrl, settings, address, attendance_machine_ip, working_hours_per_day, break_time_hours, req.user.orgId]
     );
 
     if (result.rows.length === 0) {
@@ -48,7 +51,11 @@ const update = async (req, res, next) => {
 
 const getInvites = async (req, res, next) => {
   try {
-    // Expired invites automatically cleanup
+    // Sirf woh invites dikhao jo:
+    // 1. Is org ke hain
+    // 2. User ne abhi accept nahi kiya (email users table mein nahi)
+    // 3. Abhi expire nahi hue (expires_at > now)
+    // Expired invites automatically cleanup bhi karo
     await db.query(
       `DELETE FROM public.invites WHERE expires_at <= now()`,
     );

@@ -1,0 +1,11 @@
+first_name,last_name,email,phone,position,company_name,contact_type,source,notes,linkedin_url,website
+John,Smith,john.smith@acmecorp.com,+1-555-0101,CEO,Acme Corporation,client,referral,Key decision maker for enterprise deals,https://linkedin.com/in/johnsmith,https://acmecorp.com
+Sarah,Johnson,sarah.j@techflow.io,+1-555-0102,Head of Marketing,TechFlow Inc,prospect,web,Interested in premium plan - follow up Q2,https://linkedin.com/in/sarahjohnson,https://techflow.io
+Michael,Chen,m.chen@globalventures.com,+1-555-0103,CTO,Global Ventures,partner,event,Met at Dubai Tech Summit 2025,,https://globalventures.com
+Emily,Rodriguez,emily@brightmedia.co,+1-555-0104,Creative Director,Bright Media,prospect,email,Requested demo for social media package,,https://brightmedia.co
+David,Kim,david.kim@nexusgroup.ae,+971-50-123-4567,VP Sales,Nexus Group,client,referral,Long-term client since 2023,https://linkedin.com/in/davidkim,https://nexusgroup.ae
+Priya,Patel,priya.patel@innovatex.in,+91-98765-43210,Product Manager,InnovateX,prospect,web,Signed up for free trial - nurture sequence active,,https://innovatex.in
+James,Williams,j.williams@capitaladvisors.com,+1-555-0107,Managing Director,Capital Advisors,client,referral,High value account - quarterly review scheduled,https://linkedin.com/in/jameswilliams,https://capitaladvisors.com
+Aisha,Al-Mansouri,aisha@deserttech.ae,+971-55-987-6543,Founder,Desert Tech,prospect,event,Met at GITEX 2025 - very interested in automation,,
+Thomas,Müller,t.muller@eurotech.de,+49-30-1234-5678,Operations Manager,EuroTech GmbH,partner,email,Partnership discussion in progress,,https://eurotech.de
+Fatima,Hassan,fatima.h@crescentgroup.pk,+92-21-555-0110,HR Director,Crescent Group,prospect,web,Needs HRMS integration with CRM,https://linkedin.com/in/fatimahassan,

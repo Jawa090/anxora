@@ -1,22 +1,199 @@
 const express = require('express');
-const router = express.Router();
-const authRoutes = require('./routes/auth/auth');
-const memberRoutes = require('./routes/auth/employeeRoutes');
-const orgRoutes = require('./routes/auth/organizations');
 
-// Health check endpoint
+const authRoutes = require('./routes/auth/auth');
+const leadRoutes = require('./routes/crm/leads');
+const leadImportRoutes = require('./routes/crm/leadImport');
+const contactImportRoutes = require('./routes/crm/contactImport');
+const leadExternalSourceRoutes = require('./routes/crm/leadExternalSource');
+const leadWorkspaceRoutes = require('./routes/crm/leadWorkspace');
+const dealRoutes = require('./routes/crm/deals');
+const contactRoutes = require('./routes/crm/contacts');
+const companyRoutes = require('./routes/crm/companies');
+const customerRoutes = require('./routes/crm/customers');
+const activityRoutes = require('./routes/crm/activities');
+const crmCommentRoutes = require('./routes/crm/comments');
+const crmDocumentRoutes = require('./routes/crm/documents');
+const customFieldTemplateRoutes = require('./routes/crm/customFieldTemplates');
+const hrmsEmployeeRoutes = require('./routes/hrms/employees');
+const attendanceRoutes = require('./routes/hrms/attendance');
+const leaveRoutes = require('./routes/hrms/leave');
+const payrollRoutes = require('./routes/payroll/payroll');
+const productRoutes = require('./routes/inventory/products');
+const inventoryRoutes = require('./routes/inventory/inventory');
+const stockRoutes = require('./routes/inventory/stock');
+const vendorRoutes = require('./routes/inventory/vendors');
+const documentsRoutes = require('./routes/projects/documents');
+const warehouseRoutes = require('./routes/inventory/warehouses');
+const purchaseOrderRoutes = require('./routes/inventory/purchaseOrders');
+const carInventoryRoutes = require('./routes/inventory/carInventory');
+const carWorkspacesRoutes = require('./routes/inventory/carWorkspaces');
+const carInquiriesRoutes = require('./routes/inventory/carInquiries');
+const projectRoutes = require('./routes/projects/projects');
+const taskRoutes = require('./routes/projects/tasks');
+const workgroupRoutes = require('./routes/collaboration/workgroups');
+const workgroupFilesRoutes = require('./routes/collaboration/workgroupFiles');
+const workgroupWikiRoutes = require('./routes/collaboration/workgroupWiki');
+const workgroupNotificationsRoutes = require('./routes/collaboration/workgroupNotifications');
+const memberRoutes = require('./routes/auth/employeeRoutes');
+const roleRoutes = require('./routes/auth/roles');
+const permissionRoutes = require('./routes/auth/permissions');
+const orgRoutes = require('./routes/auth/organizations');
+const calendarRoutes = require('./routes/collaboration/calendar');
+const workflowRoutes = require('./routes/automation/workflows');
+const marketingRoutes = require('./routes/crm/marketing');
+const directMessageRoutes = require('./routes/collaboration/directMessages');
+const driveRoutes = require('./routes/collaboration/drive');
+const drivesRoutes = require('./routes/collaboration/drives');
+const driveIntegrationRoutes = require('./routes/collaboration/driveIntegrations');
+const emailSyncRoutes = require('./routes/collaboration/emailSync');
+const integrationRoutes = require('./routes/automation/integrations');
+const milestonesRoutes = require('./routes/projects/milestones');
+const timeEntriesRoutes = require('./routes/projects/timeEntries');
+const risksRoutes = require('./routes/projects/risks');
+const projectCommentsRoutes = require('./routes/projects/comments');
+const projectActivityRoutes = require('./routes/projects/activity');
+const projectFilesRoutes = require('./routes/projects/files');
+const invoicesRoutes = require('./routes/inventory/invoices');
+const notificationsRoutes = require('./routes/automation/notifications');
+const templatesRoutes = require('./routes/automation/templates');
+const uniboxRoutes = require('./routes/collaboration/unibox');
+const signingPartyRoutes = require('./routes/crm/signingParties');
+const hrmsRoutes = require('./routes/hrms/hrms');
+const reportsRoutes = require('./routes/hrms/reports');
+const hrmsNotificationsRoutes = require('./routes/hrms/hrmsNotifications');
+const telephonyRoutes = require('./routes/crm/telephony');
+const ringcentralRoutes = require('./routes/crm/ringcentral');
+const requisitionRoutes = require('./routes/recruitment/requisitionRoutes');
+const candidateRoutes = require('./routes/recruitment/candidateRoutes');
+const interviewRoutes = require('./routes/recruitment/interviewRoutes');
+const offerRoutes = require('./routes/recruitment/offerRoutes');
+const scoringRoutes = require('./routes/recruitment/scoringRoutes');
+const talentPoolRoutes = require('./routes/recruitment/talentPoolRoutes');
+const analyticsRoutes = require('./routes/recruitment/analyticsRoutes');
+const salesOrderRoutes = require('./routes/crm/salesOrders');
+const instantlyWebhookRoutes = require('./routes/webhooks/instantly');
+const pushRoutes = require('./routes/push');
+const financialSetupRoutes = require('./routes/finance/financialSetup');
+const generalLedgerRoutes = require('./routes/finance/generalLedger');
+const accountsReceivableRoutes = require('./routes/finance/accountsReceivable');
+const accountsPayableRoutes = require('./routes/finance/accountsPayable');
+const bankingRoutes = require('./routes/finance/banking');
+const expenseRoutes = require('./routes/finance/expenses');
+const payrollAccountingRoutes = require('./routes/finance/payrollAccounting');
+const budgetRoutes = require('./routes/finance/budgets');
+const financeReportsRoutes = require('./routes/finance/reports');
+const errorHandler = require('./middleware/errorHandler');
+
+
+const router = express.Router();
+
+router.use('/api/auth', authRoutes);
+router.use('/api/lead-import', leadImportRoutes);
+router.use('/api/contact-import', contactImportRoutes);
+router.use('/api/lead-external-sources', leadExternalSourceRoutes);
+router.use('/api/lead-workspace', leadWorkspaceRoutes);
+router.use('/api/leads', leadRoutes);
+router.use('/api/deals', dealRoutes);
+router.use('/api/contacts', contactRoutes);
+router.use('/api/companies', companyRoutes);
+router.use('/api/customers', customerRoutes);
+router.use('/api/activities', activityRoutes);
+router.use('/api/crm-comments', crmCommentRoutes);
+router.use('/api/crm-documents', crmDocumentRoutes);
+router.use('/api/crm-custom-fields/templates', customFieldTemplateRoutes);
+router.use('/api/employees', hrmsEmployeeRoutes);
+router.use('/api/attendance', attendanceRoutes);
+router.use('/api/leave', leaveRoutes);
+router.use('/api/payroll', payrollRoutes);
+router.use('/api/products', productRoutes);
+router.use('/api/inventory', inventoryRoutes);
+router.use('/api/stock', stockRoutes);
+router.use('/api/vendors', vendorRoutes);
+router.use('/api/documents', documentsRoutes);
+router.use('/api/warehouses', warehouseRoutes);
+router.use('/api/purchase-orders', purchaseOrderRoutes);
+router.use('/api/car-inventory', carInventoryRoutes);
+router.use('/api/car-workspaces', carWorkspacesRoutes);
+router.use('/api/car-inquiries', carInquiriesRoutes);
+router.use('/api/projects', projectRoutes);
+router.use('/api/tasks', taskRoutes);
+router.use('/api/workgroups', workgroupRoutes);
+router.use('/api/workgroups', workgroupFilesRoutes);
+router.use('/api/workgroups', workgroupWikiRoutes);
+router.use('/api/workgroups', workgroupNotificationsRoutes);
+router.use('/api/members', memberRoutes);
+router.use('/api/roles', roleRoutes);
+router.use('/api/permissions', permissionRoutes);
+router.use('/api/organizations', orgRoutes);
+router.use('/api/direct-messages', directMessageRoutes);
+router.use('/api/calendar', calendarRoutes);
+router.use('/api/workflows', workflowRoutes);
+router.use('/api/marketing', marketingRoutes);
+router.use('/api/drive', driveRoutes);
+router.use('/api/drives', drivesRoutes);
+router.use('/api/drives/integrations', driveIntegrationRoutes);
+router.use('/api/email', emailSyncRoutes);
+router.use('/api/integrations', integrationRoutes);
+router.use('/api/milestones', milestonesRoutes);
+router.use('/api/time-entries', timeEntriesRoutes);
+router.use('/api/risks', risksRoutes);
+router.use('/api/project-comments', projectCommentsRoutes);
+router.use('/api/project-activity', projectActivityRoutes);
+router.use('/api/project-files', projectFilesRoutes);
+router.use('/api/invoices', invoicesRoutes);
+router.use('/api/notifications', notificationsRoutes);
+router.use('/api/templates', templatesRoutes);
+router.use('/api/unibox', uniboxRoutes);
+router.use('/api/signing-parties', signingPartyRoutes);
+router.use('/api/hrms', hrmsRoutes);
+router.use('/api/hrms/reports', reportsRoutes);
+router.use('/api/finance/setup', financialSetupRoutes);
+router.use('/api/finance/gl', generalLedgerRoutes);
+router.use('/api/finance/ar', accountsReceivableRoutes);
+router.use('/api/finance/ap', accountsPayableRoutes);
+router.use('/api/finance/banking', bankingRoutes);
+router.use('/api/finance/expenses', expenseRoutes);
+router.use('/api/finance/payroll', payrollAccountingRoutes);
+router.use('/api/finance/budgets', budgetRoutes);
+router.use('/api/finance/reports', financeReportsRoutes);
+router.use('/api/hrms/holidays', require('./routes/hrms/holidays'));
+router.use('/api/hrms/notifications', hrmsNotificationsRoutes);
+router.use('/api/telephony', telephonyRoutes);
+router.use('/api/ringcentral', ringcentralRoutes);
+router.use('/api/recruitment/requisitions', requisitionRoutes);
+router.use('/api/recruitment/candidates', candidateRoutes);
+router.use('/api/recruitment/interviews', interviewRoutes);
+router.use('/api/recruitment/offers', offerRoutes);
+router.use('/api/recruitment/scoring', scoringRoutes);
+router.use('/api/recruitment/talent-pools', talentPoolRoutes);
+router.use('/api/recruitment/analytics', analyticsRoutes);
+
+// Job Posting Integration Routes
+const linkedinAuthRoutes = require('./routes/linkedinAuth');
+const indeedAuthRoutes = require('./routes/indeedAuth');
+
+router.use('/api/linkedin/auth', linkedinAuthRoutes);
+router.use('/api/indeed/auth', indeedAuthRoutes);
+
+router.use('/api/sales-orders', salesOrderRoutes);
+router.use('/api/webhooks/instantly', instantlyWebhookRoutes);
+
+const zktecoWebhookRoutes = require('./routes/webhooks/zkteco');
+const marketingPublicRoutes = require('./routes/crm/marketingPublic');
+
+router.use('/api/webhooks/zkteco', zktecoWebhookRoutes);
+router.use('/public/marketing', marketingPublicRoutes);
+router.use('/api/push', pushRoutes);
+
 router.get('/api/health', (req, res) => {
+
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
-// Auth Routes
-router.use('/api/auth', authRoutes);
-router.use('/api/members', memberRoutes);
-router.use('/api/organizations', orgRoutes);
-
-// Basic welcome endpoint
-router.get('/', (req, res) => {
-  res.json({ message: 'Welcome to Anxora API' });
+router.use((req, res) => {
+  res.status(404).json({ error: 'Route not found' });
 });
+
+router.use(errorHandler);
 
 module.exports = router;

@@ -1,0 +1,12 @@
+-- Migration to sync employee fields between create and edit forms
+ALTER TABLE public.employees
+ADD COLUMN IF NOT EXISTS degree CHARACTER VARYING(255),
+ADD COLUMN IF NOT EXISTS graduation_year INTEGER,
+ADD COLUMN IF NOT EXISTS previous_company CHARACTER VARYING(255),
+ADD COLUMN IF NOT EXISTS previous_position CHARACTER VARYING(255),
+ADD COLUMN IF NOT EXISTS years_of_experience INTEGER,
+ADD COLUMN IF NOT EXISTS skills TEXT[],
+ADD COLUMN IF NOT EXISTS certifications TEXT[],
+ADD COLUMN IF NOT EXISTS languages TEXT[],
+ADD COLUMN IF NOT EXISTS education_level CHARACTER VARYING(100),
+ADD COLUMN IF NOT EXISTS university CHARACTER VARYING(255);
