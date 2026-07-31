@@ -69,6 +69,13 @@ export function useDeleteProject() {
 
 // ─── MILESTONES ─────────────────────────────────────────────────────────────
 
+export function useAllMilestones() {
+  return useQuery({
+    queryKey: ['milestones', 'all'],
+    queryFn: () => api.get('/milestones'),
+  });
+}
+
 export function useProjectMilestones(projectId: string) {
   return useQuery({
     queryKey: ['project_milestones', projectId],

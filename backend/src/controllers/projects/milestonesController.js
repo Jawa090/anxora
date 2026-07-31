@@ -5,14 +5,34 @@ const realtimeService = require('../../services/realtimeService');
 const getByProject = async (req, res, next) => {
   try {
     const { projectId } = req.params;
+    const isAdmin = req.user.role === 'super_admin' || req.user.role === 'admin';
     
-    const result = await db.query(
-      `SELECT m.*
-       FROM project_milestones m
-       WHERE m.project_id = $1 AND m.org_id = $2 
-       ORDER BY m.due_date ASC, m.created_at ASC`,
-      [projectId, req.user.orgId]
-    );
+    let query = `
+      SELECT m.*
+      FROM project_milestones m
+      JOIN projects p ON p.id = m.project_id
+      WHERE m.project_id = $1 AND m.org_id = $2
+    `;
+    const params = [projectId, req.user.orgId];
+
+    if (!isAdmin) {
+      query += ` AND (
+        p.manager_id = $3 OR
+        p.owner_id = $3 OR
+        p.created_by = $3 OR
+        m.created_by = $3 OR
+        m.assigned_to = $3 OR
+        EXISTS (
+          SELECT 1 FROM project_milestone_assignees pma
+          WHERE pma.milestone_id = m.id AND pma.assigned_to = $3
+        )
+      )`;
+      params.push(req.user.id);
+    }
+
+    query += ` ORDER BY m.due_date ASC, m.created_at ASC`;
+
+    const result = await db.query(query, params);
 
     // Get assignees for each milestone
     const milestonesWithAssignees = await Promise.all(result.rows.map(async (milestone) => {
@@ -409,7 +429,45 @@ const removeAssignee = async (req, res, next) => {
   }
 };
 
+const getAll = async (req, res, next) => {
+  try {
+    const isAdmin = req.user.role === 'super_admin' || req.user.role === 'admin';
+
+    let query = `
+      SELECT m.*, p.name AS project_name, p.color AS project_color
+      FROM project_milestones m
+      JOIN projects p ON p.id = m.project_id
+      WHERE m.org_id = $1
+    `;
+    const params = [req.user.orgId];
+
+    if (!isAdmin) {
+      query += ` AND (
+        p.manager_id = $2 OR
+        p.owner_id = $2 OR
+        p.created_by = $2 OR
+        m.created_by = $2 OR
+        m.assigned_to = $2 OR
+        EXISTS (
+          SELECT 1 FROM project_milestone_assignees pma
+          WHERE pma.milestone_id = m.id AND pma.assigned_to = $2
+        )
+      )`;
+      params.push(req.user.id);
+    }
+
+    query += ` ORDER BY m.due_date ASC NULLS LAST, m.created_at DESC`;
+
+    const result = await db.query(query, params);
+
+    res.json(result.rows);
+  } catch (err) {
+    next(err);
+  }
+};
+
 module.exports = {
+  getAll,
   getByProject,
   create,
   update,

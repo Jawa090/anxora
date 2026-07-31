@@ -13,7 +13,7 @@ export default function TermsOfServicePage() {
       <header className="border-b border-slate-800/80 bg-slate-950/80 backdrop-blur-md sticky top-0 z-50">
         <div className="max-w-5xl mx-auto px-6 h-16 flex items-center justify-between">
           <Link to="/home" className="flex items-center gap-3 group">
-            <img src={rushLogo} alt="ANXORA" className="h-7 w-auto transition-transform group-hover:scale-105" />
+            {/* <img src={rushLogo} alt="ANXORA" className="h-7 w-auto transition-transform group-hover:scale-105" /> */}
             <span className="font-bold text-xl tracking-tight text-white group-hover:text-slate-200 transition-colors">
               ANXORA
             </span>

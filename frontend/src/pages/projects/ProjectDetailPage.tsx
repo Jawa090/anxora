@@ -113,16 +113,16 @@ export default function ProjectDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { profile, userRole } = useAuth();
-  const isAdmin = userRole?.role === "admin" || userRole?.role === "super_admin" || userRole?.role === "manager";
+  const isAdmin = userRole?.role === "admin" || userRole?.role === "super_admin";
 
   // ─── Refs for debouncing ────────────────────────────────────────────────────
   const sliderTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // ─── Queries ────────────────────────────────────────────────────────────────
   const { data: project, isLoading: loadingProj } = useProject(id!);
-  const { data: projectTasks = [], refetch: refetchTasks } = useProjectTasks(id!);
-  const { data: projectMembers = [], refetch: refetchMembers } = useProjectMembers(id!);
-  const { data: milestones = [], refetch: refetchMilestones } = useProjectMilestones(id!);
+  const { data: projectTasks = [], isLoading: loadingTasks, refetch: refetchTasks } = useProjectTasks(id!);
+  const { data: projectMembers = [], isLoading: loadingMembers, refetch: refetchMembers } = useProjectMembers(id!);
+  const { data: milestones = [], isLoading: loadingMilestones, refetch: refetchMilestones } = useProjectMilestones(id!);
   const { data: orgMembers = [] } = useOrganizationProfiles({ includeSelf: true, includeSuperAdmin: false });
   const { data: comments = [], isLoading: loadingComments, refetch: refetchComments } = useProjectComments(id!);
   const { data: activityLog = [], isLoading: loadingActivity, refetch: refetchActivity } = useProjectActivity(id!);
@@ -130,58 +130,70 @@ export default function ProjectDetailPage() {
 
   const tasksArray = Array.isArray(projectTasks) ? projectTasks : [];
   const membersArray = Array.isArray(projectMembers) ? projectMembers : [];
+  const isStillLoading = loadingProj || loadingTasks || loadingMembers || loadingMilestones;
 
   const isUserAuthorized = useMemo(() => {
-    if (loadingProj) return true; // Wait for load
+    if (isStillLoading) return true; // Wait for all queries to finish before evaluating access
     if (!project) return false;
     if (isAdmin) return true; // Admins are always authorized
 
-    // Check if they are owner, manager, creator, or delegator
+    // Check if they are owner, manager, or creator of the project
     if (project.owner_id === profile?.id ||
       project.manager_id === profile?.id ||
-      project.created_by === profile?.id ||
-      project.delegated_by === profile?.id) {
+      project.created_by === profile?.id) {
       return true;
     }
 
-    // Check if they are in projectMembers list
-    const isMember = membersArray.some((m: any) => m.id === profile?.id || m.user_id === profile?.id);
-    if (isMember) return true;
-
-    // Check if they have tasks assigned or milestones assigned
-    const hasTask = tasksArray.some((t: any) => t.assigned_to === profile?.id);
+    // Check if they have tasks assigned, created, or delegated with an active assignee
+    const hasTask = tasksArray.some((t: any) =>
+      t.assigned_to === profile?.id ||
+      t.created_by === profile?.id ||
+      (t.delegated_by === profile?.id && t.assigned_to !== null)
+    );
     if (hasTask) return true;
 
     const milestonesArray = Array.isArray(milestones) ? milestones : [];
-    const hasMilestone = milestonesArray.some((m: any) => m.assigned_to === profile?.id);
+    const hasMilestone = milestonesArray.some((m: any) =>
+      m.assigned_to === profile?.id ||
+      m.created_by === profile?.id
+    );
     if (hasMilestone) return true;
 
     return false;
-  }, [project, loadingProj, isAdmin, membersArray, tasksArray, milestones, profile]);
+  }, [project, isStillLoading, isAdmin, tasksArray, milestones, profile]);
 
   useEffect(() => {
-    if (!loadingProj && project && !isUserAuthorized) {
+    if (!isStillLoading && project && !isUserAuthorized) {
       toast.error("You no longer have access to this project.");
       navigate("/projects", { replace: true });
     }
-  }, [isUserAuthorized, loadingProj, project, navigate]);
+  }, [isUserAuthorized, isStillLoading, project, navigate]);
 
   const involvedMembersList = useMemo(() => {
     const ids = new Set<string>();
 
-    // Add explicitly invited members
-    membersArray.forEach((m: any) => {
-      if (m.user_id) ids.add(m.user_id);
-      if (m.id) ids.add(m.id);
-    });
-
-    // Add manager
+    // Add manager, owner, creator of project
     if (project?.manager_id) ids.add(project.manager_id);
+    if (project?.owner_id) ids.add(project.owner_id);
+    if (project?.created_by) ids.add(project.created_by);
 
-    // Add task assignees and delegators (exclude task creators from team counts)
+    // Add active task assignees, task creators, and active delegators
     tasksArray.forEach((t: any) => {
       if (t.assigned_to) ids.add(t.assigned_to);
-      if (t.delegated_by) ids.add(t.delegated_by);
+      if (t.created_by) ids.add(t.created_by);
+      if (t.delegated_by && t.assigned_to !== null) ids.add(t.delegated_by);
+    });
+
+    // Add milestone assignees and creators
+    const milestonesArray = Array.isArray(milestones) ? milestones : [];
+    milestonesArray.forEach((m: any) => {
+      if (m.assigned_to) ids.add(m.assigned_to);
+      if (m.created_by) ids.add(m.created_by);
+      if (Array.isArray(m.assignees)) {
+        m.assignees.forEach((a: any) => {
+          if (a.id) ids.add(a.id);
+        });
+      }
     });
 
     // Map IDs to full member objects from orgMembers list
@@ -189,7 +201,7 @@ export default function ProjectDetailPage() {
       .filter(Boolean)
       .map(uid => {
         const profile = orgMembers.find((m: any) => m.id === uid);
-        if (!profile) return null; // Exclude if profile not found (prevents "Unassigned" / "U" avatar)
+        if (!profile) return null; // Exclude if profile not found
         return {
           id: uid,
           full_name: profile.full_name,
@@ -197,7 +209,7 @@ export default function ProjectDetailPage() {
         };
       })
       .filter((m): m is any => m !== null);
-  }, [membersArray, project, tasksArray, orgMembers]);
+  }, [project, tasksArray, milestones, orgMembers]);
 
   const mentionSuggestions = useMemo(() => {
     return [
@@ -214,8 +226,11 @@ export default function ProjectDetailPage() {
     if (!id) return;
 
     const handleTaskChange = () => {
-      queryClient.invalidateQueries({ queryKey: ["tasks", { projectId: id }] });
-      queryClient.invalidateQueries({ queryKey: ["projects", id] });
+      queryClient.invalidateQueries({ queryKey: ["tasks"] });
+      queryClient.invalidateQueries({ queryKey: ["projects"] });
+      queryClient.invalidateQueries({ queryKey: ["project_members"] });
+      refetchTasks();
+      refetchMembers();
     };
 
     const handleProjectChange = () => {
@@ -297,6 +312,41 @@ export default function ProjectDetailPage() {
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [selectedTaskForDrawer, setSelectedTaskForDrawer] = useState<any | null>(null);
   const [editingTask, setEditingTask] = useState<any | null>(null);
+
+  const targetMilestoneId = searchParams.get("milestoneId") || searchParams.get("milestone");
+  useEffect(() => {
+    if (targetMilestoneId && Array.isArray(milestones) && milestones.length > 0) {
+      const found = milestones.find((m: any) => m.id === targetMilestoneId);
+      if (found) setSelectedMilestone(found);
+    }
+  }, [targetMilestoneId, milestones]);
+
+  // Real-time auto-sync for open Edit Task modal and Task Drawer
+  useEffect(() => {
+    if (!editingTask || !Array.isArray(projectTasks)) return;
+    const latest = projectTasks.find((t: any) => t.id === editingTask.id);
+    if (latest && (latest.updated_at !== editingTask.updated_at || latest.assigned_to !== editingTask.assigned_to || latest.can_assign !== editingTask.can_assign || latest.status !== editingTask.status)) {
+      setEditingTask(latest);
+      setEditTaskTitle(latest.title || "");
+      setEditTaskDesc(latest.description || "");
+      setEditTaskPriority(latest.priority || "medium");
+      setEditTaskAssignee(latest.assigned_to || "");
+      setEditTaskDueDate(latest.due_date ? latest.due_date.slice(0, 10) : "");
+      const rawStatus = latest.status || "todo";
+      setEditTaskStatus(rawStatus === "completed" ? "done" : rawStatus);
+      setEditTaskCanAssign(latest.can_assign ?? false);
+      setEditTaskProgress(latest.progress || 0);
+      setEditTaskDelayReason(latest.delay_reason || "");
+    }
+  }, [projectTasks, editingTask?.id]);
+
+  useEffect(() => {
+    if (!selectedTaskForDrawer || !Array.isArray(projectTasks)) return;
+    const latest = projectTasks.find((t: any) => t.id === selectedTaskForDrawer.id);
+    if (latest && (latest.updated_at !== selectedTaskForDrawer.updated_at || latest.assigned_to !== selectedTaskForDrawer.assigned_to)) {
+      setSelectedTaskForDrawer(latest);
+    }
+  }, [projectTasks, selectedTaskForDrawer?.id]);
 
   // ─── Edit task form ─────────────────────────────────────────────────────────
   const [editTaskTitle, setEditTaskTitle] = useState("");
@@ -621,7 +671,9 @@ export default function ProjectDetailPage() {
       project_id: id,
       projectId: id,
       assigned_to: newTaskAssignee || null,
+      assignedTo: newTaskAssignee || null,
       due_date: newTaskDueDate || null,
+      dueDate: newTaskDueDate || null,
       estimated_hours: newTaskEstHours ? parseFloat(newTaskEstHours) : undefined,
       can_assign: newTaskCanAssign,
       progress: newTaskProgress,
@@ -631,6 +683,9 @@ export default function ProjectDetailPage() {
         setShowTaskDialog(false);
         setNewTaskTitle(""); setNewTaskDesc(""); setNewTaskAssignee(""); setNewTaskDueDate(""); setNewTaskEstHours(""); setNewTaskCanAssign(false); setNewTaskProgress(0);
         refetchTasks();
+        queryClient.invalidateQueries({ queryKey: ["tasks"] });
+        queryClient.invalidateQueries({ queryKey: ["projects"] });
+        queryClient.invalidateQueries({ queryKey: ["project_members"] });
         logActivity.mutate({ projectId: id!, action: `created task "${newTaskTitle}"`, entity_type: "task", entity_name: newTaskTitle });
       },
     });
@@ -639,14 +694,26 @@ export default function ProjectDetailPage() {
   const handleToggleTaskStatus = (task: any) => {
     const isCurrentlyDone = task.status === "done" || task.status === "completed";
     const nextStatus = isCurrentlyDone ? "todo" : "done";
-    updateTask.mutate({ id: task.id, status: nextStatus }, {
-      onSuccess: () => { refetchTasks(); logActivity.mutate({ projectId: id!, action: `marked task "${task.title}" as ${nextStatus}`, entity_type: "task", entity_name: task.title }); },
+    const nextProgress = isCurrentlyDone ? 0 : 100;
+    updateTask.mutate({ id: task.id, status: nextStatus, progress: nextProgress }, {
+      onSuccess: () => {
+        refetchTasks();
+        queryClient.invalidateQueries({ queryKey: ["tasks"] });
+        queryClient.invalidateQueries({ queryKey: ["projects"] });
+        logActivity.mutate({ projectId: id!, action: `marked task "${task.title}" as ${nextStatus}`, entity_type: "task", entity_name: task.title });
+      },
     });
   };
 
   const handleDeleteTask = (tid: string, title?: string) => {
     deleteTask.mutate(tid, {
-      onSuccess: () => { refetchTasks(); setSelectedTaskForDrawer(null); logActivity.mutate({ projectId: id!, action: `deleted task "${title || tid}"`, entity_type: "task" }); },
+      onSuccess: () => {
+        refetchTasks();
+        setSelectedTaskForDrawer(null);
+        queryClient.invalidateQueries({ queryKey: ["tasks"] });
+        queryClient.invalidateQueries({ queryKey: ["projects"] });
+        logActivity.mutate({ projectId: id!, action: `deleted task "${title || tid}"`, entity_type: "task" });
+      },
     });
   };
 
@@ -674,7 +741,9 @@ export default function ProjectDetailPage() {
       priority: editTaskPriority,
       status: editTaskStatus,
       assigned_to: editTaskAssignee || null,
+      assignedTo: editTaskAssignee || null,
       due_date: editTaskDueDate || null,
+      dueDate: editTaskDueDate || null,
       can_assign: editTaskCanAssign,
       progress: editTaskProgress,
       delay_reason: editTaskDelayReason || null,
@@ -684,6 +753,10 @@ export default function ProjectDetailPage() {
         setEditingTask(null);
         setSelectedTaskForDrawer(null);
         refetchTasks();
+        refetchMembers();
+        queryClient.invalidateQueries({ queryKey: ["tasks"] });
+        queryClient.invalidateQueries({ queryKey: ["projects"] });
+        queryClient.invalidateQueries({ queryKey: ["project_members"] });
         logActivity.mutate({ projectId: id!, action: `edited task "${editTaskTitle}"`, entity_type: "task", entity_name: editTaskTitle });
       },
     });
@@ -1072,15 +1145,40 @@ export default function ProjectDetailPage() {
                             {t.description && <p className="text-[10px] text-muted-foreground/70 mt-0.5 truncate max-w-[300px]">{t.description}</p>}
                             <p className="text-[9px] text-muted-foreground/60 mt-1 font-normal">Created by: {t.created_by_name || "Owner"}</p>
                             {/* Thin progress line under the task */}
-                            <div className="w-full bg-slate-800 h-1 rounded-full mt-2 overflow-hidden border border-border/5 max-w-[300px]">
-                              <div className="bg-blue-500 h-full rounded-full transition-all duration-300" style={{ width: `${t.progress || 0}%` }} />
+                            <div className="flex items-center gap-2 mt-2 max-w-[300px]">
+                              <div className="flex-1 bg-slate-800 h-1.5 rounded-full overflow-hidden border border-border/5">
+                                <div className={cn("h-full rounded-full transition-all duration-300", isDone ? "bg-emerald-500" : "bg-blue-500")} style={{ width: `${t.progress || (isDone ? 100 : 0)}%` }} />
+                              </div>
+                              <span className="text-[10px] font-bold text-muted-foreground w-7 text-right">{t.progress || (isDone ? 100 : 0)}%</span>
                             </div>
                           </td>
-                          <td className="p-4">
-                            <div className="flex items-center gap-1.5">
-                              <span className={cn("h-1.5 w-1.5 rounded-full", statusBadge?.dot || "bg-slate-500")} />
-                              <span className="text-[10px] text-muted-foreground capitalize">{t.status?.replace(/_/g, " ")}</span>
-                            </div>
+                          <td className="p-4" onClick={e => e.stopPropagation()}>
+                            <Select
+                              value={t.status === "completed" ? "done" : (t.status || "todo")}
+                              onValueChange={(newStatus) => {
+                                const newProgress = newStatus === "done" ? 100 : (t.progress === 100 ? 50 : (t.progress || 0));
+                                updateTask.mutate({ id: t.id, status: newStatus, progress: newProgress }, {
+                                  onSuccess: () => { refetchTasks(); }
+                                });
+                              }}
+                            >
+                              <SelectTrigger className="h-7 border-none bg-muted/40 hover:bg-muted text-[11px] font-medium py-0 px-2 text-foreground rounded-lg w-28 focus:ring-0">
+                                <div className="flex items-center gap-1.5 truncate">
+                                  <span className={cn("h-1.5 w-1.5 rounded-full shrink-0", statusBadge?.dot || "bg-slate-500")} />
+                                  <span className="capitalize">{t.status?.replace(/_/g, " ") || "Todo"}</span>
+                                </div>
+                              </SelectTrigger>
+                              <SelectContent className="bg-popover border-border text-foreground">
+                                {KANBAN_COLS.map(c => (
+                                  <SelectItem key={c.id} value={c.id} className="text-xs">
+                                    <div className="flex items-center gap-2">
+                                      <span className={cn("h-2 w-2 rounded-full", c.dot)} />
+                                      <span>{c.label}</span>
+                                    </div>
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
                           </td>
                           <td className="p-4">
                             <div className="flex items-center gap-2">
@@ -2289,22 +2387,26 @@ export default function ProjectDetailPage() {
       {/* Edit Task */}
       <Dialog open={!!editingTask} onOpenChange={(open) => { if (!open) setEditingTask(null); }}>
         {(() => {
+          const isSuperAdmin = userRole?.role === "admin" || userRole?.role === "super_admin";
+          const isProjectManager = project && (project.manager_id === profile?.id || project.owner_id === profile?.id || project.created_by === profile?.id);
           const isEditingTaskCreator = !editingTask || editingTask.created_by === profile?.id;
           const isDelegator = !!editingTask && editingTask.delegated_by === profile?.id;
-          const canEditCoreFields = isEditingTaskCreator || isAdmin;
-          const canEditDates = isEditingTaskCreator || isAdmin;
+
+          const canEditCoreFields = isEditingTaskCreator || isProjectManager || isSuperAdmin;
+          const canEditDates = isEditingTaskCreator || isProjectManager || isSuperAdmin;
 
           const canModifyAssignment =
-            isAdmin ||
+            isSuperAdmin ||
+            isProjectManager ||
             isEditingTaskCreator ||
             isDelegator ||
-            (!!editingTask && editingTask.assigned_to === profile?.id && editingTask.can_assign === true);
+            (!!editingTask && editingTask.assigned_to === profile?.id && (editingTask.can_assign === true || editingTask.can_assign === 'true'));
 
-          const canGrantDelegation = isAdmin || isEditingTaskCreator || isDelegator;
+          const canGrantDelegation = isSuperAdmin || isProjectManager || isEditingTaskCreator || isDelegator;
           const isAssigneeWithDelegation =
             !!editingTask &&
             editingTask.assigned_to === profile?.id &&
-            editingTask.can_assign === true &&
+            (editingTask.can_assign === true || editingTask.can_assign === 'true') &&
             !isEditingTaskCreator;
 
           const showDelegationToggleEdit = canGrantDelegation || isAssigneeWithDelegation;
@@ -2341,7 +2443,11 @@ export default function ProjectDetailPage() {
                   </div>
                   <div className="space-y-1.5">
                     <Label className="text-[10px] font-bold text-muted-foreground uppercase">Status</Label>
-                    <Select value={editTaskStatus} onValueChange={setEditTaskStatus}>
+                    <Select value={editTaskStatus} onValueChange={(val) => {
+                      setEditTaskStatus(val);
+                      if (val === "done") setEditTaskProgress(100);
+                      else if (editTaskProgress === 100) setEditTaskProgress(50);
+                    }}>
                       <SelectTrigger className="text-xs bg-muted border-border text-foreground"><SelectValue /></SelectTrigger>
                       <SelectContent className="bg-muted border-border">
                         {KANBAN_COLS.map(c => <SelectItem key={c.id} value={c.id}>{c.label}</SelectItem>)}
@@ -2363,7 +2469,10 @@ export default function ProjectDetailPage() {
                       <MemberSearchSelect
                         members={orgMembers}
                         value={editTaskAssignee}
-                        onChange={setEditTaskAssignee}
+                        onChange={(val) => {
+                          setEditTaskAssignee(val);
+                          setEditingTask((prev: any) => prev ? { ...prev, assigned_to: val } : null);
+                        }}
                       />
                     ) : (
                       <div className="flex h-10 w-full items-center justify-between rounded-md border border-red-500/20 bg-red-500/5 px-3 py-2 text-xs cursor-not-allowed opacity-60">
@@ -2392,7 +2501,10 @@ export default function ProjectDetailPage() {
                     </div>
                     <Switch
                       checked={editTaskCanAssign}
-                      onCheckedChange={setEditTaskCanAssign}
+                      onCheckedChange={(checked) => {
+                        setEditTaskCanAssign(checked);
+                        setEditingTask((prev: any) => prev ? { ...prev, can_assign: checked } : null);
+                      }}
                     />
                   </div>
                 )}
@@ -2403,7 +2515,12 @@ export default function ProjectDetailPage() {
                   </div>
                   <Slider
                     value={[editTaskProgress]}
-                    onValueChange={(val) => setEditTaskProgress(val[0])}
+                    onValueChange={(val) => {
+                      const newProg = val[0];
+                      setEditTaskProgress(newProg);
+                      if (newProg === 100 && editTaskStatus !== "done") setEditTaskStatus("done");
+                      else if (newProg < 100 && (editTaskStatus === "done" || editTaskStatus === "completed")) setEditTaskStatus("in_progress");
+                    }}
                     max={100}
                     step={1}
                     className="py-1 cursor-pointer"

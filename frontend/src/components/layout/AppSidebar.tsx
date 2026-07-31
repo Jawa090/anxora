@@ -17,6 +17,7 @@ import {
   Package,
   Warehouse,
   Calendar,
+  Clock,
   Mail,
   Mailbox,
   Settings,
@@ -69,6 +70,10 @@ import {
   Milestone,
   ChevronsLeft,
   ChevronsRight,
+  List,
+  Grid,
+  Smartphone,
+  XSquare,
 } from "lucide-react";
 import { useProject } from "@/hooks/useProjectManagement";
 import {
@@ -146,6 +151,12 @@ const navigation: NavItem[] = [
     title: "Projects",
     href: "/projects",
     icon: FolderKanban,
+    children: [
+      { title: "Overview", href: "/projects", icon: LayoutDashboard },
+      { title: "Active Tasks", href: "/projects?tab=tasks", icon: CheckSquare },
+      { title: "Milestones", href: "/projects?tab=milestones", icon: Milestone },
+      { title: "After Due Date", href: "/projects?tab=overdue", icon: Clock },
+    ],
   },
   {
     title: "Collaboration",
@@ -370,15 +381,30 @@ export function AppSidebar({
   >(["Direct Messages", "Team Groups", "Broadcasts"]);
   const [expandedSubItems, setExpandedSubItems] = useState<string[]>([]);
   const [expandedNestedItems, setExpandedNestedItems] = useState<string[]>([]);
-  const [focusedModule, setFocusedModule] = useState<string | null>(null);
+  const getModuleFromPath = (path: string): string | null => {
+    if (path.startsWith("/projects")) return "Projects";
+    if (path.startsWith("/collaboration")) return "Collaboration";
+    if (path.startsWith("/crm")) return "CRM";
+    if (path.startsWith("/hrms")) return "HRMS";
+    if (path.startsWith("/recruitment")) return "Recruitment";
+    if (path.startsWith("/inventory")) return "Inventory";
+    if (path.startsWith("/finance")) return "Finance";
+    if (path.startsWith("/marketing")) return "Marketing";
+    return null;
+  };
+
+  const [focusedModule, setFocusedModule] = useState<string | null>(() =>
+    getModuleFromPath(location.pathname)
+  );
 
   useEffect(() => {
-    if (activeProjectId) {
-      setFocusedModule("Projects");
-    } else if (location.pathname === "/projects") {
+    const matched = getModuleFromPath(location.pathname);
+    if (matched) {
+      setFocusedModule(matched);
+    } else if (location.pathname === "/" || location.pathname === "/dashboard") {
       setFocusedModule(null);
     }
-  }, [activeProjectId, location.pathname]);
+  }, [location.pathname]);
 
   const dynamicNavigation = useMemo(() => {
     return navigation.map((item) => {
@@ -701,13 +727,14 @@ export function AppSidebar({
   const isActive = (href: string) => {
     const [path, search] = href.split("?");
     if (search) {
-      const isOverviewDefault = search === "tab=overview" && !location.search;
+      // For URLs with query params, check both path and exact search match
       return (
         location.pathname === path &&
-        (location.search.includes(search) || isOverviewDefault)
+        location.search === `?${search}`
       );
     }
-    return location.pathname === href;
+    // For URLs without query params, only match if no search params in location
+    return location.pathname === path && !location.search;
   };
   const isSectionActive = (children?: { href: string }[]) =>
     children?.some((child) => location.pathname.startsWith(child.href));
@@ -851,30 +878,31 @@ export function AppSidebar({
             to={child.href}
             onClick={() => isMobile && onClose?.()}
             className={cn(
-              "flex items-center gap-3 rounded-lg py-2 pl-9 pr-3 text-[13px] transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary group",
+              "flex items-center gap-2 rounded-lg py-1.5 pl-8 pr-3 text-[12px] transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary group",
               isActive(child.href)
-                ? "bg-primary/10 text-primary font-medium"
-                : "text-slate-600 dark:text-slate-400 hover:text-primary dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/[0.03]",
+                ? "bg-transparent text-white font-medium"
+                : "text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent/50",
             )}
           >
             {child.icon && (
-              <child.icon
-                className={cn(
-                  "h-4 w-4 transition-colors duration-200",
-                  isActive(child.href)
-                    ? "text-primary"
-                    : "text-slate-500 group-hover:text-primary dark:group-hover:text-slate-300",
-                )}
-              />
+              <div className={cn(
+                "grid size-6 place-items-center rounded-md transition-all duration-200 shrink-0",
+                isActive(child.href)
+                  ? "bg-sidebar-primary text-sidebar-primary-foreground"
+                  : "bg-sidebar-accent/40 text-sidebar-primary group-hover:bg-sidebar-primary/30"
+              )}>
+                <child.icon className="h-3.5 w-3.5" />
+              </div>
             )}
             <span className="flex items-center gap-2">
               {child.title}
               {totalWorkgroupUnread + totalBroadcastUnread + totalDMUnread >
                 0 && (
-                <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-red-600 px-1.5 text-[10px] font-bold text-white">
-                  {totalWorkgroupUnread + totalBroadcastUnread + totalDMUnread}
-                </span>
-              )}
+                  <span className="inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-red-600 px-1 text-[8px] font-bold text-white ml-auto flex-shrink-0">
+                    {totalWorkgroupUnread + totalBroadcastUnread + totalDMUnread}
+                  </span>
+                )}
+              {isActive(child.href) && <ChevronRight className="ml-auto h-3.5 w-3.5 text-sidebar-primary flex-shrink-0" />}
             </span>
           </NavLink>
 
@@ -937,8 +965,8 @@ export function AppSidebar({
                               src={
                                 getAvatarUrl(
                                   dm.avatar_url ||
-                                    dm.direct_peer_avatar_url ||
-                                    dm.avatar,
+                                  dm.direct_peer_avatar_url ||
+                                  dm.avatar,
                                 ) || undefined
                               }
                             />
@@ -1449,29 +1477,30 @@ export function AppSidebar({
         to={child.href}
         onClick={() => isMobile && onClose?.()}
         className={cn(
-          "flex items-center gap-3 rounded-xl py-2 pl-9 pr-3 text-[13px] transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary group",
+          "flex items-center gap-2 rounded-lg py-1.5 pl-8 pr-3 text-[12px] transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary group",
           isActive(child.href)
-            ? "bg-primary/10 text-primary dark:text-white font-medium"
-            : "text-slate-600 dark:text-slate-400 hover:text-primary dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/[0.03]",
+            ? "bg-transparent text-white font-medium"
+            : "text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent/50",
         )}
       >
         {child.icon && (
-          <child.icon
-            className={cn(
-              "h-4 w-4 transition-colors duration-200",
-              isActive(child.href)
-                ? "text-primary"
-                : "text-slate-500 group-hover:text-primary dark:group-hover:text-slate-300",
-            )}
-          />
+          <div className={cn(
+            "grid size-6 place-items-center rounded-md transition-all duration-200 shrink-0",
+            isActive(child.href)
+              ? "bg-sidebar-primary text-sidebar-primary-foreground"
+              : "bg-sidebar-accent/40 text-sidebar-primary group-hover:bg-sidebar-primary/30"
+          )}>
+            <child.icon className="h-3.5 w-3.5" />
+          </div>
         )}
-        <span className="flex items-center gap-2">
-          {child.title}
+        <span className="flex items-center gap-2 flex-1 min-w-0">
+          <span className="truncate">{child.title}</span>
           {child.title === "Workgroups" && totalWorkgroupUnread > 0 && (
-            <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-red-600 px-1.5 text-[10px] font-bold text-white">
+            <span className="inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-red-600 px-1 text-[8px] font-bold text-white ml-auto flex-shrink-0">
               {totalWorkgroupUnread}
             </span>
           )}
+          {isActive(child.href) && <ChevronRight className="ml-auto h-3.5 w-3.5 text-sidebar-primary flex-shrink-0" />}
         </span>
       </NavLink>
     );
@@ -1482,7 +1511,8 @@ export function AppSidebar({
   return (
     <aside
       className={cn(
-        "fixed left-0 top-0 z-50 h-screen bg-white dark:bg-[#0c111d] border-r border-slate-200 dark:border-white/5 flex flex-col transition-all duration-300 ease-in-out",
+        "fixed left-0 top-0 z-50 h-screen bg-sidebar text-sidebar-foreground border-r border-sidebar-border flex flex-col transition-all duration-300 ease-in-out",
+        "light:bg-[#F1F6F6] light:text-[#032124] light:border-[#2DD4BF]/15",
         isMobile
           ? isOpen
             ? "translate-x-0"
@@ -1505,19 +1535,53 @@ export function AppSidebar({
       )}
 
       {/* Brand Header */}
-      <div className={cn("p-6", isCollapsed && "px-2 py-4 flex flex-col items-center")}>
-        <div className="flex items-center justify-between mb-6">
+      <div className={cn("p-4 border-b border-sidebar-primary/20", isCollapsed && "px-2 py-3 flex flex-col items-center justify-center ml-5")}>
+        <div className="flex items-center justify-between w-full">
           <div className="flex items-center gap-3 focus-outline-none">
-            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-tr from-[#7D5CE4] to-[#9F85F0] text-white font-extrabold text-lg shadow-md shrink-0">
-              A
+            <div className="grid h-9 w-9 place-items-center rounded-lg border-2 border-sidebar-primary/40 bg-sidebar-primary/20 text-sidebar-primary shrink-0">
+              <div className="">
+                <svg
+                  viewBox="-10 0 120 100"
+                  fill="none"
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="h-full w-full text-white"
+                >
+                  {/* Continuous looped stylized "ES" ribbon mark from logo image */}
+                  <path
+                    d="M 32 32 C 32 24, 68 24, 68 32 C 68 40, 32 40, 32 50 C 32 60, 68 60, 68 70 C 68 80, 32 80, 32 70"
+                    stroke="currentColor"
+                    strokeWidth="8.5"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                  <path
+                    d="M 32 32 L 68 32"
+                    stroke="currentColor"
+                    strokeWidth="8.5"
+                    strokeLinecap="round"
+                  />
+                  <path
+                    d="M 32 50 L 58 50"
+                    stroke="currentColor"
+                    strokeWidth="8.5"
+                    strokeLinecap="round"
+                  />
+                  <path
+                    d="M 32 70 L 68 70"
+                    stroke="currentColor"
+                    strokeWidth="8.5"
+                    strokeLinecap="round"
+                  />
+                </svg>
+              </div>
             </div>
             {!isCollapsed && (
               <div className="flex flex-col">
-                <span className="text-base font-bold tracking-tight text-slate-900 dark:text-white leading-none">
-                  Anxora OS
+                <span className="text-sm font-bold tracking-wide text-white leading-none">
+                  ANXORA
                 </span>
-                <span className="text-[10px] text-slate-500 dark:text-slate-400 mt-1 leading-none">
-                  Enterprise Workspace
+                <span className="text-[9px] text-sidebar-primary font-medium mt-0.5 leading-none">
+                  SMART OS
                 </span>
               </div>
             )}
@@ -1527,34 +1591,39 @@ export function AppSidebar({
               variant="ghost"
               size="icon"
               onClick={onClose}
-              className="text-slate-500 dark:text-slate-400"
+              className="text-sidebar-foreground/70 hover:text-white"
             >
               <X className="h-5 w-5" />
             </Button>
           )}
         </div>
 
-        <div className="h-px w-full bg-gradient-to-r from-slate-200 dark:from-white/[0.08] to-transparent" />
+        {!isCollapsed && (
+          <div className="h-px w-full bg-gradient-to-r from-sidebar-primary/20 to-transparent mt-4" />
+        )}
       </div>
 
       {/* Navigation Content */}
-      <div className="flex-1 overflow-y-auto custom-scrollbar px-1.5 pb-4 space-y-6">
+      <div className="flex-1 overflow-y-auto custom-scrollbar px-1.5 pb-4 space-y-6 pt-10">
         {/* Back to Dashboard Button - Show when a module is focused */}
         {focusedModule && (
           <Button
-            variant="outline"
-            className="w-full justify-start gap-2 mb-4"
+            className={cn(
+              "w-full justify-start gap-2 mb-2  bg-transparent border-2 border-sidebar-primary text-white hover:bg-sidebar-accent/30 hover:border-sidebar-primary rounded-full px-3 py-2",
+              isCollapsed && "w-10 h-10 ml-5 p-0 justify-center rounded-lg mb-1 border-sidebar-primary bg-transparent"
+            )}
             onClick={() => {
-              if (focusedModule === "Projects") {
-                navigate("/projects");
-              }
+              navigate("/");
               setFocusedModule(null);
             }}
+            title="Back to Dashboard"
           >
-            <ArrowLeft className="h-4 w-4" />
-            {focusedModule === "Projects"
-              ? "Back to Projects Hub"
-              : "Back to Dashboard"}
+            <ArrowLeft className={cn("shrink-0", isCollapsed ? "h-5 w-5" : "h-4 w-4")} />
+            {!isCollapsed && (
+              <span className="text-[12px] font-bold ">
+                Back to Dashboard
+              </span>
+            )}
           </Button>
         )}
 
@@ -1594,23 +1663,35 @@ export function AppSidebar({
                   // If focused on this module, show its children directly
                   if (focusedModule === item.title && item.children) {
                     return (
-                      <div key={item.title} className="space-y-1.5">
-                        {/* Module Header */}
-                        <div className="flex items-center justify-between px-4 py-2 text-primary">
-                          <div className="flex items-center gap-3 min-w-0">
-                            <item.icon className="h-5 w-5 shrink-0" />
-                            <span className="text-sm font-bold uppercase tracking-wider truncate max-w-[160px]">
-                              {item.title === "Projects" && activeProject
-                                ? activeProject.name
-                                : item.title}
-                            </span>
-                          </div>
-                          {item.title === "Collaboration" &&
-                            totalCollaborationUnread > 0 && (
-                              <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-red-600 px-1.5 text-[10px] font-bold text-white shadow-lg shadow-red-600/20">
-                                {totalCollaborationUnread}
+                      <div key={item.title} className="space-y-1">
+                        {/* Module Header - with border and rounded styling - FRONTEND-ANXORA STYLE */}
+                        <div className={cn(
+                          "flex items-center justify-between rounded-full border-2 border-sidebar-primary px-3 py-2 bg-sidebar-primary text-sidebar-primary-foreground shadow-md light:border-[#2DD4BF]",
+                          isCollapsed && "px-2 py-1.5 justify-center rounded-lg"
+                        )}>
+                          <div className={cn("flex items-center gap-2 min-w-0", isCollapsed && "flex-col gap-1")}>
+                            <div className="grid size-5 place-items-center rounded-md text-sidebar-primary-foreground shrink-0">
+                              <item.icon className="size-3.5" />
+                            </div>
+                            {!isCollapsed && (
+                              <span className="text-[12px] font-bold text-sidebar-primary-foreground truncate max-w-[120px]">
+                                {item.title === "Projects" && activeProject
+                                  ? activeProject.name
+                                  : item.title}
                               </span>
                             )}
+                          </div>
+                          {!isCollapsed && (
+                            <>
+                              {item.title === "Collaboration" &&
+                                totalCollaborationUnread > 0 && (
+                                  <span className="inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-red-600 px-1 text-[9px] font-bold text-white shadow-lg shadow-red-600/20">
+                                    {totalCollaborationUnread}
+                                  </span>
+                                )}
+                              <ChevronRight className="h-3.5 w-3.5 text-sidebar-primary-foreground shrink-0" />
+                            </>
+                          )}
                         </div>
                         {/* Sub-modules */}
                         {item.children
@@ -1903,10 +1984,10 @@ function SortableNavItem({
               onWidthChange?.(256);
             }}
             className={cn(
-              "flex h-10 w-10 items-center justify-center rounded-xl mx-auto transition-all duration-200",
+              "flex size-10 items-center justify-center rounded-xl mx-auto transition-all duration-200",
               sectionActive
                 ? "bg-primary/10 text-primary"
-                : "text-slate-400 hover:text-white hover:bg-white/[0.03]",
+                : "text-slate-400 hover:text-white hover:bg-white/5",
             )}
             title={item.title}
           >
@@ -1967,22 +2048,24 @@ function SortableNavItem({
             className={cn(
               "flex flex-1 items-center justify-between rounded-xl px-4 py-2.5 text-[13px] font-medium transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary group",
               sectionActive
-                ? "bg-primary/10 text-primary"
-                : "text-slate-600 dark:text-slate-400 hover:text-primary dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/[0.03]",
+                ? "bg-transparent text-white"
+                : "text-sidebar-foreground/70 hover:text-white hover:bg-sidebar-accent/30",
             )}
           >
             <div className="flex flex-1 items-center justify-between mr-2">
               <div className="flex items-center gap-3">
-                <item.icon
-                  className={cn(
-                    "h-4 w-4 transition-colors duration-200",
-                    sectionActive ? "text-primary" : "text-slate-500 group-hover:text-primary dark:group-hover:text-slate-300",
-                  )}
-                />
+                <div className={cn(
+                  "grid h-6 w-6 place-items-center rounded-lg transition-all duration-200",
+                  sectionActive
+                    ? "bg-sidebar-primary/80 text-sidebar-primary-foreground"
+                    : "bg-sidebar-accent/40 text-sidebar-primary group-hover:bg-sidebar-primary/30"
+                )}>
+                  <item.icon className="h-3.5 w-3.5" />
+                </div>
                 <span>{item.title}</span>
               </div>
               {badge && (
-                <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-red-600 px-1.5 text-[10px] font-bold text-white shadow-lg shadow-red-600/20">
+                <span className="flex h-4 min-w-4 items-center justify-center rounded-full bg-red-600 px-1 text-[8px] font-bold text-white shadow-lg shadow-red-600/20">
                   {badge}
                 </span>
               )}

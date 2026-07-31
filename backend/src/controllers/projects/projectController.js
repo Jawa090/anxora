@@ -36,25 +36,22 @@ const getAll = async (req, res, next) => {
         p.manager_id = $${paramIndex} OR
         p.created_by = $${paramIndex} OR
         p.owner_id = $${paramIndex} OR
-        p.delegated_by = $${paramIndex} OR
-        EXISTS (
-          SELECT 1 FROM public.project_members pm
-          WHERE pm.project_id = p.id
-            AND pm.user_id = $${paramIndex}
-            AND pm.org_id = $1
-        ) OR
         EXISTS (
           SELECT 1 FROM public.tasks t
           WHERE t.project_id = p.id
-            AND t.assigned_to = $${paramIndex}
+            AND (
+              t.assigned_to = $${paramIndex} OR
+              t.created_by = $${paramIndex} OR
+              (t.delegated_by = $${paramIndex} AND t.assigned_to IS NOT NULL)
+            )
             AND t.org_id = $1
         ) OR
         EXISTS (
           SELECT 1 FROM public.project_milestone_assignees pma
           JOIN public.project_milestones m ON pma.milestone_id = m.id
           WHERE m.project_id = p.id
-            AND pma.assigned_to = $${paramIndex}
-            AND pma.org_id = $1
+            AND (pma.assigned_to = $${paramIndex} OR m.assigned_to = $${paramIndex} OR m.created_by = $${paramIndex})
+            AND m.org_id = $1
         )
       )`;
       params.push(req.user.id);

@@ -6,126 +6,210 @@
 
 @layer base {
   :root {
-    /* ══ Anxora Deep Teal Luxury palette (Light Mode) ══ */
+    /* ══ Anxora Deep Teal Luxury palette (Light Mode) — From frontend-anxora ══ */
     --background: 180 20% 96%;
-    --foreground: 187 100% 10%;
+    /* #F1F6F6 */
+    --foreground: 180 40% 11%;
+    /* #032124 */
 
     --card: 0 0% 100%;
-    --card-foreground: 187 100% 10%;
+    /* #FFFFFF */
+    --card-foreground: 180 40% 11%;
+    /* #032124 */
 
     --popover: 0 0% 100%;
-    --popover-foreground: 187 100% 10%;
+    /* #FFFFFF */
+    --popover-foreground: 180 40% 11%;
+    /* #032124 */
 
     --primary: 174 100% 42%;
-    --primary-foreground: 187 100% 8%;
+    /* #2DD4BF - MINT/TEAL */
+    --primary-foreground: 180 40% 11%;
+    /* #032124 */
 
-    --secondary: 180 25% 94%;
-    --secondary-foreground: 187 100% 10%;
+    --secondary: 180 30% 93%;
+    /* #E4EFEF */
+    --secondary-foreground: 186 89% 20%;
+    /* #053B3F */
 
-    --muted: 180 18% 94%;
-    --muted-foreground: 185 15% 40%;
+    --muted: 180 25% 94%;
+    /* #E8F0F0 */
+    --muted-foreground: 183 20% 42%;
+    /* #5B6D6E */
 
     --accent: 174 100% 42%;
-    --accent-foreground: 187 100% 8%;
+    /* #2DD4BF */
+    --accent-foreground: 180 40% 11%;
+    /* #032124 */
 
     --destructive: 0 84% 60%;
+    /* #EF4444 */
     --destructive-foreground: 0 0% 100%;
+    /* #FFFFFF */
 
-    --success: 160 84% 39%;
+    --success: 160 84% 45%;
+    /* #10B981 */
     --success-foreground: 0 0% 100%;
+    /* #FFFFFF */
 
     --warning: 38 92% 50%;
-    --warning-foreground: 0 0% 100%;
+    /* #F59E0B */
+    --warning-foreground: 20 100% 10%;
+    /* #2A1C00 */
 
-    --info: 174 100% 42%;
+    --info: 199 89% 48%;
+    /* #0EA5E9 */
     --info-foreground: 0 0% 100%;
+    /* #FFFFFF */
 
-    --border: 185 20% 86%;
-    --input: 185 20% 86%;
-    --ring: 174 100% 42%;
+    --border: 186 60% 19%;
+    /* rgba(5, 59, 63, 0.12) */
+    --input: 186 60% 19%;
+    /* rgba(5, 59, 63, 0.15) */
+    --ring: 186 100% 26%;
+    /* #0D646B */
 
     --radius: 0.5rem;
 
     /* Sidebar — Deep Teal matching logo */
-    --sidebar-background: 187 100% 10%;
-    --sidebar-foreground: 180 18% 92%;
+    --sidebar-background: 180 40% 11%;
+    /* #032124 */
+    --sidebar-foreground: 180 18% 82%;
+    /* #D3E2E3 */
     --sidebar-primary: 174 100% 42%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 187 40% 16%;
-    --sidebar-accent-foreground: 180 18% 92%;
-    --sidebar-border: 187 40% 16%;
+    /* #2DD4BF */
+    --sidebar-primary-foreground: 180 40% 11%;
+    /* #032124 */
+    --sidebar-accent: 174 100% 42%;
+    /* rgba(45, 212, 191, 0.12) */
+    --sidebar-accent-foreground: 0 0% 100%;
+    /* #FFFFFF */
+    --sidebar-border: 174 100% 42%;
+    /* rgba(45, 212, 191, 0.15) */
     --sidebar-ring: 174 100% 42%;
+    /* #2DD4BF */
     --sidebar-muted: 185 15% 55%;
 
+    /* Loading skeleton colors - Light mode */
+    --skeleton-bg: 186 100% 26%;
+    /* #0D646B - darker primary */
+    --skeleton-color: 174 100% 42%;
+    /* #2DD4BF - lighter accent */
+
     /* Charts */
-    --chart-1: 187 100% 10%;
+    --chart-1: 186 89% 20%;
+    /* #053B3F */
     --chart-2: 174 100% 42%;
-    --chart-3: 160 84% 39%;
+    /* #2DD4BF */
+    --chart-3: 160 84% 45%;
+    /* #10B981 */
     --chart-4: 199 89% 48%;
+    /* #0EA5E9 */
     --chart-5: 38 92% 50%;
+    /* #F59E0B */
 
     /* Gradients */
-    --gradient-primary: linear-gradient(135deg, hsl(174 100% 42%), hsl(187 100% 20%));
-    --gradient-success: linear-gradient(135deg, hsl(160 84% 39%), hsl(174 100% 42%));
-    --gradient-warning: linear-gradient(135deg, hsl(38 92% 50%), hsl(25 95% 53%));
-    --gradient-card: linear-gradient(180deg, hsl(0 0% 100%), hsl(180 20% 96%));
+    --gradient-primary: linear-gradient(135deg, #032629 0%, #053B3F 50%, #0D646B 100%);
+    --gradient-success: linear-gradient(135deg, #0D646B 0%, #14858E 50%, #2DD4BF 100%);
+    --gradient-warning: linear-gradient(135deg, #0D646B 0%, #14858E 50%, #2DD4BF 100%);
+    --gradient-card: linear-gradient(180deg, #FFFFFF, #F1F6F6);
 
     /* Shadows */
-    --shadow-sm: 0 1px 2px 0 hsl(187 100% 10% / 0.05);
-    --shadow-md: 0 4px 6px -1px hsl(187 100% 10% / 0.1), 0 2px 4px -2px hsl(187 100% 10% / 0.1);
-    --shadow-lg: 0 10px 15px -3px hsl(187 100% 10% / 0.1), 0 4px 6px -4px hsl(187 100% 10% / 0.1);
-    --shadow-xl: 0 20px 25px -5px hsl(187 100% 10% / 0.1), 0 8px 10px -6px hsl(187 100% 10% / 0.1);
-    --shadow-card: 0 1px 3px hsl(187 100% 10% / 0.08), 0 1px 2px hsl(187 100% 10% / 0.06);
+    --shadow-sm: 0 1px 2px 0 rgba(3, 41, 44, 0.05);
+    --shadow-md: 0 4px 6px -1px rgba(3, 41, 44, 0.1), 0 2px 4px -2px rgba(3, 41, 44, 0.1);
+    --shadow-lg: 0 10px 15px -3px rgba(3, 41, 44, 0.1), 0 4px 6px -4px rgba(3, 41, 44, 0.1);
+    --shadow-xl: 0 20px 25px -5px rgba(3, 41, 44, 0.1), 0 8px 10px -6px rgba(3, 41, 44, 0.1);
+    --shadow-card: 0 1px 3px rgba(3, 41, 44, 0.08), 0 1px 2px rgba(3, 41, 44, 0.06);
+    --shadow-elevated: 0 4px 20px -2px rgba(3, 41, 44, 0.08), 0 1px 3px 0 rgba(3, 41, 44, 0.04);
   }
 
   .dark {
-    /* ══ Logo Exact Deep Teal Dark Mode — NOT pure black ══ */
-    --background: 187 100% 10%;
-    --foreground: 180 30% 96%;
+    /* ══ Anxora Deep Teal Dark Mode — From frontend-anxora ══ */
+    --background: 181 88% 10%;
+    /* #021B1D */
+    --foreground: 180 30% 94%;
+    /* #F0F7F7 */
 
-    --card: 187 60% 14%;
-    --card-foreground: 180 30% 96%;
+    --card: 180 50% 15%;
+    /* #042629 */
+    --card-foreground: 180 30% 94%;
+    /* #F0F7F7 */
 
-    --popover: 187 55% 15%;
-    --popover-foreground: 180 30% 96%;
+    --popover: 180 50% 15%;
+    /* #042629 */
+    --popover-foreground: 180 30% 94%;
+    /* #F0F7F7 */
 
-    --primary: 174 100% 50%;
-    --primary-foreground: 187 100% 8%;
+    --primary: 174 100% 42%;
+    /* #2DD4BF - MINT/TEAL */
+    --primary-foreground: 180 40% 11%;
+    /* #032124 */
 
-    --secondary: 187 40% 17%;
-    --secondary-foreground: 180 30% 96%;
+    --secondary: 182 60% 17%;
+    /* #083D42 */
+    --secondary-foreground: 180 30% 94%;
+    /* #F0F7F7 */
 
-    --muted: 187 40% 15%;
-    --muted-foreground: 180 15% 65%;
+    --muted: 180 50% 14%;
+    /* #073438 */
+    --muted-foreground: 183 20% 53%;
+    /* #8AA1A3 */
 
-    --accent: 187 40% 17%;
-    --accent-foreground: 180 30% 96%;
+    --accent: 174 100% 42%;
+    /* #2DD4BF */
+    --accent-foreground: 181 88% 10%;
+    /* #021B1D */
 
-    --destructive: 0 63% 31%;
-    --destructive-foreground: 180 30% 96%;
+    --destructive: 0 63% 45%;
+    /* #F87171 */
+    --destructive-foreground: 0 0% 100%;
+    /* #FFFFFF */
 
-    --success: 160 84% 33%;
-    --success-foreground: 180 30% 96%;
+    --success: 160 84% 40%;
+    /* #10B981 */
+    --success-foreground: 181 88% 10%;
+    /* #021B1D */
 
-    --warning: 38 92% 40%;
-    --warning-foreground: 180 30% 96%;
+    --warning: 38 92% 48%;
+    /* #F59E0B */
+    --warning-foreground: 181 88% 10%;
+    /* #021B1D */
 
-    --info: 174 100% 50%;
-    --info-foreground: 180 30% 96%;
+    --info: 199 89% 56%;
+    /* #38BDF8 */
+    --info-foreground: 181 88% 10%;
+    /* #021B1D */
 
-    --border: 187 35% 20%;
-    --input: 187 35% 22%;
-    --ring: 174 100% 50%;
+    --border: 174 100% 27%;
+    /* rgba(45, 212, 191, 0.16) */
+    --input: 174 100% 27%;
+    /* rgba(45, 212, 191, 0.2) */
+    --ring: 174 100% 42%;
+    /* #2DD4BF */
 
-    --sidebar-background: 187 100% 7%;
-    --sidebar-foreground: 180 18% 90%;
-    --sidebar-primary: 174 100% 50%;
+    --sidebar-background: 181 88% 7%;
+    /* #02181A */
+    --sidebar-foreground: 180 18% 87%;
+    /* #C8DBDC */
+    --sidebar-primary: 174 100% 42%;
+    /* #2DD4BF */
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 187 40% 12%;
-    --sidebar-accent-foreground: 180 18% 90%;
-    --sidebar-border: 187 40% 12%;
-    --sidebar-ring: 174 100% 50%;
+    /* #FFFFFF */
+    --sidebar-accent: 174 100% 27%;
+    /* rgba(45, 212, 191, 0.15) */
+    --sidebar-accent-foreground: 0 0% 100%;
+    /* #FFFFFF */
+    --sidebar-border: 174 100% 27%;
+    /* rgba(45, 212, 191, 0.15) */
+    --sidebar-ring: 174 100% 42%;
+    /* #2DD4BF */
     --sidebar-muted: 185 15% 55%;
+
+    /* Loading skeleton colors - Dark mode */
+    --skeleton-bg: 174 100% 42%;
+    /* #2DD4BF - bright accent */
+    --skeleton-color: 180 30% 55%;
+    /* lighter teal for better contrast */
 
     /* Premium shadows with blur */
     --shadow-sm: 0 1px 2px 0 hsl(0 0% 0% / 0.4);
@@ -135,8 +219,8 @@
     --shadow-glass: 0 8px 32px 0 hsl(0 0% 0% / 0.37);
 
     /* Glassmorphism */
-    --glass-bg: hsl(187 60% 14% / 0.75);
-    --glass-border: hsl(174 100% 50% / 0.15);
+    --glass-bg: hsl(180 50% 15% / 0.75);
+    --glass-border: hsl(174 100% 42% / 0.15);
   }
 }
 
@@ -156,6 +240,23 @@
   h5,
   h6 {
     @apply font-semibold tracking-tight;
+  }
+
+  /* Sidebar specific styling - match frontend-anxora colors */
+  [data-sidebar="sidebar"] {
+    @apply bg-sidebar;
+  }
+
+  /* Ensure sidebar uses correct colors - ALWAYS dark */
+  aside {
+    background-color: #021B1D;
+    color: #C8DBDC;
+    border-color: rgba(45, 212, 191, 0.15);
+  }
+
+  [data-sidebar="sidebar"] {
+    background-color: #021B1D;
+    color: #C8DBDC;
   }
 }
 
@@ -474,7 +575,8 @@ input[type="time"]::-webkit-calendar-picker-indicator {
 .standard-ui Label,
 .standard-ui .text-slate-300 {
   color: hsl(var(--foreground)) !important;
-  font-size: 0.875rem !important; /* text-sm */
+  font-size: 0.875rem !important;
+  /* text-sm */
   font-weight: 500 !important;
 }
 
@@ -484,11 +586,13 @@ input[type="time"]::-webkit-calendar-picker-indicator {
 .standard-ui [role="combobox"],
 .standard-ui .SelectTrigger {
   background-color: hsl(var(--background)) !important;
-  border-color: hsl(var(--border)) !important;
+  border: hsl(var(--border)) !important;
   color: hsl(var(--foreground)) !important;
   border-radius: var(--radius) !important;
-  font-size: 0.875rem !important; /* text-sm */
-  height: 2.5rem !important; /* standard input height */
+  font-size: 0.875rem !important;
+  /* text-sm */
+  height: 2.5rem !important;
+  /* standard input height */
 }
 
 /* Disabled and Read-Only state resets */
@@ -511,6 +615,7 @@ input[type="time"]::-webkit-calendar-picker-indicator {
    PRINT / PDF STYLES — Salary Slip Only
    ============================================ */
 @media print {
+
   /* Hide everything by default */
   body * {
     visibility: hidden;
@@ -551,20 +656,24 @@ input[type="time"]::-webkit-calendar-picker-indicator {
   max-width: 100% !important;
   height: auto !important;
 }
+
 .ql-container {
   max-width: 100% !important;
   width: 100% !important;
 }
+
 .ql-editor {
   max-width: 100% !important;
   width: 100% !important;
   overflow-x: hidden !important;
 }
+
 .ql-editor * {
   max-width: 100% !important;
   white-space: normal !important;
   word-break: break-word !important;
 }
+
 .ql-snow {
   max-width: 100% !important;
   width: 100% !important;
@@ -575,11 +684,13 @@ input[type="time"]::-webkit-calendar-picker-indicator {
   max-width: 100% !important;
   overflow: hidden;
 }
+
 .canva-embed-container * {
   max-width: 100% !important;
   white-space: normal !important;
   word-break: break-word !important;
 }
+
 .canva-embed-container iframe {
   max-width: 100% !important;
   height: auto;

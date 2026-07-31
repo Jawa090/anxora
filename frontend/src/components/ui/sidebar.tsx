@@ -440,9 +440,26 @@ const SidebarMenuButton = React.forwardRef<
     isActive?: boolean;
     tooltip?: string | React.ComponentProps<typeof TooltipContent>;
   } & VariantProps<typeof sidebarMenuButtonVariants>
->(({ asChild = false, isActive = false, variant = "default", size = "default", tooltip, className, ...props }, ref) => {
+>(({ asChild = false, isActive = false, variant = "default", size = "default", tooltip, className, children, ...props }, ref) => {
   const Comp = asChild ? Slot : "button";
   const { isMobile, state } = useSidebar();
+
+  // Wrap first child (usually an icon) in a circular background
+  const wrappedChildren = React.Children.map(children, (child, index) => {
+    if (index === 0 && React.isValidElement(child) && child.type === 'svg') {
+      return (
+        <span className={cn(
+          "grid h-7 w-7 shrink-0 place-items-center rounded-lg transition-all duration-200",
+          isActive
+            ? "bg-sidebar-primary text-sidebar-primary-foreground shadow-sm"
+            : "bg-sidebar-accent/20 text-sidebar-primary group-hover:bg-sidebar-primary/20",
+        )}>
+          {child}
+        </span>
+      );
+    }
+    return child;
+  });
 
   const button = (
     <Comp
@@ -452,7 +469,9 @@ const SidebarMenuButton = React.forwardRef<
       data-active={isActive}
       className={cn(sidebarMenuButtonVariants({ variant, size }), className)}
       {...props}
-    />
+    >
+      {wrappedChildren}
+    </Comp>
   );
 
   if (!tooltip) {
@@ -496,7 +515,7 @@ const SidebarMenuAction = React.forwardRef<
         "peer-data-[size=lg]/menu-button:top-2.5",
         "group-data-[collapsible=icon]:hidden",
         showOnHover &&
-          "group-focus-within/menu-item:opacity-100 group-hover/menu-item:opacity-100 data-[state=open]:opacity-100 peer-data-[active=true]/menu-button:text-sidebar-accent-foreground md:opacity-0",
+        "group-focus-within/menu-item:opacity-100 group-hover/menu-item:opacity-100 data-[state=open]:opacity-100 peer-data-[active=true]/menu-button:text-sidebar-accent-foreground md:opacity-0",
         className,
       )}
       {...props}
@@ -540,12 +559,12 @@ const SidebarMenuSkeleton = React.forwardRef<
     <div
       ref={ref}
       data-sidebar="menu-skeleton"
-      className={cn("flex h-8 items-center gap-2 rounded-md px-2", className)}
+      className={cn("flex h-8 items-center gap-2 rounded-md px-2 bg-[hsl(var(--skeleton-bg)/0.15)]", className)}
       {...props}
     >
-      {showIcon && <Skeleton className="size-4 rounded-md" data-sidebar="menu-skeleton-icon" />}
+      {showIcon && <Skeleton className="size-4 rounded-md bg-[hsl(var(--skeleton-color)/0.4)]" data-sidebar="menu-skeleton-icon" />}
       <Skeleton
-        className="h-4 max-w-[--skeleton-width] flex-1"
+        className="h-4 max-w-[--skeleton-width] flex-1 bg-[hsl(var(--skeleton-color)/0.35)]"
         data-sidebar="menu-skeleton-text"
         style={
           {

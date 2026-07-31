@@ -180,22 +180,23 @@ export function TaskDialog({
       : false  // new task pe delegation default OFF
   );
 
+  const isSuperAdmin = userRole?.role === 'admin' || userRole?.role === 'super_admin';
+
   // ─── UNIFORM ASSIGNMENT RULE ───
   // Assign kar sakta hai agar:
-  // 1. Admin / super_admin
-  // 2. System manager role
-  // 3. Task creator
-  // 4. Current assignee jise delegation ON ho
+  // 1. Super Admin / Admin
+  // 2. Task creator
+  // 3. Delegator (jis ne pehle task kisi ko delegate kiya tha)
+  // 4. Current assignee jise delegation ON (can_assign = true) mili ho
   const canModifyAssignment =
-    isAdmin ||
-    isManager ||
+    isSuperAdmin ||
     isTaskCreator ||
-    (!!task && task.assigned_to === profile?.id && delegationAllowed);
+    isDelegator ||
+    (!!task && task.assigned_to === profile?.id && (task.can_assign === true || (task as any).canAssign === true));
 
-  // Admin/manager/creator — full delegation control
+  // Admin/creator/delegator — full delegation control
   const canGrantDelegation =
-    isAdmin ||
-    isManager ||
+    isSuperAdmin ||
     isTaskCreator ||
     isDelegator;
 

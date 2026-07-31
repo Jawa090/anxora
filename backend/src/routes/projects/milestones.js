@@ -7,6 +7,7 @@ router.use(auth, requireOrg);
 
 // My assigned milestones MUST be before /:id routes
 router.get('/my-assigned', milestonesController.getMyAssignedMilestones);
+router.get('/', milestonesController.getAll);
 
 router.get('/project/:projectId', milestonesController.getByProject);
 router.post('/project/:projectId', milestonesController.create);

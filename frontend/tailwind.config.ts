@@ -77,6 +77,20 @@ export default {
           "4": "hsl(var(--chart-4))",
           "5": "hsl(var(--chart-5))",
         },
+        // Additional brand colors from frontend-anxora
+        teal: {
+          "50": "#F1F6F6",
+          "100": "#E8F0F0",
+          "200": "#D3E2E3",
+          "300": "#AAC7C9",
+          "400": "#5B8C8E",
+          "500": "#2DD4BF",
+          "600": "#14858E",
+          "700": "#0D646B",
+          "800": "#053B3F",
+          "900": "#032124",
+          "950": "#021B1D",
+        },
       },
       borderRadius: {
         lg: "var(--radius)",

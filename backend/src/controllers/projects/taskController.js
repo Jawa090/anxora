@@ -87,7 +87,7 @@ const getAll = async (req, res, next) => {
       query += ` AND (
         t.assigned_to = $${paramIndex} OR
         t.created_by = $${paramIndex} OR
-        t.delegated_by = $${paramIndex} OR
+        (t.delegated_by = $${paramIndex} AND t.assigned_to IS NOT NULL) OR
         (t.project_id IS NOT NULL AND EXISTS (
           SELECT 1 FROM public.projects pr
           WHERE pr.id = t.project_id
@@ -304,9 +304,12 @@ const update = async (req, res, next) => {
       values.push(description);
     }
     if (assignedTo !== undefined && canChangeAssignment) {
+      const cleanAssignedTo = assignedTo === '' ? null : assignedTo;
       fields.push(`assigned_to = $${p++}`);
-      values.push(assignedTo === '' ? null : assignedTo);
-      if (isAssignee && delegationAllowed) {
+      values.push(cleanAssignedTo);
+      if (cleanAssignedTo === null) {
+        fields.push(`delegated_by = null`);
+      } else if (isAssignee && delegationAllowed) {
         fields.push(`delegated_by = $${p++}`);
         values.push(req.user.id);
       }
@@ -343,9 +346,10 @@ const update = async (req, res, next) => {
       fields.push(`progress = $${p++}`);
       values.push(finalProgress);
     }
-    if (can_assign !== undefined && canChangeCanAssign) {
+    const targetCanAssign = can_assign !== undefined ? can_assign : req.body.canAssign;
+    if (targetCanAssign !== undefined && canChangeCanAssign) {
       fields.push(`can_assign = $${p++}`);
-      values.push(can_assign);
+      values.push(Boolean(targetCanAssign));
     }
     if (recurrence_rule !== undefined) {
       fields.push(`is_recurring = $${p++}`);
@@ -405,30 +409,17 @@ const update = async (req, res, next) => {
           }
         }
 
-        // Check if we should remove old assignee from project members
+        // Retain delegator in project members so delegator keeps project visibility
         if (oldAssignee) {
           try {
-            const otherMs = await db.query(
-              `SELECT 1 FROM project_milestone_assignees pma
-               JOIN project_milestones m ON pma.milestone_id = m.id
-               WHERE m.project_id = $1 AND pma.assigned_to = $2`,
-              [projectId, oldAssignee]
+            await db.query(
+              `INSERT INTO project_members (org_id, project_id, user_id, role)
+               VALUES ($1, $2, $3, 'member')
+               ON CONFLICT (project_id, user_id) DO NOTHING`,
+              [req.user.orgId, projectId, oldAssignee]
             );
-            
-            const otherTasks = await db.query(
-              `SELECT 1 FROM public.tasks 
-               WHERE project_id = $1 AND (assigned_to = $2 OR created_by = $2) AND id != $3`,
-              [projectId, oldAssignee, id]
-            );
-
-            if (otherMs.rows.length === 0 && otherTasks.rows.length === 0) {
-              await db.query(
-                'DELETE FROM project_members WHERE project_id = $1 AND user_id = $2 AND org_id = $3',
-                [projectId, oldAssignee, req.user.orgId]
-              );
-            }
           } catch (err) {
-            console.error('Error auto-removing task assignee from project members:', err);
+            console.error('Error auto-retaining delegator in project members:', err);
           }
         }
       }

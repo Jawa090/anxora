@@ -1,4 +1,4 @@
 {
-    "git.ignoreLimitWarning": true,
-    "css.lint.unknownAtRules": "ignore"
+  "git.ignoreLimitWarning": true,
+  "css.lint.unknownAtRules": "ignore"
 }

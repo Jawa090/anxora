@@ -399,7 +399,7 @@ export function ProjectDialog({
         </div>
 
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
+          <Button variant="outline" onClick={() => onOpenChange(false)} className="hover:bg-primary border-primary">
             Cancel
           </Button>
           <Button onClick={handleSubmit} disabled={!formData.name.trim()}>
