@@ -25,24 +25,34 @@ interface MemberSearchSelectProps {
 }
 
 function MemberAvatar({ member, size = "sm" }: { member: Member; size?: "sm" | "md" }) {
-    const initials = member.full_name
+    const initials = (member.full_name || "")
         .split(/\s+/)
         .map((w) => w[0])
+        .filter(Boolean)
         .join("")
         .toUpperCase()
-        .slice(0, 2);
+        .slice(0, 2) || "?";
 
     const sizeClass = size === "sm" ? "h-5 w-5 text-[9px]" : "h-6 w-6 text-[10px]";
 
-    return (
-        <Avatar className={cn(sizeClass, "shrink-0")}>
-            {member.avatar_url && (
+    if (member.avatar_url) {
+        return (
+            <Avatar className={cn(sizeClass, "shrink-0")}>
                 <AvatarImage src={member.avatar_url} alt={member.full_name} />
-            )}
-            <AvatarFallback className="bg-primary/20 text-primary font-bold">
-                {initials}
-            </AvatarFallback>
-        </Avatar>
+                <AvatarFallback className="bg-primary/20 text-primary font-bold">
+                    {initials}
+                </AvatarFallback>
+            </Avatar>
+        );
+    }
+
+    return (
+        <div className={cn(
+            sizeClass,
+            "shrink-0 rounded-full bg-primary/20 text-primary font-bold flex items-center justify-center"
+        )}>
+            {initials}
+        </div>
     );
 }
 
@@ -82,7 +92,12 @@ export function MemberSearchSelect({
                     role="combobox"
                     aria-expanded={open}
                     disabled={disabled}
-                    className="w-full justify-between font-normal h-10 px-3"
+                    className={cn(
+                        "w-full justify-between font-normal h-10 px-3 transition-all duration-200",
+                        selected
+                            ? "bg-secondary-foreground/10 border-secondary-foreground/20 text-foreground dark:bg-primary/10 dark:border-primary/20 hover:dark:bg-primary/15"
+                            : "bg-muted border-border text-muted-foreground/75"
+                    )}
                 >
                     <span className="flex items-center gap-2 truncate">
                         {selected ? (
@@ -120,10 +135,10 @@ export function MemberSearchSelect({
                     <button
                         onClick={() => handleSelect("")}
                         className={cn(
-                            "w-full flex items-center gap-2 px-3 py-2 text-sm transition-colors",
+                            "w-full flex items-center gap-2 px-3 py-2 text-sm transition-colors text-left",
                             !value
-                                ? "bg-primary text-primary-foreground font-medium"
-                                : "hover:bg-muted text-foreground"
+                                ? "bg-secondary-foreground/15 text-secondary-foreground dark:bg-primary/20 dark:text-primary font-semibold"
+                                : "text-foreground hover:bg-secondary-foreground/15 hover:text-secondary-foreground dark:hover:bg-primary/20 dark:hover:text-primary"
                         )}
                     >
                         <Check
@@ -146,10 +161,10 @@ export function MemberSearchSelect({
                                 key={member.id}
                                 onClick={() => handleSelect(member.id)}
                                 className={cn(
-                                    "w-full flex items-center gap-2 px-3 py-2 text-sm transition-colors",
+                                    "w-full flex items-center gap-2 px-3 py-2 text-sm transition-colors text-left",
                                     value === member.id
-                                        ? "bg-primary text-primary-foreground font-medium"
-                                        : "hover:bg-muted text-foreground"
+                                        ? "bg-secondary-foreground/15 text-secondary-foreground dark:bg-primary/20 dark:text-primary font-semibold"
+                                        : "text-foreground hover:bg-secondary-foreground/15 hover:text-secondary-foreground dark:hover:bg-primary/20 dark:hover:text-primary"
                                 )}
                             >
                                 <Check

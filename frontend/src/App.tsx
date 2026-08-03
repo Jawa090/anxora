@@ -101,7 +101,7 @@ import ContactDetailPage from "./pages/crm/ContactDetailPage";
 import CompanyDetailPage from "./pages/crm/CompanyDetailPage";
 import CustomerDetailPage from "./pages/crm/CustomerDetailPage";
 // Tasks & Automation
-import TasksPage from "./pages/tasks/TasksPage";
+import TasksPage from "./pages/tasks/IndependentTasksPage";
 import IssueDetailPage from "./pages/tasks/IssueDetailPage";
 import WorkflowsPage from "./pages/automation/WorkflowsPage";
 import IntegrationsPage from "./pages/automation/IntegrationsPage";
@@ -292,7 +292,7 @@ const App = () => (
                         <Route path="/admin/join-requests" element={<AdminRoute><JoinRequestsPage /></AdminRoute>} />
                         <Route path="/admin-dashboard" element={<AdminRoute><AdminDashboardPage /></AdminRoute>} />
                         {/* Projects & Workspaces */}
-                        <Route path="/tasks" element={<ProjectsDashboardPage />} />
+                        <Route path="/tasks" element={<TasksPage />} />
                         <Route path="/projects" element={<ProjectsDashboardPage />} />
                         <Route path="/projects/:id" element={<ProjectDetailPage />} />
                         <Route path="/marketing/automation" element={<RoleProtectedRoute allowedRoles={["super_admin", "admin"]} fallbackCheck={(role, profile) => profile?.department?.toLowerCase() === "marketing"}><WorkflowsPage /></RoleProtectedRoute>} />

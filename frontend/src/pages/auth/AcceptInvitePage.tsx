@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { authApi } from '@/lib/api';
 import { toast } from 'sonner';
+import { Logo } from "@/components/Logo";
 import { ShieldCheck, Lock, Loader2, CheckCircle2, Eye, EyeOff, Sparkles, Zap, Layers, Shield, AlertCircle, Mail, ArrowRight } from 'lucide-react';
 
 export default function AcceptInvitePage() {
@@ -87,11 +88,9 @@ export default function AcceptInvitePage() {
 
         <div className="w-full max-w-[440px] bg-[#021B1D]/60 border border-[#2DD4BF]/20 rounded-[28px] p-8 md:p-10 space-y-8 text-center backdrop-blur-xl z-10">
           <div className="flex flex-col items-center justify-center gap-3">
-            <div className="w-12 h-12 rounded-2xl bg-[#2DD4BF]/20 border border-[#2DD4BF]/35 flex items-center justify-center shadow-lg shadow-[#2DD4BF]/10">
-              <div className="w-6 h-6 flex items-center justify-center border-2 border-[#2DD4BF] rounded text-[#2DD4BF] font-bold text-sm">3</div>
-            </div>
-            <h1 className="text-2xl font-bold tracking-tight text-white mt-2">
-              ANXORA <span className="text-[#2DD4BF]">SMART OS</span>
+            <Logo className="h-12 w-12 text-[#2DD4BF] bg-transparent" />
+            <h1 className="text-2xl font-bold tracking-tight text-white mt-2 font-serif uppercase">
+              ANXORA <span className="text-[#2DD4BF] font-sans font-semibold tracking-wider text-xl">SMART</span>
             </h1>
           </div>
 
@@ -118,11 +117,9 @@ export default function AcceptInvitePage() {
 
       {/* Header section matching screenshot */}
       <div className="flex flex-col items-center justify-center mb-8 z-10">
-        <div className="w-12 h-12 rounded-2xl bg-[#2DD4BF]/20 border border-[#2DD4BF]/35 flex items-center justify-center shadow-lg shadow-[#2DD4BF]/20 mb-4 animate-bounce">
-          <div className="w-6 h-6 flex items-center justify-center border-2 border-[#2DD4BF] rounded text-[#2DD4BF] font-bold text-sm">3</div>
-        </div>
-        <h1 className="text-3xl font-bold tracking-tight text-white mb-2">
-          ANXORA <span className="text-[#2DD4BF]">SMART OS</span>
+        <Logo className="h-12 w-12 text-[#2DD4BF] bg-transparent mb-4 animate-bounce" />
+        <h1 className="text-3xl font-bold tracking-tight text-white mb-2 font-serif uppercase">
+          ANXORA <span className="text-[#2DD4BF] font-sans font-semibold tracking-wider text-2xl">SMART</span>
         </h1>
         <p className="text-sm text-[#8AA1A3] font-medium">
           {success ? "Verification complete" : `Welcome, ${userInfo.full_name || 'User'}! Set up your credentials to activate your workspace.`}

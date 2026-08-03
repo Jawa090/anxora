@@ -47,8 +47,8 @@ const getAll = async (req, res, next) => {
             AND t.org_id = $1
         ) OR
         EXISTS (
-          SELECT 1 FROM public.project_milestone_assignees pma
-          JOIN public.project_milestones m ON pma.milestone_id = m.id
+          SELECT 1 FROM public.project_milestones m
+          LEFT JOIN public.project_milestone_assignees pma ON pma.milestone_id = m.id
           WHERE m.project_id = p.id
             AND (pma.assigned_to = $${paramIndex} OR m.assigned_to = $${paramIndex} OR m.created_by = $${paramIndex})
             AND m.org_id = $1

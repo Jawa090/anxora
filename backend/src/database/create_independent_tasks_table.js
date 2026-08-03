@@ -1,0 +1,51 @@
+const db = require('../config/database');
+
+async function run() {
+  try {
+    console.log('Creating independent_tasks table...');
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS public.independent_tasks (
+          id uuid DEFAULT gen_random_uuid() NOT NULL PRIMARY KEY,
+          org_id uuid NOT NULL,
+          title character varying(255) NOT NULL,
+          description text,
+          status character varying(50) DEFAULT 'pending'::character varying,
+          priority character varying(50) DEFAULT 'medium'::character varying,
+          assigned_to uuid,
+          due_date date,
+          sort_order integer DEFAULT 0,
+          created_by uuid,
+          created_at timestamp with time zone DEFAULT now(),
+          updated_at timestamp with time zone DEFAULT now(),
+          parent_task_id uuid,
+          start_date date,
+          end_date date,
+          estimated_hours numeric,
+          actual_hours numeric,
+          progress integer DEFAULT 0,
+          tags text[],
+          attachments jsonb,
+          dependencies uuid[],
+          watchers uuid[],
+          completed_at timestamp with time zone,
+          is_recurring boolean DEFAULT false,
+          recurrence_pattern character varying(100),
+          labels text[],
+          updated_by uuid,
+          is_starred boolean DEFAULT false,
+          can_assign boolean DEFAULT false,
+          delegated_by uuid,
+          delay_reason text,
+          timer_start_at timestamp with time zone,
+          timer_user_id uuid
+      );
+    `);
+    console.log('✓ Successfully created public.independent_tasks table!');
+    process.exit(0);
+  } catch (err) {
+    console.error('Failed to create independent_tasks table:', err);
+    process.exit(1);
+  }
+}
+
+run();

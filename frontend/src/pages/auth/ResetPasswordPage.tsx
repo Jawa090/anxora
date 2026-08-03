@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Logo } from "@/components/Logo";
 import { Loader2, AlertCircle, CheckCircle2, Eye, EyeOff, Sparkles, Lock, Shield, Zap, Layers, Mail, ArrowLeft, ArrowRight, Link } from 'lucide-react';
 
 export default function ResetPasswordPage() {
@@ -83,11 +84,9 @@ export default function ResetPasswordPage() {
       <div className="relative w-full max-w-md z-10">
         {/* Logo & Header */}
         <div className="mb-8 text-center animate-fade-in">
-          <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-[#2DD4BF] text-[#021B1D] shadow-lg shadow-[#2DD4BF]/20">
-            <div className="w-6 h-6 flex items-center justify-center border-2 border-[#2DD4BF] rounded text-[#2DD4BF] font-bold text-sm">3</div>
-          </div>
-          <h2 className="text-3xl font-extrabold tracking-tight text-white sm:text-4xl">
-            ANXORA <span className="text-[#2DD4BF]">SMART OS</span>
+          <Logo className="mx-auto mb-3 h-12 w-12 text-[#2DD4BF] bg-transparent" />
+          <h2 className="text-3xl font-extrabold tracking-tight text-white sm:text-4xl font-serif uppercase">
+            ANXORA <span className="text-[#2DD4BF] font-sans font-semibold tracking-wider text-2xl">SMART</span>
           </h2>
           <p className="mt-2 text-sm text-[#8AA1A3]">
             {success ? "Password updated successfully" : "Set your new system credentials"}

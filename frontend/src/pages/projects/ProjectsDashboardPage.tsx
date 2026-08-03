@@ -144,6 +144,24 @@ export default function ProjectsDashboardPage() {
     return { total, active, completed, onHold };
   }, [projects]);
 
+  const filteredTasks = useMemo(() => {
+    if (isAdmin) return allTasks;
+    return allTasks.filter((t: any) =>
+      t.assigned_to === profile?.id ||
+      t.created_by === profile?.id ||
+      t.delegated_by === profile?.id
+    );
+  }, [allTasks, isAdmin, profile]);
+
+  const filteredMilestones = useMemo(() => {
+    if (isAdmin) return allMilestones;
+    return allMilestones.filter((m: any) =>
+      m.assigned_to === profile?.id ||
+      m.created_by === profile?.id ||
+      (Array.isArray(m.assignees) && m.assignees.some((a: any) => a.id === profile?.id || a.assigned_to === profile?.id))
+    );
+  }, [allMilestones, isAdmin, profile]);
+
   const taskStats = useMemo(() => {
     const now = new Date();
     let active = 0;
@@ -151,61 +169,53 @@ export default function ProjectsDashboardPage() {
     let overdue = 0;
     let completed = 0;
 
-    if (allTasks && allTasks.length > 0) {
-      allTasks.forEach((t: any) => {
+    if (filteredTasks && filteredTasks.length > 0) {
+      filteredTasks.forEach((t: any) => {
         const isCompleted = t.status === "completed" || t.status === "done";
-        const isActive = t.status === "in_progress" || t.status === "doing" || t.status === "active" || t.status === "review";
+        const isActive = !isCompleted;
         const dueDate = t.due_date || t.due_at || t.dueDate;
         const isOverdue = !isCompleted && dueDate && new Date(dueDate) < now;
 
         if (isCompleted) completed++;
-        else if (isActive) active++;
-        else pending++;
+        else active++;
 
         if (isOverdue) overdue++;
-      });
-    } else {
-      projects.forEach((p: any) => {
-        active += parseInt(p.active_tasks_count) || 0;
-        const total = parseInt(p.total_tasks_count) || 0;
-        const done = parseInt(p.completed_tasks_count) || 0;
-        pending += Math.max(0, total - active - done);
       });
     }
 
     return { active, pending, overdue, completed, total: active + pending + completed };
-  }, [allTasks, projects]);
+  }, [filteredTasks]);
 
   const milestoneStats = useMemo(() => {
     let active = 0;
     let pending = 0;
     let completed = 0;
-    let total = 0;
 
-    projects.forEach((p: any) => {
-      active += parseInt(p.active_milestones_count) || 0;
-      pending += parseInt(p.pending_milestones_count) || 0;
-      completed += parseInt(p.completed_milestones_count) || 0;
-      total += parseInt(p.total_milestones_count) || 0;
+    filteredMilestones.forEach((m: any) => {
+      const isCompleted = m.status === "completed" || m.status === "done";
+      const isActive = !isCompleted;
+      
+      if (isCompleted) completed++;
+      else active++;
     });
 
-    return { active, pending, completed, total };
-  }, [projects]);
+    return { active, pending, completed, total: filteredMilestones.length };
+  }, [filteredMilestones]);
 
   const activeTasksList = useMemo(() => {
-    return allTasks.filter(
+    return filteredTasks.filter(
       (t: any) => t.status !== "completed" && t.status !== "done"
     );
-  }, [allTasks]);
+  }, [filteredTasks]);
 
   const overdueTasksList = useMemo(() => {
     const now = new Date();
-    return allTasks.filter((t: any) => {
+    return filteredTasks.filter((t: any) => {
       const isCompleted = t.status === "completed" || t.status === "done";
       const dueDate = t.due_date || t.due_at || t.dueDate;
       return !isCompleted && dueDate && new Date(dueDate) < now;
     });
-  }, [allTasks]);
+  }, [filteredTasks]);
 
   const toggleExpand = (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
@@ -302,7 +312,7 @@ export default function ProjectsDashboardPage() {
               : `${projects.length} project workspace${projects.length !== 1 ? "s" : ""}`}
           </p>
         </div>
-        <Button onClick={() => setDialogOpen(true)} className="gap-1.5 shadow-sm h-9 bg-secondary hover:bg-primary/80 rounded-xl font-bold text-xs text-white">
+        <Button onClick={() => setDialogOpen(true)} className="gap-1.5 shadow-sm h-9 bg-secondary-foreground hover:bg-secondary-foreground/80 rounded-xl font-bold text-xs text-white">
           <Plus className="h-4 w-4" /> New Project
         </Button>
       </div>
@@ -314,7 +324,7 @@ export default function ProjectsDashboardPage() {
           <Card className="p-4 bg-card/40 backdrop-blur-xl border border-border rounded-2xl relative overflow-hidden flex flex-col justify-between shadow-sm">
             <div className="flex items-center justify-between">
               <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Projects</span>
-              <div className="h-8 w-8 rounded-xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center shrink-0">
+              <div className="h-8 w-8 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
                 <FolderKanban className="h-4 w-4" />
               </div>
             </div>
@@ -323,9 +333,9 @@ export default function ProjectsDashboardPage() {
               <p className="text-[11px] text-muted-foreground mt-0.5">Total Workspaces</p>
             </div>
             <div className="flex items-center gap-2 mt-3 pt-2 border-t border-border/40 text-[10px]">
-              <span className="text-emerald-400 font-bold">{projectStats.active} Active</span>
+              <span className="text-primary font-bold">{projectStats.active} Active</span>
               <span className="text-muted-foreground">•</span>
-              <span className="text-blue-400 font-bold">{projectStats.completed} Completed</span>
+              <span className="text-muted-foreground font-bold">{projectStats.completed} Completed</span>
             </div>
           </Card>
 
@@ -333,17 +343,17 @@ export default function ProjectsDashboardPage() {
           <Card className="p-4 bg-card/40 backdrop-blur-xl border border-border rounded-2xl relative overflow-hidden flex flex-col justify-between shadow-sm">
             <div className="flex items-center justify-between">
               <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Tasks Summary</span>
-              <div className="h-8 w-8 rounded-xl bg-blue-500/10 text-blue-400 flex items-center justify-center shrink-0">
+              <div className="h-8 w-8 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
                 <CheckSquare className="h-4 w-4" />
               </div>
             </div>
             <div className="mt-2 flex items-baseline gap-2">
               <div className="text-2xl font-bold text-foreground">{taskStats.active}</div>
-              <span className="text-xs text-blue-400 font-medium">Active Tasks</span>
+              <span className="text-xs text-primary font-medium">Active Tasks</span>
             </div>
             <div className="flex items-center justify-between gap-1 mt-3 pt-2 border-t border-border/40 text-[10px]">
               <span className="text-muted-foreground font-semibold">{taskStats.pending} Pending</span>
-              <span className="text-emerald-400 font-semibold">{taskStats.completed} Done</span>
+              <span className="text-muted-foreground font-semibold">{taskStats.completed} Done</span>
             </div>
           </Card>
 
@@ -351,17 +361,17 @@ export default function ProjectsDashboardPage() {
           <Card className="p-4 bg-card/40 backdrop-blur-xl border border-border rounded-2xl relative overflow-hidden flex flex-col justify-between shadow-sm">
             <div className="flex items-center justify-between">
               <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Milestones</span>
-              <div className="h-8 w-8 rounded-xl bg-violet-500/10 text-violet-400 flex items-center justify-center shrink-0">
+              <div className="h-8 w-8 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
                 <Milestone className="h-4 w-4" />
               </div>
             </div>
             <div className="mt-2 flex items-baseline gap-2">
               <div className="text-2xl font-bold text-foreground">{milestoneStats.active}</div>
-              <span className="text-xs text-violet-400 font-medium">Active Milestones</span>
+              <span className="text-xs text-primary font-medium">Active Milestones</span>
             </div>
             <div className="flex items-center justify-between mt-3 pt-2 border-t border-border/40 text-[10px]">
               <span className="text-muted-foreground font-semibold">{milestoneStats.total} Total</span>
-              <span className="text-emerald-400 font-bold">{milestoneStats.completed} Completed</span>
+              <span className="text-muted-foreground font-bold">{milestoneStats.completed} Completed</span>
             </div>
           </Card>
 
@@ -519,7 +529,7 @@ export default function ProjectsDashboardPage() {
         ) : activeTab === "milestones" ? (
           /* MILESTONES SIDEBAR TAB VIEW */
           <div className="space-y-4">
-            {allMilestones.filter((m: any) => !search || (m.name || "").toLowerCase().includes(search.toLowerCase()) || (m.project_name || "").toLowerCase().includes(search.toLowerCase())).length === 0 ? (
+            {filteredMilestones.filter((m: any) => !search || (m.name || "").toLowerCase().includes(search.toLowerCase()) || (m.project_name || "").toLowerCase().includes(search.toLowerCase())).length === 0 ? (
               <Card className="p-12 text-center bg-card/20 border-dashed rounded-2xl space-y-3">
                 <Milestone className="h-10 w-10 mx-auto opacity-30 text-violet-400" />
                 <div>
@@ -529,7 +539,7 @@ export default function ProjectsDashboardPage() {
               </Card>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
-                {allMilestones
+                {filteredMilestones
                   .filter((m: any) => !search || (m.name || "").toLowerCase().includes(search.toLowerCase()) || (m.project_name || "").toLowerCase().includes(search.toLowerCase()))
                   .map((m: any) => {
                     const statusBadgeClass =
@@ -711,7 +721,7 @@ export default function ProjectsDashboardPage() {
                           </td>
                           <td className="py-3 px-4">
                             <div className="flex items-center gap-3">
-                              <div className={cn("h-8 w-8 rounded-xl flex items-center justify-center text-xs font-bold text-white bg-gradient-to-tr shadow-sm shrink-0", gradient)}>
+                              <div className="h-8 w-8 rounded-xl flex items-center justify-center text-xs font-bold bg-secondary-foreground dark:bg-primary text-white dark:text-primary-foreground shadow-sm shrink-0">
                                 {initials}
                               </div>
                               <div>
@@ -726,12 +736,12 @@ export default function ProjectsDashboardPage() {
                             </Badge>
                           </td>
                           <td className="py-3 px-4">
-                            <Badge variant="outline" className="text-[10px] font-bold bg-violet-500/10 text-violet-400 border-violet-500/20">
+                            <Badge variant="outline" className="text-[10px] font-bold bg-muted text-muted-foreground border-border">
                               {activeMilestones} Active / {totalMilestones} Total
                             </Badge>
                           </td>
                           <td className="py-3 px-4">
-                            <Badge variant="outline" className="text-[10px] font-bold bg-blue-500/10 text-blue-400 border-blue-500/20">
+                            <Badge variant="outline" className="text-[10px] font-bold bg-muted text-muted-foreground border-border">
                               {activeCount} Active Tasks
                             </Badge>
                           </td>
@@ -744,7 +754,7 @@ export default function ProjectsDashboardPage() {
                           <td className="py-3 px-4 text-muted-foreground font-medium text-[11px]">
                             {project.end_date ? format(new Date(project.end_date), "MMM d, yyyy") : "Flexible"}
                           </td>
-                          <td className="py-3 px-4 font-bold text-emerald-400 text-[11px]">
+                          <td className="py-3 px-4 font-bold text-foreground text-[11px]">
                             {project.budget ? `$${Number(project.budget).toLocaleString()}` : "—"}
                           </td>
                           <td className="py-3 px-4 text-right" onClick={(e) => e.stopPropagation()}>

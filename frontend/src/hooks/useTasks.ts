@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { projectsApi, tasksApi } from '@/lib/api';
+import { projectsApi, tasksApi, independentTasksApi } from '@/lib/api';
 import { toast } from 'sonner';
 
 export interface Task {
@@ -253,5 +253,64 @@ export function useStopTaskTimer() {
       toast.success('Timer stopped. Time entry created.');
     },
     onError: (err: Error) => toast.error('Failed to stop timer: ' + err.message),
+  });
+}
+
+export function useIndependentTasks(filters?: { status?: string; assigned_to?: string }) {
+  return useQuery({
+    queryKey: ['independent-tasks', filters],
+    queryFn: () => independentTasksApi.getAll(filters),
+  });
+}
+
+export function useCreateIndependentTask() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (task: Partial<Task> & { title: string }) => independentTasksApi.create(task),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['independent-tasks'] });
+      toast.success('Task created');
+    },
+    onError: (err: Error) => toast.error('Failed: ' + err.message),
+  });
+}
+
+export function useUpdateIndependentTask() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ id, ...updates }: Partial<Task> & { id: string }) =>
+      independentTasksApi.update(id, updates),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['independent-tasks'] });
+    },
+    onError: (err: Error) => toast.error('Failed: ' + err.message),
+  });
+}
+
+export function useUpdateIndependentTaskStatus() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ id, status }: { id: string; status: string }) =>
+      independentTasksApi.updateStatus(id, status),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['independent-tasks'] });
+    },
+    onError: (err: Error) => toast.error('Failed: ' + err.message),
+  });
+}
+
+export function useDeleteIndependentTask() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (id: string) => independentTasksApi.delete(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['independent-tasks'] });
+      toast.success('Task deleted');
+    },
+    onError: (err: Error) => toast.error('Failed: ' + err.message),
   });
 }

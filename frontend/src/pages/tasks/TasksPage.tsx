@@ -36,16 +36,16 @@ import {
   AlertCircle,
   Inbox,
   TrendingUp,
+  FileText,
+  MessageSquare,
 } from "lucide-react";
 import {
-  useProjects,
-  useTasks,
-  useCreateTask,
-  useUpdateTask,
-  useCreateProject,
-  useUpdateProject,
+  useIndependentTasks,
+  useCreateIndependentTask,
+  useUpdateIndependentTask,
+  useDeleteIndependentTask,
+  useUpdateIndependentTaskStatus,
   type Task,
-  type Project,
 } from "@/hooks/useTasks";
 import { useOrganizationProfiles } from "@/hooks/useTenantQuery";
 import { isToday, isTomorrow, isPast } from "date-fns";
@@ -145,8 +145,7 @@ export default function TasksPage() {
   const [showTaskDialog, setShowTaskDialog] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [showFilters, setShowFilters] = useState(false);
-  const [showProjectDialog, setShowProjectDialog] = useState(false);
-  const [editingProject, setEditingProject] = useState<Project | null>(null);
+
   const [newTaskStatus, setNewTaskStatus] = useState<string | null>(null);
   const [newTaskDate, setNewTaskDate] = useState<Date | null>(null);
   const [showCommandMenu, setShowCommandMenu] = useState(false);
@@ -157,13 +156,11 @@ export default function TasksPage() {
     assignee: [],
   });
 
-  const { data: projects = [] } = useProjects();
-  const { data: allTasks = [] } = useTasks();
+  const projects: any[] = [];
+  const { data: allTasks = [] } = useIndependentTasks();
   const { data: members = [] } = useOrganizationProfiles();
-  const createTask = useCreateTask();
-  const updateTask = useUpdateTask();
-  const createProject = useCreateProject();
-  const updateProject = useUpdateProject();
+  const createTask = useCreateIndependentTask();
+  const updateTask = useUpdateIndependentTask();
 
   // Detail panel state (for notification deep-links via ?taskId=)
   const [detailTask, setDetailTask] = useState<Task | null>(null);
@@ -222,11 +219,7 @@ export default function TasksPage() {
         e.preventDefault();
         setShowTaskDialog(true);
       }
-      // Cmd/Ctrl + P for new project
-      if ((e.metaKey || e.ctrlKey) && e.key === "p") {
-        e.preventDefault();
-        setShowProjectDialog(true);
-      }
+
       // 1, 2, 3 for view switching (only if not typing)
       const target = e.target as HTMLElement;
       if (
@@ -385,37 +378,7 @@ export default function TasksPage() {
     setNewTaskDate(null);
   };
 
-  const handleCreateProject = (data: any) => {
-    createProject.mutate(data, {
-      onSuccess: () => {
-        setShowProjectDialog(false);
-      },
-    });
-  };
 
-  const handleUpdateProject = (data: any) => {
-    if (!editingProject) return;
-
-    updateProject.mutate(
-      { id: editingProject.id, ...data },
-      {
-        onSuccess: () => {
-          setShowProjectDialog(false);
-          setEditingProject(null);
-        },
-      },
-    );
-  };
-
-  const handleCloseProjectDialog = () => {
-    setShowProjectDialog(false);
-    setEditingProject(null);
-  };
-
-  const handleEditProject = (project: Project) => {
-    setEditingProject(project);
-    setShowProjectDialog(true);
-  };
 
   const toggleFilter = (type: keyof AdvancedFilters, value: string) => {
     setAdvancedFilters((prev) => {
@@ -607,33 +570,15 @@ export default function TasksPage() {
                 </div>
               </div>
 
-              {/* Top-right: Projects button */}
               <div className="flex items-center gap-3">
-                {view === "projects" ? (
-                  <>
-                    <Button
-                      size="sm"
-                      className="gap-2"
-                      onClick={() => setShowProjectDialog(true)}
-                    >
-                      <Plus className="h-4 w-4" />
-                      New Project
-                    </Button>
-                  </>
-                ) : (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="gap-2 rounded-xl border-border/60 hover:border-primary/50 hover:bg-primary/5 hover:text-primary transition-all font-medium"
-                    onClick={() => {
-                      setView("projects");
-                      setSelectedProject(null);
-                    }}
-                  >
-                    <FolderKanban className="h-4 w-4" />
-                    Projects
-                  </Button>
-                )}
+                <Button
+                  size="sm"
+                  className="gap-2"
+                  onClick={() => setShowTaskDialog(true)}
+                >
+                  <Plus className="h-4 w-4" />
+                  Add Task
+                </Button>
               </div>
             </div>
 
@@ -946,41 +891,24 @@ export default function TasksPage() {
 
         {/* Content Area */}
         <div className="flex-1 overflow-auto p-8">
-          {view === "list" ? (
-            <TaskListView
-              tasks={filteredTasks}
-              onEditTask={handleEditTask}
-              onToggleStar={handleToggleStar}
-            />
-          ) : view === "board" ? (
+          {searchParams.get("tab") === "kanban" ? (
             <TaskBoardView
               tasks={filteredTasks}
               onEditTask={handleEditTask}
               onCreateTask={handleCreateTaskWithStatus}
               onToggleStar={handleToggleStar}
             />
-          ) : view === "calendar" ? (
-            <TaskCalendarView
+          ) : searchParams.get("tab") === "gantt" ? (
+            <TasksGanttChart tasks={filteredTasks} />
+          ) : searchParams.get("tab") === "files" ? (
+            <TasksFilesView tasks={filteredTasks} />
+          ) : searchParams.get("tab") === "slack" ? (
+            <TasksSlackChats />
+          ) : (
+            <TaskListView
               tasks={filteredTasks}
               onEditTask={handleEditTask}
-              onCreateTask={handleCreateTaskWithDate}
               onToggleStar={handleToggleStar}
-            />
-          ) : projectsSubView === "cards" ? (
-            <ProjectListView
-              projects={projects}
-              tasks={allTasks}
-              members={members}
-              onEditProject={handleEditProject}
-              onSelectProject={(projectId) => {
-                setSelectedProject(projectId);
-                setView("list");
-              }}
-            />
-          ) : (
-            <ProjectTasksView
-              tasks={allTasks.filter((t) => !!(t.project_name || t.project_id))}
-              onEditTask={handleEditTask}
             />
           )}
         </div>
@@ -998,21 +926,12 @@ export default function TasksPage() {
         onSubmit={editingTask ? handleUpdateTask : handleCreateTask}
       />
 
-      {/* Project Dialog */}
-      <ProjectDialog
-        open={showProjectDialog}
-        onOpenChange={handleCloseProjectDialog}
-        project={editingProject}
-        members={members}
-        onSubmit={editingProject ? handleUpdateProject : handleCreateProject}
-      />
-
       {/* Command Menu */}
       <CommandMenu
         open={showCommandMenu}
         onOpenChange={setShowCommandMenu}
         onCreateTask={() => setShowTaskDialog(true)}
-        onCreateProject={() => setShowProjectDialog(true)}
+        onCreateProject={() => {}}
         onChangeView={setView}
         onChangeFilter={setFilterView}
       />
@@ -1028,6 +947,210 @@ export default function TasksPage() {
           setShowTaskDialog(true);
         }}
       />
+    </div>
+  );
+}
+
+// Gantt, Files, and Slack views for independent tasks
+function TasksGanttChart({ tasks }: { tasks: any[] }) {
+  const { startDate, endDate, totalDays, weeks } = useMemo(() => {
+    const now = new Date();
+    const dates = tasks
+      .filter((t: any) => t.start_date || t.due_date || t.created_at)
+      .map((t: any) => ({
+        start: new Date(t.start_date || t.created_at),
+        end: new Date(t.due_date || t.start_date || t.created_at),
+      }));
+
+    const sd = dates.length > 0
+      ? new Date(Math.min(...dates.map((d) => d.start.getTime()), now.getTime()))
+      : new Date(now.getTime() - 7 * 86400000);
+    const ed = dates.length > 0
+      ? new Date(Math.max(...dates.map((d) => d.end.getTime()), now.getTime() + 30 * 86400000))
+      : new Date(now.getTime() + 60 * 86400000);
+
+    sd.setDate(sd.getDate() - sd.getDay());
+    ed.setDate(ed.getDate() + (6 - ed.getDay()));
+
+    const td = Math.ceil((ed.getTime() - sd.getTime()) / 86400000) + 1;
+    const wks: Date[] = [];
+    for (let d = new Date(sd); d <= ed; d.setDate(d.getDate() + 7)) {
+      wks.push(new Date(d));
+    }
+
+    return { startDate: sd, endDate: ed, totalDays: td, weeks: wks };
+  }, [tasks]);
+
+  const getBarPosition = (taskStart: Date, taskEnd: Date) => {
+    const left = Math.max(0, (taskStart.getTime() - startDate.getTime()) / 86400000 / totalDays * 100);
+    const width = Math.max(2, (taskEnd.getTime() - taskStart.getTime()) / 86400000 / totalDays * 100);
+    return { left: `${left}%`, width: `${Math.min(width, 100 - left)}%` };
+  };
+
+  const statusColors: Record<string, string> = {
+    new: "bg-blue-500",
+    in_progress: "bg-amber-500",
+    completed: "bg-emerald-500",
+  };
+
+  if (tasks.length === 0) {
+    return (
+      <div className="text-center py-12 text-muted-foreground bg-card/30 backdrop-blur-md rounded-2xl p-6 border border-border">
+        <p className="font-bold">No tasks to display in the Gantt chart</p>
+        <p className="text-xs mt-1">Add tasks with start and due dates first.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="border border-border bg-card/30 backdrop-blur-md rounded-2xl overflow-hidden p-6 shadow-md">
+      <div className="flex border-b border-border/60 bg-muted/20 rounded-t-xl">
+        <div className="w-64 shrink-0 p-3 border-r border-border/60">
+          <span className="text-xs font-semibold text-muted-foreground uppercase">Task Title</span>
+        </div>
+        <div className="flex-1 relative overflow-hidden">
+          <div className="flex">
+            {weeks.map((week, i) => (
+              <div key={i} className="flex-1 min-w-[80px] text-center border-r border-border/40 p-1.5">
+                <span className="text-[10px] text-muted-foreground font-bold">
+                  {week.toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+      <div className="divide-y divide-border/40">
+        {tasks.map((task: any) => {
+          const tStart = new Date(task.start_date || task.created_at);
+          const tEnd = new Date(task.due_date || new Date(tStart.getTime() + 7 * 86400000));
+          const pos = getBarPosition(tStart, tEnd);
+
+          return (
+            <div key={task.id} className="flex hover:bg-muted/10 transition-colors">
+              <div className="w-64 shrink-0 p-3 border-r border-border/60 flex items-center gap-2">
+                <span className={cn("text-xs font-bold truncate", task.status === "completed" && "line-through text-muted-foreground/60")}>
+                  {task.title}
+                </span>
+              </div>
+              <div className="flex-1 relative h-10 flex items-center">
+                {weeks.map((_, i) => (
+                  <div key={i} className="absolute top-0 bottom-0 border-r border-border/20" style={{ left: `${(i / weeks.length) * 100}%` }} />
+                ))}
+                <div
+                  className={cn("absolute h-5 rounded-full transition-all shadow-sm flex items-center px-3 text-[9px] text-white font-bold truncate", statusColors[task.status] || "bg-muted-foreground")}
+                  style={pos}
+                >
+                  {task.status}
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function TasksFilesView({ tasks }: { tasks: any[] }) {
+  const taskFiles = useMemo(() => {
+    const list: any[] = [];
+    tasks.forEach(t => {
+      if (t.attachments && Array.isArray(t.attachments)) {
+        t.attachments.forEach((att: any) => {
+          list.push({
+            ...att,
+            taskTitle: t.title,
+            taskId: t.id
+          });
+        });
+      }
+    });
+    return list;
+  }, [tasks]);
+
+  return (
+    <div className="space-y-4">
+      <div className="flex justify-between items-center bg-card/40 backdrop-blur-md px-5 py-4 rounded-xl border border-border">
+        <div>
+          <span className="text-xs font-bold text-foreground">Task Document Vault</span>
+          <span className="text-[10px] text-muted-foreground/70 ml-2">
+            {taskFiles.length} files attached to tasks
+          </span>
+        </div>
+      </div>
+
+      <div className="border border-border bg-card/30 backdrop-blur-md rounded-2xl overflow-hidden shadow-md">
+        {taskFiles.length === 0 ? (
+          <div className="text-center py-16 text-muted-foreground">
+            <p className="font-bold text-foreground/80">No files yet</p>
+            <p className="text-xs mt-1">Files uploaded as task attachments will show up here.</p>
+          </div>
+        ) : (
+          <div className="divide-y divide-border/40">
+            {taskFiles.map((file, idx) => (
+              <div key={idx} className="flex items-center justify-between p-4 hover:bg-accent/5 transition-colors">
+                <div className="flex items-center gap-3.5 min-w-0">
+                  <div className="h-9 w-9 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0 border border-primary/20">
+                    <FileText className="h-4 w-4" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-xs font-bold text-foreground truncate">{file.name || file.original_name}</p>
+                    <p className="text-[10px] text-muted-foreground mt-0.5">
+                      Task: <span className="text-foreground font-semibold">{file.taskTitle}</span>
+                    </p>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function TasksSlackChats() {
+  const [messages, setMessages] = useState([
+    { sender: "System", text: "Connected to #tasks channel on Slack", time: "12:00 PM" },
+    { sender: "Super Admin", text: "Please make sure to finalize the independent items this week.", time: "12:02 PM" },
+  ]);
+  const [input, setInput] = useState("");
+
+  const handleSend = () => {
+    if (!input.trim()) return;
+    setMessages([...messages, { sender: "You", text: input.trim(), time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) }]);
+    setInput("");
+  };
+
+  return (
+    <div className="border border-border bg-card/30 backdrop-blur-md rounded-2xl overflow-hidden shadow-md flex flex-col h-[550px]">
+      <div className="bg-muted/30 border-b border-border/60 p-4 flex items-center justify-between">
+        <span className="text-xs font-bold text-foreground flex items-center gap-2">
+          <MessageSquare className="h-4 w-4 text-primary" /> #slack-task-notifications
+        </span>
+      </div>
+      <div className="flex-1 p-4 overflow-y-auto space-y-4">
+        {messages.map((m, idx) => (
+          <div key={idx} className="flex flex-col text-xs">
+            <div className="flex items-center gap-2">
+              <span className="font-bold text-primary">{m.sender}</span>
+              <span className="text-[9px] text-muted-foreground">{m.time}</span>
+            </div>
+            <p className="text-foreground/90 mt-1 bg-muted/20 p-2 rounded-xl border border-border/30 w-fit max-w-[80%]">{m.text}</p>
+          </div>
+        ))}
+      </div>
+      <div className="p-4 border-t border-border/60 bg-muted/10 flex gap-2">
+        <Input
+          placeholder="Send a message to Slack thread..."
+          value={input}
+          onChange={e => setInput(e.target.value)}
+          onKeyDown={e => e.key === 'Enter' && handleSend()}
+          className="bg-background/50 rounded-xl"
+        />
+        <Button onClick={handleSend} size="sm">Send</Button>
+      </div>
     </div>
   );
 }

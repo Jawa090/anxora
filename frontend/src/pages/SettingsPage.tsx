@@ -59,7 +59,7 @@ export default function SettingsPage() {
     userRole?.role === "admin" || userRole?.role === "super_admin";
 
   const [activeTab, setActiveTab] = useState(
-    () => localStorage.getItem(SETTINGS_TAB_KEY) || "profile"
+    () => localStorage.getItem(SETTINGS_TAB_KEY) || "profile",
   );
 
   const handleTabChange = (value: string) => {
@@ -251,7 +251,7 @@ function ProfileSettings() {
             <div className="relative group">
               <Avatar className="h-24 w-24 border-2 border-primary/20">
                 <AvatarImage src={getAvatarUrl(profile?.avatar_url)} />
-                <AvatarFallback className="text-2xl bg-primary text-primary-foreground">
+                <AvatarFallback className="text-2xl bg-secondary-foreground text-white dark:bg-primary dark:text-white">
                   {initials}
                 </AvatarFallback>
               </Avatar>
@@ -281,14 +281,14 @@ function ProfileSettings() {
               <p className="text-sm text-muted-foreground">{user?.email}</p>
               <div className="flex flex-wrap gap-2 mt-2">
                 {currentRole && (
-                  <span className="inline-block text-xs px-2 py-0.5 rounded-full bg-primary/10 text-primary font-medium">
+                  <span className="inline-block text-xs px-2 rounded-full bg-secondary-foreground text-white dark:bg-primary dark:text-primary-foreground font-medium flex justify-center items-center">
                     {currentRole.name}
                   </span>
                 )}
                 <Button
                   variant="outline"
                   size="sm"
-                  className="h-7 text-xs"
+                  className="h-7 text-xs bg-secondary-foreground hover:bg-secondary-foreground/80 text-white hover:text-white dark:bg-primary dark:hover:bg-primary/80"
                   onClick={() => fileInputRef.current?.click()}
                   disabled={uploadingAvatar}
                 >
@@ -473,12 +473,19 @@ function OrganizationSettings() {
   const { organization, refreshOrganization } = useOrganization();
   const { userRole } = useAuth();
   const isSuperAdmin = userRole?.role === "super_admin";
-  const isAdmin = userRole?.role === "admin" || userRole?.role === "super_admin";
+  const isAdmin =
+    userRole?.role === "admin" || userRole?.role === "super_admin";
 
   const [orgName, setOrgName] = useState(organization?.name || "");
-  const [attendanceMachineIp, setAttendanceMachineIp] = useState((organization as any)?.attendance_machine_ip || "");
-  const [workingHoursPerDay, setWorkingHoursPerDay] = useState((organization as any)?.working_hours_per_day || 9.0);
-  const [breakTimeHours, setBreakTimeHours] = useState((organization as any)?.break_time_hours || 1.0);
+  const [attendanceMachineIp, setAttendanceMachineIp] = useState(
+    (organization as any)?.attendance_machine_ip || "",
+  );
+  const [workingHoursPerDay, setWorkingHoursPerDay] = useState(
+    (organization as any)?.working_hours_per_day || 9.0,
+  );
+  const [breakTimeHours, setBreakTimeHours] = useState(
+    (organization as any)?.break_time_hours || 1.0,
+  );
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -501,11 +508,11 @@ function OrganizationSettings() {
     if (!organization || !isSuperAdmin) return;
     setSaving(true);
     try {
-      await api.put(`/organizations/${organization.id}`, { 
+      await api.put(`/organizations/${organization.id}`, {
         name: orgName,
         attendance_machine_ip: attendanceMachineIp,
         working_hours_per_day: Number(workingHoursPerDay),
-        break_time_hours: Number(breakTimeHours)
+        break_time_hours: Number(breakTimeHours),
       });
       toast.success("Organization updated");
       await refreshOrganization();
@@ -558,11 +565,13 @@ function OrganizationSettings() {
                 className="bg-muted"
               />
             </div>
-            
+
             {/* ZKTeco IP (ADMS Server Setting) */}
             {isAdmin && (
               <div className="space-y-2">
-                <Label htmlFor="attendanceMachineIp">Biometric ADMS Push IP/URL</Label>
+                <Label htmlFor="attendanceMachineIp">
+                  Biometric ADMS Push IP/URL
+                </Label>
                 <Input
                   id="attendanceMachineIp"
                   value={attendanceMachineIp}
@@ -576,7 +585,9 @@ function OrganizationSettings() {
 
             {/* Attendance Rules */}
             <div className="space-y-2">
-              <Label htmlFor="workingHoursPerDay">Total Working Hours/Day</Label>
+              <Label htmlFor="workingHoursPerDay">
+                Total Working Hours/Day
+              </Label>
               <Input
                 id="workingHoursPerDay"
                 type="number"

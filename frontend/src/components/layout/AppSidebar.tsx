@@ -74,6 +74,7 @@ import {
   Grid,
   Smartphone,
   XSquare,
+  GanttChartIcon,
 } from "lucide-react";
 import { useProject } from "@/hooks/useProjectManagement";
 import {
@@ -97,10 +98,10 @@ import {
   restrictToVerticalAxis,
   restrictToWindowEdges,
 } from "@dnd-kit/modifiers";
-import { cn } from "@/lib/utils";
+import { cn, getAvatarUrl } from "@/lib/utils";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { getAvatarUrl } from "@/lib/utils";
+import { Logo } from "@/components/Logo";
 import {
   Collapsible,
   CollapsibleContent,
@@ -156,6 +157,17 @@ const navigation: NavItem[] = [
       { title: "Active Tasks", href: "/projects?tab=tasks", icon: CheckSquare },
       { title: "Milestones", href: "/projects?tab=milestones", icon: Milestone },
       { title: "After Due Date", href: "/projects?tab=overdue", icon: Clock },
+    ],
+  },
+  {
+    title: "Tasks",
+    href: "/tasks",
+    icon: CheckSquare,
+    children: [
+      { title: "Overview", href: "/tasks", icon: LayoutDashboard },
+      {title:"Kanban",href:"/tasks?tab=kanban",icon:KanbanIcon},  
+      {title:"Gantt",href:"/tasks?tab=gantt",icon:GanttChartIcon},
+
     ],
   },
   {
@@ -1521,71 +1533,38 @@ export function AppSidebar({
       )}
       style={{ width: `${width}px` }}
     >
-      {!isMobile && (
-        <button
-          onClick={() => onWidthChange?.(isCollapsed ? 256 : 80)}
-          className="absolute -right-3.5 top-7 z-[60] flex h-7 w-7 items-center justify-center rounded-full border border-slate-200 dark:border-white/10 bg-white dark:bg-[#0c111d] text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white shadow-md active:scale-95 transition-all"
-        >
-          {isCollapsed ? (
-            <ChevronsRight className="h-4 w-4" />
-          ) : (
-            <ChevronsLeft className="h-4 w-4" />
-          )}
-        </button>
-      )}
-
       {/* Brand Header */}
       <div className={cn("p-4 border-b border-sidebar-primary/20", isCollapsed && "px-2 py-3 flex flex-col items-center justify-center ml-5")}>
         <div className="flex items-center justify-between w-full">
           <div className="flex items-center gap-3 focus-outline-none">
-            <div className="grid h-9 w-9 place-items-center rounded-lg border-2 border-sidebar-primary/40 bg-sidebar-primary/20 text-sidebar-primary shrink-0">
-              <div className="">
-                <svg
-                  viewBox="-10 0 120 100"
-                  fill="none"
-                  xmlns="http://www.w3.org/2000/svg"
-                  className="h-full w-full text-white"
-                >
-                  {/* Continuous looped stylized "ES" ribbon mark from logo image */}
-                  <path
-                    d="M 32 32 C 32 24, 68 24, 68 32 C 68 40, 32 40, 32 50 C 32 60, 68 60, 68 70 C 68 80, 32 80, 32 70"
-                    stroke="currentColor"
-                    strokeWidth="8.5"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                  <path
-                    d="M 32 32 L 68 32"
-                    stroke="currentColor"
-                    strokeWidth="8.5"
-                    strokeLinecap="round"
-                  />
-                  <path
-                    d="M 32 50 L 58 50"
-                    stroke="currentColor"
-                    strokeWidth="8.5"
-                    strokeLinecap="round"
-                  />
-                  <path
-                    d="M 32 70 L 68 70"
-                    stroke="currentColor"
-                    strokeWidth="8.5"
-                    strokeLinecap="round"
-                  />
-                </svg>
-              </div>
-            </div>
+            <Logo className="h-9 w-9 text-sidebar-primary shrink-0 bg-transparent" />
             {!isCollapsed && (
-              <div className="flex flex-col">
-                <span className="text-sm font-bold tracking-wide text-white leading-none">
+              <div className="flex flex-col font-serif">
+                <span className="text-base font-bold tracking-widest text-white leading-none uppercase">
                   ANXORA
                 </span>
-                <span className="text-[9px] text-sidebar-primary font-medium mt-0.5 leading-none">
-                  SMART OS
+                <span className="text-[9px] text-sidebar-primary font-sans font-semibold mt-1 tracking-[0.2em] leading-none uppercase">
+                  SMART
                 </span>
               </div>
             )}
           </div>
+          {!isMobile && (
+            <button
+              onClick={() => onWidthChange?.(isCollapsed ? 256 : 80)}
+              className={cn(
+                "flex h-7 w-7 items-center justify-center rounded-full border border-slate-200 dark:border-white/10 bg-white dark:bg-[#0c111d] text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white shadow-md active:scale-95 transition-all",
+                isCollapsed && "mt-3"
+              )}
+            >
+              {isCollapsed ? (
+                <ChevronsRight className="h-4 w-4" />
+              ) : (
+                <ChevronsLeft className="h-4 w-4" />
+              )}
+            </button>
+          )}
+        </div>
           {isMobile && (
             <Button
               variant="ghost"
@@ -1596,7 +1575,6 @@ export function AppSidebar({
               <X className="h-5 w-5" />
             </Button>
           )}
-        </div>
 
         {!isCollapsed && (
           <div className="h-px w-full bg-gradient-to-r from-sidebar-primary/20 to-transparent mt-4" />

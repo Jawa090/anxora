@@ -153,7 +153,7 @@ export default function Dashboard() {
         </div>
         {/* Tasks */}
         <div className="col-span-2 sm:col-span-2 lg:col-span-2">
-          <StatTile label="Active Tasks" value={taskStats.inProgress} sub={`${taskStats.overdue} overdue`} icon={CheckCircle2} gradient={taskStats.overdue > 0 ? "bg-gradient-to-tr from-red-500 to-rose-600" : "bg-gradient-to-tr from-[#10B981] to-[#2DD4BF]"} onClick={() => navigate("/tasks")} />
+          <StatTile label="Active Project Tasks" value={taskStats.inProgress} sub={`${taskStats.overdue} overdue`} icon={CheckCircle2} gradient={taskStats.overdue > 0 ? "bg-gradient-to-tr from-red-500 to-rose-600" : "bg-gradient-to-tr from-[#10B981] to-[#2DD4BF]"} onClick={() => navigate("/projects")} />
         </div>
         {/* HRMS */}
         <div className="col-span-2 sm:col-span-2 lg:col-span-2">
@@ -172,9 +172,9 @@ export default function Dashboard() {
           <div className="px-5 py-4 border-b border-border/40 flex items-center justify-between shrink-0">
             <div className="flex items-center gap-2">
               <CheckCircle2 className="h-4 w-4 text-[#2DD4BF]" />
-              <span className="text-sm font-bold tracking-tight text-foreground">My Tasks</span>
+              <span className="text-sm font-bold tracking-tight text-foreground">My Project Tasks</span>
             </div>
-            <button onClick={() => navigate("/tasks")} className="text-xs font-semibold text-[#2DD4BF] hover:text-[#14858E] transition-colors flex items-center gap-0.5">
+            <button onClick={() => navigate("/projects")} className="text-xs font-semibold text-[#2DD4BF] hover:text-[#14858E] transition-colors flex items-center gap-0.5">
               View all <ArrowUpRight className="h-3 w-3" />
             </button>
           </div>

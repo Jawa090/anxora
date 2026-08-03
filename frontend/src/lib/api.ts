@@ -454,15 +454,15 @@ const serializeTaskPayload = (data: any) => ({
   description: data.description,
   priority: data.priority,
   status: data.status,
-  projectId: data.projectId ?? data.project_id,
-  assignedTo: data.assignedTo ?? data.assigned_to,
-  dueDate: data.dueDate ?? data.due_date,
-  parentTaskId: data.parentTaskId ?? data.parent_task_id,
-  sortOrder: data.sortOrder ?? data.sort_order,
+  projectId: data.projectId !== undefined ? data.projectId : data.project_id,
+  assignedTo: data.assignedTo !== undefined ? data.assignedTo : data.assigned_to,
+  dueDate: data.dueDate !== undefined ? data.dueDate : data.due_date,
+  parentTaskId: data.parentTaskId !== undefined ? data.parentTaskId : data.parent_task_id,
+  sortOrder: data.sortOrder !== undefined ? data.sortOrder : data.sort_order,
   tags: data.tags,
-  is_starred: data.is_starred ?? data.isStarred,
+  is_starred: data.is_starred !== undefined ? data.is_starred : data.isStarred,
   progress: data.progress,
-  can_assign: data.can_assign ?? data.canAssign,
+  can_assign: data.can_assign !== undefined ? data.can_assign : data.canAssign,
   delay_reason: data.delay_reason,
 });
 
@@ -477,6 +477,16 @@ export const tasksApi = {
   reorder: (tasks: { id: string; sortOrder: number }[]) => api.post('/tasks/reorder', { tasks }),
   startTimer: (id: string) => api.post<any>(`/tasks/${id}/timer/start`, {}),
   stopTimer: (id: string, description?: string) => api.post<any>(`/tasks/${id}/timer/stop`, { description }),
+};
+
+export const independentTasksApi = {
+  getAll: (params?: { status?: string; assigned_to?: string; assignedTo?: string }) =>
+    api.get<any[]>('/independent-tasks', normalizeTaskFilters(params)),
+  getById: (id: string) => api.get<any>(`/independent-tasks/${id}`),
+  create: (data: any) => api.post<any>('/independent-tasks', serializeTaskPayload(data)),
+  update: (id: string, data: any) => api.put<any>(`/independent-tasks/${id}`, serializeTaskPayload(data)),
+  updateStatus: (id: string, status: string) => api.patch<any>(`/independent-tasks/${id}/status`, { status }),
+  delete: (id: string) => api.delete(`/independent-tasks/${id}`),
 };
 
 export const usersApi = {

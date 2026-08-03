@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Logo } from "@/components/Logo";
 import {
   Loader2,
   AlertCircle,
@@ -85,11 +86,9 @@ export default function AuthPage() {
       <div className="relative w-full max-w-md z-10">
         {/* Logo & Header */}
         <div className="mb-8 text-center animate-fade-in">
-          <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-2xl border-2 border-[#2DD4BF] bg-[#021B1D]/50 text-[#2DD4BF] shadow-lg shadow-[#2DD4BF]/20">
-            <span className="text-lg font-bold">3</span>
-          </div>
-          <h2 className="text-3xl font-extrabold tracking-tight text-white sm:text-4xl">
-            ANXORA <span className="text-[#2DD4BF]">SMART OS</span>
+          <Logo className="mx-auto mb-3 h-12 w-12 text-[#2DD4BF] bg-transparent" />
+          <h2 className="text-3xl font-extrabold tracking-tight text-white sm:text-4xl font-serif uppercase">
+            ANXORA <span className="text-[#2DD4BF] font-sans font-semibold tracking-wider text-2xl">SMART</span>
           </h2>
           <p className="mt-2 text-sm text-[#8AA1A3]">
             Sign in to access your secure enterprise workspace
