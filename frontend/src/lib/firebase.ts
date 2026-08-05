@@ -26,8 +26,8 @@ export const requestForToken = async () => {
     await registration.update();
 
     const currentToken = await getToken(messaging, {
-      serviceWorkerRegistration: registration
-      // VAPID key not needed for web push notifications
+      serviceWorkerRegistration: registration,
+      vapidKey: import.meta.env.VITE_FIREBASE_VAPID_KEY,
     });
 
     if (currentToken) {

@@ -60,24 +60,24 @@ export function CalendarMiniWidget({ selectedDate, onDateSelect }: CalendarMiniW
   };
 
   return (
-    <div className="bg-gradient-to-br from-white to-slate-50 dark:from-slate-800 dark:to-slate-900 rounded-lg p-4 border border-slate-200/60 dark:border-slate-700/60">
+    <div className="bg-card rounded-lg p-4 border border-border/40">
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
         <Button 
           variant="ghost" 
           size="icon" 
-          className="h-7 w-7 text-slate-600 hover:text-slate-900 hover:bg-slate-100 dark:text-slate-400 dark:hover:text-white dark:hover:bg-slate-700" 
+          className="h-7 w-7 text-muted-foreground hover:text-foreground hover:bg-muted/20" 
           onClick={prevMonth}
         >
           <ChevronLeft className="h-4 w-4" />
         </Button>
-        <span className="text-sm font-semibold text-slate-900 dark:text-white">
+        <span className="text-sm font-semibold text-foreground">
           {currentMonth.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
         </span>
         <Button 
           variant="ghost" 
           size="icon" 
-          className="h-7 w-7 text-slate-600 hover:text-slate-900 hover:bg-slate-100 dark:text-slate-400 dark:hover:text-white dark:hover:bg-slate-700" 
+          className="h-7 w-7 text-muted-foreground hover:text-foreground hover:bg-muted/20" 
           onClick={nextMonth}
         >
           <ChevronRight className="h-4 w-4" />
@@ -87,7 +87,7 @@ export function CalendarMiniWidget({ selectedDate, onDateSelect }: CalendarMiniW
       {/* Day names */}
       <div className="grid grid-cols-7 gap-0 text-center mb-2">
         {dayNames.map((day) => (
-          <div key={day} className="text-xs font-medium text-slate-500 dark:text-slate-400 py-2">
+          <div key={day} className="text-xs font-medium text-muted-foreground/60 py-2">
             {day}
           </div>
         ))}
@@ -105,10 +105,10 @@ export function CalendarMiniWidget({ selectedDate, onDateSelect }: CalendarMiniW
               onClick={() => onDateSelect(date)}
               className={`
                 w-8 h-8 text-xs rounded-lg flex items-center justify-center transition-all duration-200 font-medium
-                ${!isCurrentMonth ? 'text-slate-400 dark:text-slate-600' : 'text-slate-700 dark:text-slate-300'}
-                ${isToday ? 'bg-gradient-to-r from-blue-500 to-blue-600 text-white shadow-lg shadow-blue-500/30' : ''}
-                ${isSelected && !isToday ? 'bg-gradient-to-r from-slate-200 to-slate-300 dark:from-slate-600 dark:to-slate-700 text-slate-900 dark:text-white shadow-md' : ''}
-                ${isCurrentMonth && !isToday && !isSelected ? 'hover:bg-slate-100 dark:hover:bg-slate-700 hover:text-slate-900 dark:hover:text-white' : ''}
+                ${!isCurrentMonth ? 'text-muted-foreground/30' : 'text-foreground/80'}
+                ${isToday ? 'bg-primary text-primary-foreground shadow-md shadow-primary/20 font-semibold' : ''}
+                ${isSelected && !isToday ? 'bg-muted text-foreground border border-border/60 shadow-sm' : ''}
+                ${isCurrentMonth && !isToday && !isSelected ? 'hover:bg-muted/20 hover:text-foreground' : ''}
               `}
             >
               {date.getDate()}

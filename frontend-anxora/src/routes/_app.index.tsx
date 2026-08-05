@@ -8,8 +8,8 @@ export const Route = createFileRoute("/_app/")({
   component: Dashboard,
   head: () => ({
     meta: [
-      { title: "Dashboard — Anxora OS" },
-      { name: "description", content: "Anxora OS enterprise dashboard: unified view of CRM, HR, Finance, Projects and Operations." },
+      { title: "Dashboard — ELINA OS" },
+      { name: "description", content: "ELINA OS enterprise dashboard: unified view of CRM, HR, Finance, Projects and Operations." },
     ],
   }),
 });
@@ -61,7 +61,7 @@ function Dashboard() {
       <PageHeader
         title="Good afternoon, Ayaan"
         description="Here's what's happening across Acme Global today."
-        badge={<Pill tone="primary"><Sparkles className="h-3 w-3" /> Anxora Copilot</Pill>}
+        badge={<Pill tone="primary"><Sparkles className="h-3 w-3" /> ELINA Copilot</Pill>}
         actions={
           <>
             <button className="inline-flex h-9 items-center gap-1.5 rounded-xl border border-border bg-surface px-3 text-sm font-medium hover:bg-muted">

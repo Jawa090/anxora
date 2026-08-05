@@ -164,7 +164,7 @@ export function TopBar() {
                 <div className="px-3 py-2 border-b border-border/50 mb-1">
                   <div className="text-xs font-bold text-foreground">{displayName}</div>
                   <div className="text-[10px] text-muted-foreground">
-                    {user?.email || "admin@anxora.com"}
+                    {user?.email || "admin@ELINA.com"}
                   </div>
                 </div>
 

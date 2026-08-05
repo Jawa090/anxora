@@ -62,7 +62,7 @@ const MessageOverlay = () => {
         <div className="flex items-center gap-2">
           <img src="/crm.png" alt="Rush" className="w-4 h-4 rounded" />
           <span className="text-[11px] font-bold text-zinc-500 uppercase tracking-wider">
-            ANXORA Message
+            ELINA Message
           </span>
         </div>
         <button

@@ -74,7 +74,7 @@ async function setupCompleteDatabase() {
     console.log('Leave types seeded');
     console.log('Employee leave balances initialized');
     console.log('='.repeat(60));
-    console.log('\n🚀 Your ANXORA database is ready to use!');
+    console.log('\n🚀 Your ELINA database is ready to use!');
     
   } catch (error) {
     console.error('❌ Error during database setup:', error);

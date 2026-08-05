@@ -510,6 +510,7 @@ export const rolesApi = {
 export const calendarApi = {
   getEvents: (params?: { startDate?: string; endDate?: string; search?: string }) => api.get<any[]>('/calendar', params),
   getById: (id: string) => api.get<any>(`/calendar/${id}`),
+  getAttendees: (id: string) => api.get<any[]>(`/calendar/${id}/attendees`),
   create: (data: any) => api.post<any>('/calendar', data),
   update: (id: string, data: any) => api.put<any>(`/calendar/${id}`, data),
   delete: (id: string) => api.delete(`/calendar/${id}`),

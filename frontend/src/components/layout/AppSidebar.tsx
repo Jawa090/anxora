@@ -1541,7 +1541,7 @@ export function AppSidebar({
             {!isCollapsed && (
               <div className="flex flex-col font-serif">
                 <span className="text-base font-bold tracking-widest text-white leading-none uppercase">
-                  ANXORA
+                  ELINA
                 </span>
                 <span className="text-[9px] text-sidebar-primary font-sans font-semibold mt-1 tracking-[0.2em] leading-none uppercase">
                   SMART
@@ -1642,7 +1642,7 @@ export function AppSidebar({
                   if (focusedModule === item.title && item.children) {
                     return (
                       <div key={item.title} className="space-y-1">
-                        {/* Module Header - with border and rounded styling - FRONTEND-ANXORA STYLE */}
+                        {/* Module Header - with border and rounded styling - FRONTEND-ELINA STYLE */}
                         <div className={cn(
                           "flex items-center justify-between rounded-full border-2 border-sidebar-primary px-3 py-2 bg-sidebar-primary text-sidebar-primary-foreground shadow-md light:border-[#2DD4BF]",
                           isCollapsed && "px-2 py-1.5 justify-center rounded-lg"

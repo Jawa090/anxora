@@ -157,9 +157,9 @@ export const MODULES: Module[] = [
       { label: "Analytics", slug: "analytics", icon: BarChart },
       { label: "Exports", slug: "exports", icon: Files },
     ]},
-  { key: "ai-assistant", label: "AI Assistant", desc: "Anxora Copilot for your data", icon: Sparkles, hue: "from-violet-500 to-purple-500",
+  { key: "ai-assistant", label: "AI Assistant", desc: "ELINA Copilot for your data", icon: Sparkles, hue: "from-violet-500 to-purple-500",
     stat: { label: "Prompts today", value: "1,248", delta: "94% helpful" },
-    quick: ["Ask Anxora"],
+    quick: ["Ask ELINA"],
     submenu: [
       { label: "Chat", slug: "", icon: MessageSquare },
       { label: "History", slug: "history", icon: Clock },

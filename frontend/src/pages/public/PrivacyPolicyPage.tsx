@@ -13,9 +13,9 @@ export default function PrivacyPolicyPage() {
       <header className="border-b border-slate-800/80 bg-slate-950/80 backdrop-blur-md sticky top-0 z-50">
         <div className="max-w-5xl mx-auto px-6 h-16 flex items-center justify-between">
           <Link to="/home" className="flex items-center gap-3 group">
-            {/* <img src={rushLogo} alt="ANXORA" className="h-7 w-auto transition-transform group-hover:scale-105" /> */}
+            {/* <img src={rushLogo} alt="ELINA" className="h-7 w-auto transition-transform group-hover:scale-105" /> */}
             <span className="font-bold text-xl tracking-tight text-white group-hover:text-slate-200 transition-colors">
-              ANXORA
+              ELINA
             </span>
           </Link>
           <Link to="/auth">
@@ -51,7 +51,7 @@ export default function PrivacyPolicyPage() {
               1. Introduction
             </h2>
             <p className="text-slate-300 leading-relaxed">
-              ANXORA ("we," "our," or "us") is committed to protecting your privacy. This Privacy Policy explains how we collect, use, disclose, and safeguard your information when you use our CRM and business management platform, including any associated services, features, or applications.
+              ELINA ("we," "our," or "us") is committed to protecting your privacy. This Privacy Policy explains how we collect, use, disclose, and safeguard your information when you use our CRM and business management platform, including any associated services, features, or applications.
             </p>
           </section>
 
@@ -104,7 +104,7 @@ export default function PrivacyPolicyPage() {
               4. Google API Services User Data Policy
             </h2>
             <p className="text-slate-300 leading-relaxed mb-4">
-              ANXORA's use and transfer of information received from Google APIs adheres to the{" "}
+              ELINA's use and transfer of information received from Google APIs adheres to the{" "}
               <a 
                 href="https://developers.google.com/terms/api-services-user-data-policy" 
                 target="_blank" 
@@ -190,9 +190,9 @@ export default function PrivacyPolicyPage() {
               If you have questions about this Privacy Policy or our data practices, please contact us at:
             </p>
             <div className="p-5 rounded-xl bg-slate-950/70 border border-slate-800/80 text-sm">
-              <p className="font-semibold text-white">ANXORA Privacy Team</p>
+              <p className="font-semibold text-white">ELINA Privacy Team</p>
               <p className="text-slate-400 mt-1">Email: privacy@rushcorporation.com</p>
-              <p className="text-slate-400">Website: ANXORA.com</p>
+              <p className="text-slate-400">Website: ELINA.com</p>
             </div>
           </section>
         </div>
@@ -201,7 +201,7 @@ export default function PrivacyPolicyPage() {
       {/* Footer */}
       <footer className="border-t border-slate-800/80 py-8 bg-slate-950 text-slate-500 text-sm">
         <div className="max-w-5xl mx-auto px-6 flex flex-col sm:flex-row items-center justify-between gap-4">
-          <p>© {new Date().getFullYear()} ANXORA. All rights reserved.</p>
+          <p>© {new Date().getFullYear()} ELINA. All rights reserved.</p>
           <div className="flex items-center gap-6">
             <Link to="/home" className="hover:text-slate-300 transition-colors">Home</Link>
             <Link to="/privacy" className="text-slate-300 font-medium hover:text-white transition-colors">Privacy Policy</Link>

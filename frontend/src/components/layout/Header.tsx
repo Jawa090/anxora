@@ -106,7 +106,7 @@ export function TopBar({
           </span>
         )}
         <div className="relative flex-1 group min-w-[120px]">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground group-focus-within:text-[#2DD4BF] transition-colors" />
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground group-focus-within:text-primary transition-colors" />
           <Input
             placeholder="Search Any Thing Task, Leads.."
             className="pl-9 h-10 bg-secondary/70 border-transparent hover:bg-secondary focus-visible:bg-background focus-visible:ring-2 focus-visible:ring-[#2DD4BF]/25 focus-visible:border-[#2DD4BF] rounded-xl transition-all w-full text-xs sm:text-sm font-medium"

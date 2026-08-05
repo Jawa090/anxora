@@ -77,7 +77,7 @@ export default {
           "4": "hsl(var(--chart-4))",
           "5": "hsl(var(--chart-5))",
         },
-        // Additional brand colors from frontend-anxora
+        // Additional brand colors from frontend-ELINA
         teal: {
           "50": "#F1F6F6",
           "100": "#E8F0F0",

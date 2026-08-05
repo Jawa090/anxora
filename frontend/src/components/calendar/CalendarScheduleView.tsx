@@ -44,34 +44,34 @@ export function CalendarScheduleView({
     };
 
     return (
-      <div className="bg-white dark:bg-slate-900">
+      <div className="bg-card">
         <div className="max-h-[600px] overflow-y-auto">
           {sortedDates.map((dateStr) => (
             <div
               key={dateStr}
-              className="border-b border-slate-200 dark:border-slate-700 last:border-b-0"
+              className="border-b border-border/40 last:border-b-0"
             >
-              <div className="px-6 py-3 bg-gradient-to-r from-slate-50 to-white dark:from-slate-800 dark:to-slate-900 border-b border-slate-200 dark:border-slate-700">
-                <h3 className="text-sm font-semibold text-slate-900 dark:text-white">
+              <div className="px-6 py-3 bg-muted/20 border-b border-border/40">
+                <h3 className="text-sm font-semibold text-foreground">
                   {getDateLabel(dateStr)}
                 </h3>
               </div>
-              <div className="divide-y divide-slate-100 dark:divide-slate-800">
+              <div className="divide-y divide-border/20">
                 {grouped[dateStr].map((ev) => (
                   <div
                     key={ev.id}
                     onClick={() => onEventClick(ev)}
-                    className="flex items-center gap-4 px-6 py-4 hover:bg-slate-50 dark:hover:bg-slate-800/30 cursor-pointer transition-all duration-200"
+                    className="flex items-center gap-4 px-6 py-4 hover:bg-muted/10 cursor-pointer transition-all duration-200"
                   >
                     <div
                       className="w-4 h-4 rounded-full flex-shrink-0 shadow-sm"
                       style={{ backgroundColor: ev.color || "#3b82f6" }}
                     />
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold text-slate-900 dark:text-white truncate mb-1">
+                      <p className="text-sm font-semibold text-foreground truncate mb-1">
                         {ev.title}
                       </p>
-                      <div className="flex items-center gap-2 text-xs text-slate-600 dark:text-slate-400">
+                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
                         <span className="font-medium">
                           {ev.is_all_day
                             ? "All day"
@@ -79,13 +79,13 @@ export function CalendarScheduleView({
                         </span>
                         {ev.location && (
                           <>
-                            <span className="w-1 h-1 bg-slate-400 rounded-full"></span>
+                            <span className="w-1 h-1 bg-border rounded-full"></span>
                             <span className="truncate">📍 {ev.location}</span>
                           </>
                         )}
                       </div>
                       {ev.description && (
-                        <p className="text-xs text-slate-500 dark:text-slate-500 mt-1 truncate">
+                        <p className="text-xs text-muted-foreground/80 mt-1 truncate">
                           {ev.description}
                         </p>
                       )}
@@ -102,19 +102,19 @@ export function CalendarScheduleView({
 
   if (hasConnectedCalendar) {
     return (
-      <div className="flex flex-col items-center justify-center py-24 px-6 bg-white dark:bg-slate-900">
-        <div className="w-20 h-20 rounded-full bg-gradient-to-br from-blue-100 to-blue-200 dark:from-blue-900/30 dark:to-blue-800/30 flex items-center justify-center mb-6 shadow-lg">
-          <CalendarDays className="h-10 w-10 text-blue-600 dark:text-blue-400" />
+      <div className="flex flex-col items-center justify-center py-24 px-6 bg-card">
+        <div className="w-20 h-20 rounded-full bg-secondary-foreground dark:bg-primary flex items-center justify-center mb-6 shadow-lg">
+          <CalendarDays className="h-10 w-10 text-white dark:text-white" />
         </div>
-        <h3 className="text-xl font-semibold text-slate-900 dark:text-white mb-2">
+        <h3 className="text-xl font-semibold text-foreground mb-2">
           Your calendar is synchronized
         </h3>
-        <p className="text-slate-600 dark:text-slate-400 text-center mb-8 max-w-md">
+        <p className="text-muted-foreground text-center mb-8 max-w-md">
           No upcoming events found. Create a new event to get started with your
           schedule.
         </p>
         <Button
-          className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white shadow-lg shadow-blue-500/25"
+          className="bg-secondary-foreground dark:bg-primary hover:from-blue-700 hover:to-blue-800 text-white shadow-lg shadow-blue-500/25"
           onClick={() => {
             /* Handle create event */
           }}
@@ -126,14 +126,14 @@ export function CalendarScheduleView({
   }
 
   return (
-    <div className="flex flex-col items-center justify-center py-24 px-6 bg-white dark:bg-slate-900">
-      <div className="w-20 h-20 rounded-full bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-800 dark:to-slate-700 flex items-center justify-center mb-6 shadow-lg">
-        <CalendarDays className="h-10 w-10 text-slate-600 dark:text-slate-400" />
+    <div className="flex flex-col items-center justify-center py-24 px-6 bg-card">
+      <div className="w-20 h-20 rounded-full bg-muted flex items-center justify-center mb-6 shadow-lg">
+        <CalendarDays className="h-10 w-10 text-muted-foreground" />
       </div>
-      <h3 className="text-xl font-semibold text-slate-900 dark:text-white mb-2">
+      <h3 className="text-xl font-semibold text-foreground mb-2">
         Connect your calendars
       </h3>
-      <p className="text-slate-600 dark:text-slate-400 text-center mb-8 max-w-md">
+      <p className="text-muted-foreground text-center mb-8 max-w-md">
         Sync with your existing calendars to keep all events in one place and
         never miss an important meeting.
       </p>

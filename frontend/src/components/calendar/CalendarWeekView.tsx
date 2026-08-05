@@ -48,18 +48,18 @@ export function CalendarWeekView({ selectedDate, events, onEventClick, onSlotCli
   };
 
   return (
-    <div className="bg-white dark:bg-slate-900">
+    <div className="bg-card">
       {/* Header with days */}
-      <div className="grid grid-cols-[80px_repeat(7,1fr)] border-b border-slate-200 dark:border-slate-700 bg-gradient-to-r from-slate-50 to-white dark:from-slate-800 dark:to-slate-900">
-        <div className="p-3 border-r border-slate-200 dark:border-slate-700" />
+      <div className="grid grid-cols-[80px_repeat(7,1fr)] border-b border-border/40 bg-muted/20">
+        <div className="p-3 border-r border-border/40" />
         {weekDays.map((date, idx) => {
           const isToday = isSameDay(date, today);
           return (
-            <div key={idx} className={`p-3 text-center border-r border-slate-200 dark:border-slate-700 last:border-r-0 transition-colors ${isToday ? 'bg-blue-50 dark:bg-blue-950/30' : ''}`}>
-              <div className="text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">
+            <div key={idx} className={`p-3 text-center border-r border-border/40 last:border-r-0 transition-colors ${isToday ? 'bg-primary/5' : ''}`}>
+              <div className="text-xs font-medium text-muted-foreground mb-1">
                 {dayNames[idx]}
               </div>
-              <div className={`text-lg font-semibold transition-all ${isToday ? 'w-8 h-8 rounded-full bg-gradient-to-r from-blue-500 to-blue-600 text-white flex items-center justify-center mx-auto shadow-lg shadow-blue-500/30' : 'text-slate-900 dark:text-white'}`}>
+              <div className={`text-lg font-semibold transition-all ${isToday ? 'w-8 h-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center mx-auto shadow-md shadow-primary/20' : 'text-foreground'}`}>
                 {date.getDate()}
               </div>
             </div>
@@ -68,10 +68,10 @@ export function CalendarWeekView({ selectedDate, events, onEventClick, onSlotCli
       </div>
 
       {/* Time slots */}
-      <div className="divide-y divide-slate-200 dark:divide-slate-700">
+      <div className="divide-y divide-border/40">
         {hours.map((hour) => (
-          <div key={hour} className="grid grid-cols-[80px_repeat(7,1fr)] min-h-[60px] hover:bg-slate-50 dark:hover:bg-slate-800/20 transition-colors">
-            <div className="text-xs text-slate-500 dark:text-slate-400 p-3 border-r border-slate-200 dark:border-slate-700 flex items-start font-medium">
+          <div key={hour} className="grid grid-cols-[80px_repeat(7,1fr)] min-h-[60px] hover:bg-muted/10 transition-colors">
+            <div className="text-xs text-muted-foreground p-3 border-r border-border/40 flex items-start font-medium">
               {formatHour(hour)}
             </div>
             {weekDays.map((date, idx) => {
@@ -81,7 +81,7 @@ export function CalendarWeekView({ selectedDate, events, onEventClick, onSlotCli
                 <div
                   key={idx}
                   onClick={() => onSlotClick?.(date, hour)}
-                  className={`border-r border-slate-200 dark:border-slate-700 last:border-r-0 hover:bg-slate-100 dark:hover:bg-slate-700/30 cursor-pointer transition-colors p-1 ${isToday ? 'bg-blue-50/50 dark:bg-blue-950/10' : ''}`}
+                  className={`border-r border-border/40 last:border-r-0 hover:bg-muted/25 cursor-pointer transition-colors p-1 ${isToday ? 'bg-primary/5' : ''}`}
                 >
                   <div className="space-y-1">
                     {slotEvents.map(ev => (

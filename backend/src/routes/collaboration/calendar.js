@@ -19,6 +19,7 @@ router.delete('/connections/:id', calendarController.disconnect);
 router.post('/sync/:provider', calendarController.syncEvents);
 router.post('/auth/icloud', calendarController.connectICloud);
 router.get('/:id', calendarController.getById);
+router.get('/:id/attendees', calendarController.getAttendees);
 router.post('/', calendarController.create);
 router.put('/:id', calendarController.update);
 router.delete('/:id', calendarController.remove);

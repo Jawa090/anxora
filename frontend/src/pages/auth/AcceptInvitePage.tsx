@@ -90,7 +90,7 @@ export default function AcceptInvitePage() {
           <div className="flex flex-col items-center justify-center gap-3">
             <Logo className="h-12 w-12 text-[#2DD4BF] bg-transparent" />
             <h1 className="text-2xl font-bold tracking-tight text-white mt-2 font-serif uppercase">
-              ANXORA <span className="text-[#2DD4BF] font-sans font-semibold tracking-wider text-xl">SMART</span>
+              ELINA <span className="text-[#2DD4BF] font-sans font-semibold tracking-wider text-xl">SMART</span>
             </h1>
           </div>
 
@@ -116,15 +116,52 @@ export default function AcceptInvitePage() {
       <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] rounded-full bg-[#2DD4BF]/15 blur-[120px] pointer-events-none" />
 
       {/* Header section matching screenshot */}
-      <div className="flex flex-col items-center justify-center mb-8 z-10">
-        <Logo className="h-12 w-12 text-[#2DD4BF] bg-transparent mb-4 animate-bounce" />
-        <h1 className="text-3xl font-bold tracking-tight text-white mb-2 font-serif uppercase">
-          ANXORA <span className="text-[#2DD4BF] font-sans font-semibold tracking-wider text-2xl">SMART</span>
-        </h1>
-        <p className="text-sm text-[#8AA1A3] font-medium">
+      <div className="mb-2 flex items-center justify-center gap-4">
+          <svg
+            viewBox="22 18 56 64"
+            fill="none"
+            xmlns="http://www.w3.org/2000/svg"
+            className="h-16 w-16 text-white shrink-0"
+          >
+            <path
+              d="M 32 32 C 32 24, 68 24, 68 32 C 68 40, 32 40, 32 50 C 32 60, 68 60, 68 70 C 68 80, 32 80, 32 70"
+              stroke="currentColor"
+              strokeWidth="8.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+            <path
+              d="M 32 32 L 68 32"
+              stroke="currentColor"
+              strokeWidth="8.5"
+              strokeLinecap="round"
+            />
+            <path
+              d="M 32 50 L 58 50"
+              stroke="currentColor"
+              strokeWidth="8.5"
+              strokeLinecap="round"
+            />
+            <path
+              d="M 32 70 L 68 70"
+              stroke="currentColor"
+              strokeWidth="8.5"
+              strokeLinecap="round"
+            />
+          </svg>
+
+          <div className="text-left">
+            <h1 className="text-4xl font-serif font-bold tracking-[0.2em] text-white">
+              ELINA
+            </h1>
+            <p className="mt-1 text-lg uppercase tracking-[0.4em] text-[#2DD4BF]">
+              Smart
+            </p>
+          </div>
+        </div>
+        <p className="text-sm text-[#8AA1A3] font-medium mb-2">
           {success ? "Verification complete" : `Welcome, ${userInfo.full_name || 'User'}! Set up your credentials to activate your workspace.`}
         </p>
-      </div>
 
       {/* Form Card matching screenshot */}
       <div className="w-full max-w-[480px] bg-[#021B1D]/60 border border-[#2DD4BF]/20 rounded-[28px] p-8 md:p-10 z-10 backdrop-blur-xl relative">
@@ -137,7 +174,7 @@ export default function AcceptInvitePage() {
             <p className="text-sm text-[#8AA1A3] leading-relaxed">Your password has been set successfully. Redirecting you to the workspace login shortly.</p>
           </div>
         ) : (
-          <form onSubmit={handleSubmit} className="space-y-6">
+          <form onSubmit={handleSubmit} className="space-y-5">
             {/* Email field (Read Only) */}
             <div className="space-y-2">
               <label className="text-xs font-semibold uppercase tracking-wider text-[#C8DBDC] block">
@@ -151,7 +188,7 @@ export default function AcceptInvitePage() {
                   type="email"
                   value={userInfo.email}
                   disabled
-                  className="h-[52px] w-full pl-11 pr-4 bg-[#021B1D] border border-[#2DD4BF]/20 text-[#8AA1A3] focus:outline-none rounded-[16px] text-sm font-semibold cursor-not-allowed"
+                  className="h-[40px] w-full pl-11 pr-4 bg-[#021B1D] border border-[#2DD4BF]/20 text-[#8AA1A3] focus:outline-none rounded-[16px] text-sm font-semibold cursor-not-allowed"
                 />
               </div>
             </div>
@@ -169,7 +206,7 @@ export default function AcceptInvitePage() {
                   id="password"
                   type={showPassword ? "text" : "password"}
                   placeholder="Min 8 characters"
-                  className="h-[52px] w-full pl-11 pr-12 border border-[#2DD4BF]/20 bg-[#021B1D] text-white focus:outline-none focus:border-[#2DD4BF] focus:ring-2 focus:ring-[#2DD4BF]/25 rounded-[16px] text-sm font-semibold placeholder:text-[#8AA1A3]"
+                  className="h-[40px] w-full pl-11 pr-12 border border-[#2DD4BF]/20 bg-[#021B1D] text-white focus:outline-none focus:border-[#2DD4BF] focus:ring-2 focus:ring-[#2DD4BF]/25 rounded-[16px] text-sm font-semibold placeholder:text-[#8AA1A3]"
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
@@ -197,7 +234,7 @@ export default function AcceptInvitePage() {
                   id="confirmPassword"
                   type={showConfirmPassword ? "text" : "password"}
                   placeholder="Re-type password"
-                  className="h-[52px] w-full pl-11 pr-12 border border-[#2DD4BF]/20 bg-[#021B1D] text-white focus:outline-none focus:border-[#2DD4BF] focus:ring-2 focus:ring-[#2DD4BF]/25 rounded-[16px] text-sm font-semibold placeholder:text-[#8AA1A3]"
+                  className="h-[40px] w-full pl-11 pr-12 border border-[#2DD4BF]/20 bg-[#021B1D] text-white focus:outline-none focus:border-[#2DD4BF] focus:ring-2 focus:ring-[#2DD4BF]/25 rounded-[16px] text-sm font-semibold placeholder:text-[#8AA1A3]"
                   required
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
@@ -233,7 +270,7 @@ export default function AcceptInvitePage() {
       {/* Footer block matching screenshot */}
       <div className="text-center mt-8 z-10 text-xs text-[#8AA1A3]">
         <p>
-          Anxora OS Security & Encryption Active. Need help? Contact admin.
+          ELINA OS Security & Encryption Active. Need help? Contact admin.
         </p>
       </div>
     </div>

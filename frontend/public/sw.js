@@ -1,4 +1,4 @@
-// ANXORA Service Worker
+// ELINA Service Worker
 
 self.addEventListener('install', () => {
   console.log('[sw] Installing service worker');
@@ -230,7 +230,7 @@ self.addEventListener('notificationclick', (event) => {
 
   event.waitUntil(
     self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
-      // Find any existing ANXORA tab
+      // Find any existing ELINA tab
       const existingClient = clientList.find(
         c => c.url.includes(self.location.origin)
       );

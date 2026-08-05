@@ -77,17 +77,27 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Anxora OS — Enterprise ERP + CRM Platform" },
-      { name: "description", content: "Anxora OS unifies CRM, HR, Projects, Inventory, Finance and Automation in one premium enterprise workspace." },
-      { property: "og:title", content: "Anxora OS — Enterprise ERP + CRM Platform" },
-      { property: "og:description", content: "Unified enterprise workspace for revenue, people and operations." },
+      { title: "ELINA OS — Enterprise ERP + CRM Platform" },
+      {
+        name: "description",
+        content:
+          "ELINA OS unifies CRM, HR, Projects, Inventory, Finance and Automation in one premium enterprise workspace.",
+      },
+      { property: "og:title", content: "ELINA OS — Enterprise ERP + CRM Platform" },
+      {
+        property: "og:description",
+        content: "Unified enterprise workspace for revenue, people and operations.",
+      },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
     ],
     links: [
       { rel: "preconnect", href: "https://fonts.googleapis.com" },
       { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
-      { rel: "stylesheet", href: "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" },
+      {
+        rel: "stylesheet",
+        href: "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap",
+      },
       { rel: "stylesheet", href: appCss },
       { rel: "icon", href: "/favicon.ico", type: "image/x-icon" },
     ],

@@ -53,7 +53,7 @@ export default function ResetPasswordPage() {
               <div className="w-6 h-6 flex items-center justify-center border-2 border-[#2DD4BF] rounded text-[#2DD4BF] font-bold text-sm">3</div>
             </div>
             <h2 className="text-3xl font-extrabold tracking-tight text-white sm:text-4xl">
-              ANXORA <span className="text-[#2DD4BF]">SMART OS</span>
+              ELINA <span className="text-[#2DD4BF]">SMART OS</span>
             </h2>
           </div>
 
@@ -86,7 +86,7 @@ export default function ResetPasswordPage() {
         <div className="mb-8 text-center animate-fade-in">
           <Logo className="mx-auto mb-3 h-12 w-12 text-[#2DD4BF] bg-transparent" />
           <h2 className="text-3xl font-extrabold tracking-tight text-white sm:text-4xl font-serif uppercase">
-            ANXORA <span className="text-[#2DD4BF] font-sans font-semibold tracking-wider text-2xl">SMART</span>
+            ELINA <span className="text-[#2DD4BF] font-sans font-semibold tracking-wider text-2xl">SMART</span>
           </h2>
           <p className="mt-2 text-sm text-[#8AA1A3]">
             {success ? "Password updated successfully" : "Set your new system credentials"}
@@ -188,7 +188,7 @@ export default function ResetPasswordPage() {
         {/* Footer Link & Policies */}
         <div className="mt-8 text-center text-xs text-[#8AA1A3] space-y-3">
           <div>
-            Anxora OS Security & Encryption Active. Need help? Contact admin.
+            ELINA OS Security & Encryption Active. Need help? Contact admin.
           </div>
           <div className="flex items-center justify-center gap-2">
             <Link

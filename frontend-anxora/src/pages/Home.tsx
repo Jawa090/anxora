@@ -42,7 +42,7 @@ export default function Home() {
                 Welcome back, <span className="text-[#2DD4BF]">Ayaan</span>
               </h1>
               <p className="max-w-xl text-xs md:text-sm text-[#D3E2E3] leading-relaxed">
-                Anxora Enterprise Workspace is actively coordinating CRM, HRMS, Finance, and
+                ELINA Enterprise Workspace is actively coordinating CRM, HRMS, Finance, and
                 Inventory across all 13 core modules.
               </p>
             </div>
@@ -52,7 +52,7 @@ export default function Home() {
                 to="/ai-assistant"
                 className="flex items-center gap-2 rounded-xl bg-[#2DD4BF] px-4 py-2.5 text-xs font-bold text-[#032124] shadow-lg shadow-[#2DD4BF]/20 transition-all hover:bg-[#2DD4BF]/90 active:scale-95"
               >
-                <Sparkles className="h-4 w-4" /> Ask Anxora AI
+                <Sparkles className="h-4 w-4" /> Ask ELINA AI
               </Link>
               <Link
                 to="/crm/leads"
@@ -211,7 +211,7 @@ export default function Home() {
           {/* AI Intelligence Spotlight */}
           <div className="rounded-2xl border border-[#2DD4BF]/30 bg-gradient-to-b from-[#032124] to-[#053B3F] p-5 text-white shadow-md">
             <div className="flex items-center gap-2 text-[#2DD4BF] text-xs font-bold uppercase tracking-wider mb-3">
-              <Zap className="h-4 w-4" /> Anxora Copilot
+              <Zap className="h-4 w-4" /> ELINA Copilot
             </div>
 
             <h3 className="text-base font-bold">Smart Executive Summary</h3>

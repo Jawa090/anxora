@@ -6,7 +6,7 @@
 
 @layer base {
   :root {
-    /* ══ Anxora Deep Teal Luxury palette (Light Mode) — From frontend-anxora ══ */
+    /* ══ ELINA Deep Teal Luxury palette (Light Mode) — From frontend-ELINA ══ */
     --background: 180 20% 96%;
     /* #F1F6F6 */
     --foreground: 180 40% 11%;
@@ -124,7 +124,7 @@
   }
 
   .dark {
-    /* ══ Anxora Deep Teal Dark Mode — From frontend-anxora ══ */
+    /* ══ ELINA Deep Teal Dark Mode — From frontend-ELINA ══ */
     --background: 181 88% 10%;
     /* #021B1D */
     --foreground: 180 30% 94%;
@@ -242,7 +242,7 @@
     @apply font-semibold tracking-tight;
   }
 
-  /* Sidebar specific styling - match frontend-anxora colors */
+  /* Sidebar specific styling - match frontend-ELINA colors */
   [data-sidebar="sidebar"] {
     @apply bg-sidebar;
   }

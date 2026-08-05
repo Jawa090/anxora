@@ -34,24 +34,24 @@ export function CalendarDayView({ selectedDate, events, onEventClick, onSlotClic
   };
 
   return (
-    <div className="bg-white dark:bg-slate-900">
+    <div className="bg-card">
       {/* Header */}
-      <div className="grid grid-cols-[80px_1fr] text-sm border-b border-slate-200 dark:border-slate-700 bg-gradient-to-r from-slate-50 to-white dark:from-slate-800 dark:to-slate-900">
-        <div className="p-4 border-r border-slate-200 dark:border-slate-700 font-semibold text-slate-600 dark:text-slate-400">
+      <div className="grid grid-cols-[80px_1fr] text-sm border-b border-border/40 bg-muted/20">
+        <div className="p-4 border-r border-border/40 font-semibold text-muted-foreground">
           Time
         </div>
-        <div className="p-4 font-semibold text-slate-900 dark:text-white">
+        <div className="p-4 font-semibold text-foreground">
           {format(selectedDate, 'EEEE, MMMM d, yyyy')}
         </div>
       </div>
 
       {/* Time slots */}
-      <div className="divide-y divide-slate-200 dark:divide-slate-700">
+      <div className="divide-y divide-border/40">
         {hours.map((hour) => {
           const hourEvents = getEventsForHour(hour);
           return (
-            <div key={hour} className="grid grid-cols-[80px_1fr] min-h-[70px] hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors">
-              <div className="text-xs text-slate-500 dark:text-slate-400 p-4 border-r border-slate-200 dark:border-slate-700 flex items-start font-medium">
+            <div key={hour} className="grid grid-cols-[80px_1fr] min-h-[70px] hover:bg-muted/10 transition-colors">
+              <div className="text-xs text-muted-foreground p-4 border-r border-border/40 flex items-start font-medium">
                 {formatHour(hour)}
               </div>
               <div

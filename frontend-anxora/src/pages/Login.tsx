@@ -137,7 +137,7 @@ export default function Login() {
         {/* Security Badge Footer */}
         <div className="mt-8 flex items-center justify-center gap-2 text-center text-xs text-[#8AA1A3]">
           <ShieldCheck className="h-4 w-4 text-[#2DD4BF]" />
-          <span>Anxora OS Security & Encryption Active</span>
+          <span>ELINA OS Security & Encryption Active</span>
         </div>
       </div>
     </div>

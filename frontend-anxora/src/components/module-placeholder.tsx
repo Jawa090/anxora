@@ -81,7 +81,7 @@ export function ModulePlaceholder({
           </ul>
         </Card>
         <Card>
-          <SectionTitle sub="Suggested next steps"><Sparkles className="mr-1 inline h-3.5 w-3.5 text-primary" /> Anxora Copilot</SectionTitle>
+          <SectionTitle sub="Suggested next steps"><Sparkles className="mr-1 inline h-3.5 w-3.5 text-primary" /> ELINA Copilot</SectionTitle>
           <ul className="space-y-2">
             {[
               `Summarize the last 30 days in ${mod.label}`,

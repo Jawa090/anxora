@@ -1,4 +1,9 @@
+import { useState } from "react";
 import { type CalendarEvent } from "@/hooks/useCalendarEvents";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Clock, MapPin, AlignLeft, Users, ArrowLeft } from "lucide-react";
+import { format } from "date-fns";
 
 interface CalendarMonthViewProps {
   selectedDate: Date;
@@ -6,9 +11,11 @@ interface CalendarMonthViewProps {
   events: CalendarEvent[];
   onEventClick: (event: CalendarEvent) => void;
   onSlotClick?: (date: Date) => void;
+  moreListDate: Date | null;
+  setMoreListDate: (date: Date | null) => void;
 }
 
-export function CalendarMonthView({ selectedDate, onDateSelect, events, onEventClick, onSlotClick }: CalendarMonthViewProps) {
+export function CalendarMonthView({ selectedDate, onDateSelect, events, onEventClick, onSlotClick, moreListDate, setMoreListDate }: CalendarMonthViewProps) {
   const getDaysInMonth = (date: Date) => {
     const year = date.getFullYear();
     const month = date.getMonth();
@@ -52,11 +59,11 @@ export function CalendarMonthView({ selectedDate, onDateSelect, events, onEventC
   };
 
   return (
-    <div className="bg-white dark:bg-slate-900">
+    <div className="bg-card">
       {/* Header with day names */}
-      <div className="grid grid-cols-7 border-b border-slate-200 dark:border-slate-700 bg-gradient-to-r from-slate-50 to-white dark:from-slate-800 dark:to-slate-900">
+      <div className="grid grid-cols-7 border-b border-border/40 bg-muted/20">
         {dayNames.map((day) => (
-          <div key={day} className="p-4 text-center text-sm font-semibold text-slate-700 dark:text-slate-300 border-r border-slate-200 dark:border-slate-700 last:border-r-0">
+          <div key={day} className="p-4 text-center text-sm font-semibold text-foreground/80 border-r border-border/40 last:border-r-0">
             {day}
           </div>
         ))}
@@ -73,8 +80,8 @@ export function CalendarMonthView({ selectedDate, onDateSelect, events, onEventC
               key={idx}
               onClick={() => { onDateSelect(date); onSlotClick?.(date); }}
               className={`
-                min-h-[100px] p-3 border-r border-b border-slate-200 dark:border-slate-700 last:border-r-0 cursor-pointer transition-all duration-200
-                ${!isCurrentMonth ? 'bg-slate-50 dark:bg-slate-800/50 text-slate-400 dark:text-slate-600' : 'hover:bg-slate-50 dark:hover:bg-slate-800/30'}
+                min-h-[100px] p-3 border-r border-b border-border/40 last:border-r-0 cursor-pointer transition-all duration-200
+                ${!isCurrentMonth ? 'bg-muted/10 text-muted-foreground/50' : 'hover:bg-muted/10'}
                 ${isToday && isCurrentMonth ? 'ring-2 ring-inset ring-primary/20 bg-primary/5' : ''}
               `}
 
@@ -82,16 +89,16 @@ export function CalendarMonthView({ selectedDate, onDateSelect, events, onEventC
               <div className="flex items-start justify-between mb-2">
                 {/* Month indicator for first week of previous/next month */}
                 {idx < 7 && !isCurrentMonth && (
-                  <span className="text-xs text-slate-500 dark:text-slate-500 font-medium">
+                  <span className="text-xs text-muted-foreground/50 font-medium">
                     {date.toLocaleDateString('en-US', { month: 'short' })}
                   </span>
                 )}
                 
                 {/* Date number */}
                 <span className={`
-                  text-sm font-medium transition-all duration-200
-                  ${isToday ? 'w-7 h-7 rounded-full bg-gradient-to-r from-blue-500 to-blue-600 text-white flex items-center justify-center shadow-lg shadow-blue-500/30' : ''}
-                  ${!isCurrentMonth ? 'text-slate-400 dark:text-slate-600' : 'text-slate-900 dark:text-slate-100'}
+                  text-sm font-semibold transition-all duration-200
+                  ${isToday ? 'w-7 h-7 rounded-full bg-primary text-primary-foreground flex items-center justify-center shadow-md shadow-primary/20' : ''}
+                  ${!isCurrentMonth ? 'text-muted-foreground/40' : 'text-foreground'}
                 `}>
                   {date.getDate()}
                 </span>
@@ -99,7 +106,7 @@ export function CalendarMonthView({ selectedDate, onDateSelect, events, onEventC
               
               {/* Events */}
               <div className="space-y-1">
-                {dayEvents.slice(0, 3).map(ev => (
+                {dayEvents.slice(0, 2).map(ev => (
                   <div
                     key={ev.id}
                     onClick={(e) => { e.stopPropagation(); onEventClick(ev); }}
@@ -118,16 +125,61 @@ export function CalendarMonthView({ selectedDate, onDateSelect, events, onEventC
                     )}
                   </div>
                 ))}
-                {dayEvents.length > 3 && (
-                  <div className="text-xs text-slate-500 dark:text-slate-400 pl-2 font-medium">
-                    +{dayEvents.length - 3} more
-                  </div>
+                {dayEvents.length > 2 && (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setMoreListDate(date);
+                    }}
+                    className="text-xs text-primary font-semibold hover:underline block pl-1 text-left w-full mt-1"
+                  >
+                    +{dayEvents.length - 2} more
+                  </button>
                 )}
               </div>
             </div>
           );
         })}
       </div>
+
+      {/* More Events Dialog */}
+      <Dialog open={!!moreListDate} onOpenChange={(open) => { if (!open) setMoreListDate(null); }}>
+        <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
+          <div>
+            <DialogHeader>
+              <DialogTitle className="text-lg">
+                Meetings on {moreListDate && format(moreListDate, 'MMMM d, yyyy')}
+              </DialogTitle>
+            </DialogHeader>
+
+            <div className="max-h-[350px] overflow-y-auto mt-4 space-y-2 pr-1">
+              {moreListDate && getEventsForDay(moreListDate).map((ev) => (
+                <div
+                  key={ev.id}
+                  onClick={() => {
+                    onEventClick(ev);
+                  }}
+                  className="p-3 rounded-lg border border-border/40 hover:bg-muted/20 cursor-pointer transition-colors flex items-center justify-between"
+                >
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div 
+                      className="w-3 h-3 rounded-full flex-shrink-0" 
+                      style={{ backgroundColor: ev.color || '#00D6C1' }} 
+                    />
+                    <div className="min-w-0">
+                      <p className="text-sm font-semibold truncate text-foreground">{ev.title}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {ev.is_all_day ? 'All day' : `${format(new Date(ev.start_time), 'h:mm a')} - ${format(new Date(ev.end_time), 'h:mm a')}`}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

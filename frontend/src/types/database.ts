@@ -1,4 +1,4 @@
-// Database types for ANXORA
+// Database types for ELINA
 export interface Database {
   public: {
     Tables: {

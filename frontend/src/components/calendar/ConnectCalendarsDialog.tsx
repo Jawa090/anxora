@@ -87,13 +87,13 @@ export function ConnectCalendarsDialog({
           </div>
         </DialogHeader>
 
-        <div className="bg-sky-50 dark:bg-sky-950/30 rounded-lg p-4 space-y-3">
+        <div className="bg-primary/10 dark:bg-muted rounded-lg p-4 space-y-3">
           {providers.map((provider) => (
             <div
               key={provider.id}
               className={`flex items-center justify-between p-4 bg-card rounded-lg border-2 transition-colors ${
                 provider.connected
-                  ? "border-success bg-success/5"
+                  ? "border-primary bg-primary/5"
                   : "border-transparent hover:border-muted"
               }`}
             >
@@ -101,7 +101,7 @@ export function ConnectCalendarsDialog({
                 <div className="relative">
                   {provider.icon}
                   {provider.connected && (
-                    <div className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-success flex items-center justify-center">
+                    <div className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-primary flex items-center justify-center">
                       <Check className="w-3 h-3 text-white" />
                     </div>
                   )}
@@ -115,14 +115,14 @@ export function ConnectCalendarsDialog({
               </div>
               {provider.connected ? (
                 <div className="flex items-center gap-1">
-                  <span className="flex items-center gap-1 text-success text-sm font-medium mr-2 hidden sm:flex">
+                  <span className="flex items-center gap-1 text-primary text-sm font-medium mr-2 hidden sm:flex">
                     <Check className="w-4 h-4" />
                     CONNECTED
                   </span>
                   <Button
                     variant="outline"
                     size="sm"
-                    className="h-8 gap-1 text-sky-600 border-sky-400 hover:bg-sky-600 hover:text-white"
+                    className="h-8 gap-1 text-white bg-secondary-foreground hover:bg-secondary-foreground/80 dark:bg-primary dark:hover:bg-primary/80 hover:text-white"
                     onClick={() => onSync(provider.id)}
                   >
                     <RefreshCw className="w-3.5 h-3.5" />
@@ -131,7 +131,7 @@ export function ConnectCalendarsDialog({
                   <Button
                     variant="outline"
                     size="sm"
-                    className="h-8 gap-1 text-destructive border-red-400 hover:bg-red-500 hover:text-white"
+                    className="h-8 gap-1 text-destructive border-destructive hover:bg-destructive/10 hover:text-destructive"
                     onClick={() => onDisconnect(provider.id)}
                   >
                     <Trash2 className="w-3.5 h-3.5" />
@@ -140,7 +140,7 @@ export function ConnectCalendarsDialog({
                 </div>
               ) : (
                 <Button
-                  className="bg-primary hover:bg-primary/90 text-success-foreground rounded-full px-6"
+                  className="bg-secondary-foreground hover:bg-secondary-foreground/80 text-success-foreground rounded-full px-6"
                   onClick={() => onConnect(provider.id)}
                 >
                   CONNECT

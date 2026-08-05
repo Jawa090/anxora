@@ -1,5 +1,5 @@
 -- ============================================================
--- ANXORA: Unified Notifications System
+-- ELINA: Unified Notifications System
 -- Enhanced migration to handle potential legacy table conflicts
 -- ============================================================
 

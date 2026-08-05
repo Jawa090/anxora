@@ -1,5 +1,5 @@
 /**
- * Shared constants for the ANXORA frontend.
+ * Shared constants for the ELINA frontend.
  * Keep department names in sync with the Admin Dashboard.
  */
 

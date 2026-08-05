@@ -99,7 +99,7 @@ export default function AcceptInvitePage() {
               <Sparkles className="w-6 h-6 text-[#7D5CE4]" />
             </div>
             <h1 className="text-2xl font-bold tracking-tight text-white mt-2">
-              Anxora<span className="text-[#7D5CE4]">OS</span>
+              ELINA<span className="text-[#7D5CE4]">OS</span>
             </h1>
           </div>
 
@@ -130,7 +130,7 @@ export default function AcceptInvitePage() {
           <Sparkles className="w-6 h-6 text-[#7D5CE4]" />
         </div>
         <h1 className="text-3xl font-bold tracking-tight text-white mb-2">
-          Anxora<span className="text-[#8B5CF6]">OS</span>
+          ELINA<span className="text-[#8B5CF6]">OS</span>
         </h1>
         <p className="text-sm text-slate-400 font-medium">
           {success ? "Verification complete" : "Set up your credentials to activate your workspace account"}
@@ -243,7 +243,7 @@ export default function AcceptInvitePage() {
       {/* Footer block matching screenshot */}
       <div className="text-center mt-8 z-10">
         <p className="text-[11px] text-slate-500 font-semibold tracking-wide">
-          Anxora OS is secure and encrypted. Need help? Contact admin.
+          ELINA OS is secure and encrypted. Need help? Contact admin.
         </p>
       </div>
     </div>

@@ -91,7 +91,7 @@ export function BrandLogo({
             )}
             style={{ fontFamily: "'Cinzel', 'Playfair Display', Georgia, serif" }}
           >
-            ANXORA
+            ELINA
           </span>
           <span
             className={cn(

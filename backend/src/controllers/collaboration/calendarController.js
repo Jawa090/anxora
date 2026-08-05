@@ -14,14 +14,23 @@ const getEvents = async (req, res, next) => {
       LEFT JOIN public.users u ON e.created_by = u.id
       WHERE e.org_id = $1 AND e.deleted_at IS NULL
     `;
-    const params = [req.user.orgId];
+    const params = [req.user.orgId, req.user.id, req.user.role, req.user.email];
     
-    // Privacy: Only show external events to the person who synced them
-    // Regular ANXORA events (external_provider IS NULL) are shared with the org
-    query += ' AND (external_provider IS NULL OR created_by = $2)';
-    params.push(req.user.id);
+    query += ` AND (
+      (e.external_provider IS NOT NULL AND e.created_by = $2)
+      OR
+      (e.external_provider IS NULL AND (
+        e.created_by = $2 
+        OR $3 = 'admin' 
+        OR $3 = 'super_admin'
+        OR EXISTS (
+          SELECT 1 FROM public.calendar_event_attendees cea 
+          WHERE cea.event_id = e.id AND LOWER(cea.email) = LOWER($4)
+        )
+      ))
+    )`;
     
-    let paramIndex = 3;
+    let paramIndex = 5;
 
     if (search) {
       query += ` AND (
@@ -78,14 +87,14 @@ const getById = async (req, res, next) => {
 
 const create = async (req, res, next) => {
   try {
-    const { title, description, startTime, endTime, location, color, allDay, recurrence, invitees = [], attachments = [] } = req.body;
+    const { title, description, startTime, endTime, location, color, allDay, recurrence, invitees = [], attachments = [], category } = req.body;
 
 
     const result = await db.query(
-      `INSERT INTO public.calendar_events (org_id, created_by, title, description, start_time, end_time, location, color, is_all_day, recurrence_rule, attachments)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+      `INSERT INTO public.calendar_events (org_id, created_by, title, description, start_time, end_time, location, color, is_all_day, recurrence_rule, attachments, category)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
        RETURNING *`,
-      [req.user.orgId, req.user.id, title, description, startTime, endTime, location, color, allDay || false, recurrence, JSON.stringify(attachments)]
+      [req.user.orgId, req.user.id, title, description, startTime, endTime, location, color, allDay || false, recurrence, JSON.stringify(attachments), category || 'meeting']
     );
 
     const event = result.rows[0];
@@ -121,7 +130,7 @@ const create = async (req, res, next) => {
           <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden;">
             <div style="background: linear-gradient(135deg, #6366f1 0%, #a855f7 100%); padding: 30px; color: white;">
               <h1 style="margin: 0; font-size: 24px;"> ${title} Event</h1>
-              <p style="margin: 10px 0 0; opacity: 0.9;">${userData.org_name || 'ANXORA'}</p>
+              <p style="margin: 10px 0 0; opacity: 0.9;">${userData.org_name || 'ELINA'}</p>
             </div>
             <div style="padding: 30px; background: white;">
               <h2 style="margin-top: 0; color: #1e293b;">${title}</h2>
@@ -197,7 +206,7 @@ const create = async (req, res, next) => {
             try {
               for (const recipient of uniqueRecipients) {
                 await emailService.sendEmail({
-                  from: `"${userData.org_name || 'ANXORA'}" <${process.env.SMTP_USER}>`,
+                  from: `"${userData.org_name || 'ELINA'}" <${process.env.SMTP_USER}>`,
                   to: recipient,
                   subject: `📅 Event Created: ${title}`,
                   html: htmlBody,
@@ -235,7 +244,7 @@ const create = async (req, res, next) => {
 const update = async (req, res, next) => {
   try {
     const { id } = req.params;
-    const { title, description, startTime, endTime, location, color, allDay, recurrence, attachments } = req.body;
+    const { title, description, startTime, endTime, location, color, allDay, recurrence, attachments, category, invitees } = req.body;
 
     const fields = [];
     const values = [];
@@ -250,27 +259,61 @@ const update = async (req, res, next) => {
     if (allDay !== undefined) { fields.push(`is_all_day = $${paramIndex++}`); values.push(allDay); }
     if (recurrence !== undefined) { fields.push(`recurrence = $${paramIndex++}`); values.push(recurrence); }
     if (attachments !== undefined) { fields.push(`attachments = $${paramIndex++}`); values.push(JSON.stringify(attachments)); }
+    if (category !== undefined) { fields.push(`category = $${paramIndex++}`); values.push(category); }
 
 
-    if (fields.length === 0) {
+    if (fields.length === 0 && invitees === undefined) {
       return res.status(400).json({ error: 'No fields to update' });
     }
 
-    fields.push(`updated_at = now()`);
-    values.push(id, req.user.orgId);
+    let updatedEvent = null;
+    if (fields.length > 0) {
+      fields.push(`updated_at = now()`);
+      values.push(id, req.user.orgId);
 
-    const result = await db.query(
-      `UPDATE public.calendar_events SET ${fields.join(', ')} 
-       WHERE id = $${paramIndex} AND org_id = $${paramIndex + 1}
-       RETURNING *`,
-      values
-    );
+      const result = await db.query(
+        `UPDATE public.calendar_events SET ${fields.join(', ')} 
+         WHERE id = $${paramIndex} AND org_id = $${paramIndex + 1}
+         RETURNING *`,
+        values
+      );
 
-    if (result.rows.length === 0) {
-      return res.status(404).json({ error: 'Event not found' });
+      if (result.rows.length === 0) {
+        return res.status(404).json({ error: 'Event not found' });
+      }
+      updatedEvent = result.rows[0];
+    } else {
+      const result = await db.query(
+        `SELECT * FROM public.calendar_events WHERE id = $1 AND org_id = $2 AND deleted_at IS NULL`,
+        [id, req.user.orgId]
+      );
+      if (result.rows.length === 0) {
+        return res.status(404).json({ error: 'Event not found' });
+      }
+      updatedEvent = result.rows[0];
     }
 
-    const updatedEvent = result.rows[0];
+    // Update invitees if provided
+    if (invitees !== undefined) {
+      await db.query(
+        'DELETE FROM public.calendar_event_attendees WHERE event_id = $1 AND org_id = $2',
+        [id, req.user.orgId]
+      );
+
+      if (invitees && invitees.length > 0) {
+        for (const invitee of invitees) {
+          const attendeeEmail = typeof invitee === 'string' ? invitee : invitee.email;
+          if (!attendeeEmail) continue;
+
+          await db.query(
+            `INSERT INTO public.calendar_event_attendees (event_id, email, status, is_organizer, org_id)
+             VALUES ($1, $2, $3, $4, $5)`,
+            [id, attendeeEmail, 'pending', false, req.user.orgId]
+          );
+        }
+      }
+    }
+
     realtimeService.broadcastToOrg(req.user.orgId, 'calendar:event-updated', updatedEvent);
     res.json(updatedEvent);
   } catch (err) {
@@ -660,6 +703,21 @@ const getEventIcs = async (req, res, next) => {
     next(err);
   }
 };
+const getAttendees = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const result = await db.query(
+      `SELECT cea.*, u.full_name as name, u.avatar_url 
+       FROM public.calendar_event_attendees cea
+       LEFT JOIN public.users u ON cea.email = u.email
+       WHERE cea.event_id = $1 AND cea.org_id = $2`,
+      [id, req.user.orgId]
+    );
+    res.json(result.rows);
+  } catch (err) {
+    next(err);
+  }
+};
 
 module.exports = {
   getEvents,
@@ -675,5 +733,6 @@ module.exports = {
   disconnect,
   syncEvents,
   connectICloud,
-  getEventIcs
+  getEventIcs,
+  getAttendees
 };

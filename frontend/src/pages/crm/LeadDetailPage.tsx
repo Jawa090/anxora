@@ -2272,7 +2272,7 @@ export default function LeadDetailPage() {
               </div>
               <Badge variant="outline" className=" ">Owner</Badge>
             </div>
-            <p className="text-xs text-center text-muted-foreground italic">Collaborative workspace features are coming soon to ANXORA.</p>
+            <p className="text-xs text-center text-muted-foreground italic">Collaborative workspace features are coming soon to ELINA.</p>
           </div>
           <AlertDialogFooter>
             <AlertDialogAction onClick={() => setShowWorkspaceModal(false)} className="bg-primary hover:bg-primary/90 h-10 px-8 font-semibold">

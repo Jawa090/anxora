@@ -40,6 +40,7 @@ export interface CreateEventInput {
   title: string;
   description?: string;
   location?: string;
+  category?: string;
   startTime: string;
   endTime: string;
   allDay?: boolean;
@@ -73,6 +74,7 @@ export function useCalendarEvents(startDate?: Date, endDate?: Date, search?: str
         title: input.title,
         description: input.description,
         location: input.location,
+        category: input.category,
         startTime: input.startTime,
         endTime: input.endTime,
         allDay: input.allDay,
@@ -102,11 +104,13 @@ export function useCalendarEvents(startDate?: Date, endDate?: Date, search?: str
         allDay: updates.allDay,
         recurrence: updates.recurrence,
         attachments: updates.attachments,
+        invitees: updates.invitees,
       });
 
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['calendar-events'] });
+      queryClient.invalidateQueries({ queryKey: ['event-attendees'] });
       toast.success('Event updated');
     },
     onError: (error: Error) => {
@@ -143,7 +147,8 @@ export function useEventAttendees(eventId: string | null) {
     queryKey: ['event-attendees', eventId],
     queryFn: async () => {
       if (!eventId) return [];
-      return [] as EventAttendee[];
+      const res = await calendarApi.getAttendees(eventId);
+      return res as EventAttendee[];
     },
     enabled: !!eventId,
   });

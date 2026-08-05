@@ -86,7 +86,7 @@ export default function ForcePasswordChangePage() {
           </div>
           
           <div className="text-slate-500 text-[10px] font-black uppercase tracking-[0.4em]">
-            ANXORA Resource Management System v2.0
+            ELINA Resource Management System v2.0
           </div>
         </div>
       </div>

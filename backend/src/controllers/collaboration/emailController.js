@@ -47,7 +47,7 @@ const getMessages = async (req, res, next) => {
     const mockMessages = [
       {
         id: '1',
-        subject: 'Welcome to our ANXORA system',
+        subject: 'Welcome to our ELINA system',
         sender_email: 'support@company.com',
         sender_name: 'Support Team',
         received_at: new Date().toISOString(),

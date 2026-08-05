@@ -350,13 +350,13 @@ export function CreateEventDialog({ open, onOpenChange, defaultDate, defaultHour
         {/* Actions */}
         <div className="flex gap-3 pt-4 border-t">
           <Button
-            className="bg-primary hover:bg-primary/90 text-success-foreground"
+            className="dar:bg-primary hover:dark:bg-primary/80 text-white"
             onClick={handleSubmit}
             disabled={!title.trim() || createEvent.isPending}
           >
             {createEvent.isPending ? 'Creating...' : 'Create Event'}
           </Button>
-          <Button variant="ghost" onClick={() => { resetForm(); onOpenChange(false); }}>
+          <Button variant="ghost" className="hover:bg-secondary-foreground dark:hover:bg-primary hover:text-white" onClick={() => { resetForm(); onOpenChange(false); }}>
             Cancel
           </Button>
         </div>

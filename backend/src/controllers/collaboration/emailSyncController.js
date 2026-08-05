@@ -681,7 +681,7 @@ const sendEmail = async (req, res, next) => {
       result = { success: true, messageId: info.messageId };
     }
 
-    // Auto-log email to ANXORA activities if entity context is provided
+    // Auto-log email to ELINA activities if entity context is provided
     if (entity_type && entity_id) {
       try {
         const entityColumn = entity_type === 'lead' ? 'lead_id'

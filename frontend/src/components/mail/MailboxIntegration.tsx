@@ -217,7 +217,7 @@ export function MailboxIntegration({
           Connect your email
         </h2>
         <p className="text-sm text-muted-foreground mb-8">
-          Gmail and Outlook use secure OAuth — no passwords needed. Your ANXORA
+          Gmail and Outlook use secure OAuth — no passwords needed. Your ELINA
           will sync real emails.
         </p>
         <div className="grid grid-cols-2 md:grid-cols-2 gap-4 max-w-3xl mx-auto">

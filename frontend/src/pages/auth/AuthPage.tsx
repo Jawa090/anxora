@@ -85,14 +85,48 @@ export default function AuthPage() {
 
       <div className="relative w-full max-w-md z-10">
         {/* Logo & Header */}
-        <div className="mb-8 text-center animate-fade-in">
-          <Logo className="mx-auto mb-3 h-12 w-12 text-[#2DD4BF] bg-transparent" />
-          <h2 className="text-3xl font-extrabold tracking-tight text-white sm:text-4xl font-serif uppercase">
-            ANXORA <span className="text-[#2DD4BF] font-sans font-semibold tracking-wider text-2xl">SMART</span>
-          </h2>
-          <p className="mt-2 text-sm text-[#8AA1A3]">
-            Sign in to access your secure enterprise workspace
-          </p>
+        <div className="mb-4 flex items-center justify-center gap-4">
+          <svg
+            viewBox="22 18 56 64"
+            fill="none"
+            xmlns="http://www.w3.org/2000/svg"
+            className="h-16 w-16 text-white shrink-0"
+          >
+            <path
+              d="M 32 32 C 32 24, 68 24, 68 32 C 68 40, 32 40, 32 50 C 32 60, 68 60, 68 70 C 68 80, 32 80, 32 70"
+              stroke="currentColor"
+              strokeWidth="8.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+            <path
+              d="M 32 32 L 68 32"
+              stroke="currentColor"
+              strokeWidth="8.5"
+              strokeLinecap="round"
+            />
+            <path
+              d="M 32 50 L 58 50"
+              stroke="currentColor"
+              strokeWidth="8.5"
+              strokeLinecap="round"
+            />
+            <path
+              d="M 32 70 L 68 70"
+              stroke="currentColor"
+              strokeWidth="8.5"
+              strokeLinecap="round"
+            />
+          </svg>
+
+          <div className="text-left">
+            <h1 className="text-4xl font-serif font-bold tracking-[0.2em] text-white">
+              ELINA
+            </h1>
+            <p className="mt-1 text-lg uppercase tracking-[0.4em] text-[#2DD4BF]">
+              Smart
+            </p>
+          </div>
         </div>
 
         {/* Card with Glassmorphism */}
@@ -155,7 +189,11 @@ export default function AuthPage() {
                   onClick={() => setShowSignInPassword(!showSignInPassword)}
                   className="absolute inset-y-0 right-0 flex items-center pr-3 text-[#8AA1A3] hover:text-[#C8DBDC]"
                 >
-                  {showSignInPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  {showSignInPassword ? (
+                    <EyeOff className="h-4 w-4" />
+                  ) : (
+                    <Eye className="h-4 w-4" />
+                  )}
                 </button>
               </div>
             </div>
@@ -202,9 +240,7 @@ export default function AuthPage() {
 
         {/* Footer Link & Policies */}
         <div className="mt-8 text-center text-xs text-[#8AA1A3] space-y-3">
-          <div>
-            Anxora OS Security & Encryption Active
-          </div>
+          <div>ELINA OS Security & Encryption Active</div>
           <div className="flex items-center justify-center gap-2">
             <Link
               to="/privacy"
@@ -232,4 +268,3 @@ export default function AuthPage() {
     </div>
   );
 }
-

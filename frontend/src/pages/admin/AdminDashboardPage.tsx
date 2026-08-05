@@ -355,7 +355,7 @@ export default function AdminDashboardPage() {
             Manage organization employees and system access.
           </p>
         </div>
-        <Button onClick={handleCreateNew} className="gap-2 bg-primary text-[20px]">
+        <Button onClick={handleCreateNew} className="gap-2 h-10 bg-secondary-foreground text-[20px]">
           <UserPlus className="h-10 w-10" />
           New Employee
         </Button>
@@ -917,7 +917,7 @@ export default function AdminDashboardPage() {
               type="button"
               variant="ghost"
               onClick={closeDialog}
-              className="text-muted-foreground hover:text-white hover:bg-primary"
+              className="text-muted-foreground hover:text-white hover:bg-secondary-foreground hover:dark:bg-primary"
             >
               Cancel
             </Button>
@@ -929,7 +929,7 @@ export default function AdminDashboardPage() {
                 disabled={
                   createMutation.isPending || updateMutation.isPending
                 }
-                className="gap-2 px-8 bg-primary text-white hover:bg-primary/80"
+                className="gap-2 px-8 bg-secondary-foreground text-white hover:bg-secondary-foreground/80"
               >
                 {createMutation.isPending || updateMutation.isPending ? (
                   <Loader2 className="h-4 w-4 animate-spin" />

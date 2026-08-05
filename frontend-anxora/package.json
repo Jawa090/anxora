@@ -1,7 +1,7 @@
 {
-  "name": "anxora-frontend",
+  "name": "ELINA-frontend",
   "version": "1.0.0",
-  "description": "Anxora OS - Enterprise ERP + CRM Platform Frontend",
+  "description": "ELINA OS - Enterprise ERP + CRM Platform Frontend",
   "private": true,
   "sideEffects": false,
   "type": "module",

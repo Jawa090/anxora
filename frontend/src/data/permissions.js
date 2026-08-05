@@ -1,6 +1,6 @@
 
 /**
- * Per-module permission configuration for ANXORA (JS Version).
+ * Per-module permission configuration for ELINA (JS Version).
  * This is the source of truth for both backend validation and frontend display.
  */
 export const MODULE_PERMISSIONS = {
