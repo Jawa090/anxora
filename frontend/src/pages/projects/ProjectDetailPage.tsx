@@ -3472,7 +3472,7 @@ export default function ProjectDetailPage() {
                 <span className="text-[10px] font-bold text-red-400 uppercase tracking-widest block mb-1">
                   Reason for Delay
                 </span>
-                <p className="text-xs text-red-200/90 leading-relaxed bg-red-500/10 p-3 rounded-xl border border-red-500/20">
+                <p className="text-xs dark:text-white leading-relaxed bg-red-500/10 p-3 rounded-xl border border-red-500/20">
                   {selectedTaskForDrawer.delay_reason}
                 </p>
               </div>
@@ -3522,7 +3522,7 @@ export default function ProjectDetailPage() {
                       )}
                     </div>
                   )}
-                  <span className="text-muted-foreground text-[10px]">
+                  <span className="dark:text-white text-xs font-bold">
                     {selectedTaskForDrawer.assigned_to_name ||
                       getMemberName(selectedTaskForDrawer.assigned_to)}
                   </span>
@@ -3572,7 +3572,7 @@ export default function ProjectDetailPage() {
                     selectedTaskForDrawer.title,
                   )
                 }
-                className="text-destructive hover:text-red-300 hover:bg-red-500/5 h-8 rounded-xl text-xs gap-1.5 font-bold bg-transparent"
+                className="text-destructive hover:text-red-600 hover:bg-red-500/5 h-8 rounded-xl text-xs gap-1.5 font-bold bg-transparent"
               >
                 <Trash2 className="h-4 w-4" /> Delete
               </Button>

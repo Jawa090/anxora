@@ -1528,7 +1528,7 @@ export default function IndependentTasksPage() {
                       setIsDetailOpen(false);
                       handleOpenEdit(selectedTask);
                     }}
-                    className="h-9 px-4 text-xs font-bold gap-1.5"
+                    className="h-9 px-4 text-xs font-bold gap-1.5 hover:text-white hover:bg-secondary-foreground dark:hover:bg-primary"
                   >
                     <Edit2 className="h-3.5 w-3.5" /> Edit
                   </Button>
