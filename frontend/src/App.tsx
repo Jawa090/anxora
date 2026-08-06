@@ -187,8 +187,8 @@ const App = () => (
         <Toaster />
         <Sonner />
         <RushNotificationContainer />
-        <BrowserRouter>
-          <AuthProvider>
+        <AuthProvider>
+          <BrowserRouter>
             <PushNotificationsSetup />
             <NotificationsProvider>
               <OrganizationProvider>
@@ -350,12 +350,11 @@ const App = () => (
                 </DialogProvider>
               </OrganizationProvider>
             </NotificationsProvider>
-          </AuthProvider>
-
-        </BrowserRouter>
+          </BrowserRouter>
+        </AuthProvider>
       </TooltipProvider>
     </ThemeProvider>
-  </QueryClientProvider>
+  </QueryClientProvider >
 );
 
 export default App;

@@ -75,7 +75,7 @@ class ApiClient {
 
     const fullUrl = `${API_BASE_URL}${endpoint}`;
     console.log('🌐 Making request to:', fullUrl);
-    console.log('🔧 Headers:', headers);
+    console.log('🔧 Has Authorization header:', !!token);
 
     try {
       const response = await fetch(fullUrl, {
@@ -90,7 +90,11 @@ class ApiClient {
       if (response.status === 401) {
         const hadToken = !!this.token;
         this.setToken(null);
-        if (hadToken) window.location.href = '/auth';
+        // Only redirect if we're not already on the auth page and had a token
+        if (hadToken && !window.location.pathname.startsWith('/auth')) {
+          console.log('🔐 Token invalid, redirecting to auth...');
+          window.location.href = '/auth';
+        }
         throw new Error('Unauthorized');
       }
 
@@ -106,8 +110,7 @@ class ApiClient {
     } catch (error) {
       console.error('❌ Fetch Error:', error);
       console.error('❌ Error details:', {
-        message: error.message,
-        stack: error.stack,
+        message: (error as Error).message,
         url: fullUrl
       });
       throw error;
@@ -706,7 +709,7 @@ export const marketingApi = {
   createEmailCampaign: (data: any) => api.post<any>('/marketing/email-campaigns', data),
   updateEmailCampaign: (id: string, data: any) => api.put<any>(`/marketing/email-campaigns/${id}`, data),
   deleteEmailCampaign: (id: string) => api.delete(`/marketing/email-campaigns/${id}`),
-  
+
   // Email Templates API
   getEmailTemplates: () => api.get<any[]>('/marketing/email-templates'),
   createEmailTemplate: (data: any) => api.post<any>('/marketing/email-templates', data),

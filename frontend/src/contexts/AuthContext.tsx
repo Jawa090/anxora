@@ -47,7 +47,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const fetchUserData = async () => {
     try {
+      console.log('Fetching user profile data...');
+      const token = api.getToken();
+      console.log('Token exists:', !!token);
+
       const profileData = await authApi.getProfile();
+      console.log('Profile data received:', profileData);
+
       // normalize camelCase from backend to snake_case
       const normalized = {
         ...profileData,
@@ -73,6 +79,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return normalized;
     } catch (error) {
       console.error('Error fetching user data:', error);
+      // Silently fail on 401 - user is not authenticated
+      // This is expected on first load without a token
     }
   };
 
@@ -90,6 +98,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
 
     initializeAuth();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -147,12 +156,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const signIn = async (email: string, password: string) => {
     try {
       const { token, user: userData } = await authApi.login(email, password);
+      console.log('✅ Login successful, token received:', !!token);
+
+      // Set token FIRST before fetching profile
       api.setToken(token);
+      console.log('✅ Token stored in client');
+
       setUser(userData);
       setSession({ user: { id: userData.id } });
+
+      // Now fetch full profile
       await fetchUserData();
       return { error: null };
     } catch (error: any) {
+      console.error('❌ Login failed:', error);
       return { error };
     }
   };
@@ -198,10 +215,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const hasPermission = (module: string, action?: string) => {
     if (!profile) return false;
     if (userRole?.role === 'super_admin') return true;
-    
+
     const permissions = profile.module_permissions || {};
     const modulePerms = permissions[module] || [];
-    
+
     if (!action) return modulePerms.length > 0;
     return modulePerms.includes(action);
   };
