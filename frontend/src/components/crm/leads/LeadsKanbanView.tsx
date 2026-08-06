@@ -61,7 +61,7 @@ interface LeadsKanbanViewProps {
 }
 
 const colorOptions = [
-  "bg-chart-1", "bg-warning", "bg-success", "bg-purple-500", 
+  "bg-chart-1", "bg-warning", "bg-success", "bg-purple-500",
   "bg-orange-500", "bg-blue-500", "bg-pink-500", "bg-indigo-500",
   "bg-teal-500", "bg-red-500", "bg-yellow-500", "bg-green-500"
 ];
@@ -79,7 +79,7 @@ export function LeadsKanbanView({ leads, onCreateLead, selectedStage }: LeadsKan
   const [dragOverColumn, setDragOverColumn] = useState<string | null>(null);
   const [isAddStageOpen, setIsAddStageOpen] = useState(false);
   const [isEditStageOpen, setIsEditStageOpen] = useState(false);
-  const [editingStage, setEditingStage] = useState<{id: string, label: string, color: string} | null>(null);
+  const [editingStage, setEditingStage] = useState<{ id: string, label: string, color: string } | null>(null);
   const [newStageTitle, setNewStageTitle] = useState("");
   const [editStageName, setEditStageName] = useState("");
   const [editStageColor, setEditStageColor] = useState("");
@@ -87,13 +87,13 @@ export function LeadsKanbanView({ leads, onCreateLead, selectedStage }: LeadsKan
   const [stageToDelete, setStageToDelete] = useState<string | null>(null);
   const [leadToDelete, setLeadToDelete] = useState<string | null>(null);
 
-  const columns: Column[] = pipelineStages.map(s => ({ 
-    id: s.id, 
+  const columns: Column[] = pipelineStages.map(s => ({
+    id: s.id,
     key: s.stage_key,
-    label: s.stage_label, 
-    color: s.color || "bg-muted-foreground", 
+    label: s.stage_label,
+    color: s.color || "bg-muted-foreground",
     isCustom: true,
-    is_active: s.is_active 
+    is_active: s.is_active
   })).filter(c => c.is_active !== false);
 
   const getInitials = (lead: Lead) => {
@@ -115,7 +115,7 @@ export function LeadsKanbanView({ leads, onCreateLead, selectedStage }: LeadsKan
     );
   };
 
-  const getStageLeads = (stageKey: string) => 
+  const getStageLeads = (stageKey: string) =>
     leads.filter(l => (l.stage || 'new') === stageKey);
 
   const handleDragStart = (e: React.DragEvent, leadId: string) => {
@@ -152,10 +152,10 @@ export function LeadsKanbanView({ leads, onCreateLead, selectedStage }: LeadsKan
 
   const handleUpdateStage = () => {
     if (!editingStage || !editStageName.trim()) return;
-    updateStage.mutate({ 
-      id: editingStage.id, 
+    updateStage.mutate({
+      id: editingStage.id,
       stageName: editStageName,
-      color: editStageColor 
+      color: editStageColor
     });
     setIsEditStageOpen(false);
     setEditingStage(null);
@@ -223,176 +223,176 @@ export function LeadsKanbanView({ leads, onCreateLead, selectedStage }: LeadsKan
         </Dialog>
       </div>
       <div className="flex gap-4 overflow-x-auto pb-4">
-      {columns.map((column) => {
-        if (selectedStage && selectedStage !== "all" && selectedStage !== column.key) return null;
-        const stageLeads = getStageLeads(column.key);
-        const totalValue = stageLeads.reduce((sum, lead) => sum + lead.value, 0);
+        {columns.map((column) => {
+          if (selectedStage && selectedStage !== "all" && selectedStage !== column.key) return null;
+          const stageLeads = getStageLeads(column.key);
+          const totalValue = stageLeads.reduce((sum, lead) => sum + lead.value, 0);
 
-        return (
-          <div
-            key={column.id}
-            className={cn(
-              "flex-shrink-0 w-80 rounded-xl border transition-colors shadow-sm",
-              "bg-muted/40 dark:bg-muted/20", // Improved contrast for dark mode
-              dragOverColumn === column.id
-                ? "border-primary bg-primary/5 ring-2 ring-primary/20"
-                : "border-border/50"
-            )}
-            onDragOver={(e) => handleDragOver(e, column.id)}
-            onDragLeave={handleDragLeave}
-            onDrop={(e) => handleDrop(e, column.key)}
-          >
-            {/* Column Header */}
-            <div className="p-4 border-b border-border">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <div className={`w-3 h-3 rounded-full ${column.color}`} />
-                  <h3 className="font-semibold">{column.label}</h3>
-                  <Badge variant="secondary" className="rounded-full">
-                    {stageLeads.length}
-                  </Badge>
-                </div>
-                <div className="flex items-center gap-1">
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-7 w-7"
-                    onClick={onCreateLead}
-                  >
-                    <Plus className="h-4 w-4" />
-                  </Button>
-                  
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="icon" className="h-7 w-7">
-                        <MoreHorizontal className="h-4 w-4" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem onClick={() => {
-                        setEditingStage({ id: column.id, label: column.label, color: column.color });
-                        setEditStageName(column.label);
-                        setEditStageColor(column.color);
-                        setIsEditStageOpen(true);
-                      }}>
-                        Edit Stage
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => handleHideStage(column.id)}>
-                        Hide Stage
-                      </DropdownMenuItem>
-                      <DropdownMenuItem 
-                        className="text-destructive"
-                        onClick={() => handleDeleteStage(column.id)}
-                      >
-                        Delete Stage
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </div>
-              </div>
-              <p className="text-sm text-muted-foreground mt-1">
-                ${totalValue.toLocaleString()} total value
-              </p>
-            </div>
+          return (
+            <div
+              key={column.id}
+              className={cn(
+                "flex-shrink-0 w-80 rounded-xl border transition-colors shadow-sm",
+                "bg-slate-900/60 dark:bg-muted/20", // Dark background for both light and dark modes
+                dragOverColumn === column.id
+                  ? "border-primary bg-primary/5 ring-2 ring-primary/20"
+                  : "border-border/50"
+              )}
+              onDragOver={(e) => handleDragOver(e, column.id)}
+              onDragLeave={handleDragLeave}
+              onDrop={(e) => handleDrop(e, column.key)}
+            >
+              {/* Column Header */}
+              <div className="p-4 border-b border-border bg-slate-800/40 dark:bg-transparent rounded-t-xl">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className={`w-3 h-3 rounded-full ${column.color}`} />
+                    <h3 className="font-semibold">{column.label}</h3>
+                    <Badge variant="secondary" className="rounded-full">
+                      {stageLeads.length}
+                    </Badge>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7"
+                      onClick={onCreateLead}
+                    >
+                      <Plus className="h-4 w-4" />
+                    </Button>
 
-            {/* Column Content */}
-            <div className="p-2 space-y-2 max-h-[calc(100vh-320px)] overflow-y-auto">
-              {stageLeads.map((lead) => (
-                <div
-                  key={lead.id}
-                  draggable
-                  onDragStart={(e) => handleDragStart(e, lead.id)}
-                  className={cn(
-                    "border border-border/60 bg-card rounded-lg p-3 shadow-sm",
-                    "hover:shadow-md hover:border-primary/30 transition-all duration-200",
-                    "cursor-grab active:cursor-grabbing group"
-                  )}
-                >
-                  <div className="flex items-start justify-between mb-2">
-                    <div className="flex items-start gap-2">
-                      <GripVertical className="h-4 w-4 mt-0.5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0" />
-                      <div className="flex flex-col gap-1">
-                        <p
-                          className="font-semibold text-sm text-foreground hover:text-primary cursor-pointer transition-colors"
-                          onClick={() => navigate(`/crm/leads/${lead.id}`)}
-                          title="Lead Name"
-                        >
-                          {lead.name}
-                        </p>
-                        {lead.company && (
-                          <div className="text-xs font-medium text-muted-foreground" title="Customer Name">
-                            {lead.company}
-                          </div>
-                        )}
-                        {lead.email && (
-                          <div 
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              navigate("/collaboration/mail", { state: { composeTo: lead.email } });
-                            }}
-                            className="text-xs text-muted-foreground hover:text-primary hover:underline transition-colors truncate block cursor-pointer"
-                          >
-                            {lead.email}
-                          </div>
-                        )}
-                      </div>
-                    </div>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon" className="h-7 w-7 flex-shrink-0">
+                        <Button variant="ghost" size="icon" className="h-7 w-7">
                           <MoreHorizontal className="h-4 w-4" />
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={() => navigate(`/crm/leads/${lead.id}`)}>
-                          View Details
+                        <DropdownMenuItem onClick={() => {
+                          setEditingStage({ id: column.id, label: column.label, color: column.color });
+                          setEditStageName(column.label);
+                          setEditStageColor(column.color);
+                          setIsEditStageOpen(true);
+                        }}>
+                          Edit Stage
                         </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => convertLead.mutate(lead.id)}>
-                          Convert to Deal
+                        <DropdownMenuItem onClick={() => handleHideStage(column.id)}>
+                          Hide Stage
                         </DropdownMenuItem>
                         <DropdownMenuItem
                           className="text-destructive"
-                          onClick={() => setLeadToDelete(lead.id)}
+                          onClick={() => handleDeleteStage(column.id)}
                         >
-                          Delete
+                          Delete Stage
                         </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </div>
+                </div>
+                <p className="text-sm text-muted-foreground mt-1">
+                  ${totalValue.toLocaleString()} total value
+                </p>
+              </div>
 
-                  <div className="space-y-2 mt-2">
-                    {lead.phone && (
-                      <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                        <Phone className="h-3 w-3" />
-                        <ClickToCall 
-                          phoneNumber={lead.phone} 
-                          entityType="lead" 
-                          entityId={lead.id} 
-                          className="text-muted-foreground hover:text-primary hover:underline transition-colors truncate block" 
-                        />
-                      </div>
+              {/* Column Content */}
+              <div className="p-2 space-y-2 max-h-[calc(100vh-320px)] overflow-y-auto">
+                {stageLeads.map((lead) => (
+                  <div
+                    key={lead.id}
+                    draggable
+                    onDragStart={(e) => handleDragStart(e, lead.id)}
+                    className={cn(
+                      "border border-border/60 bg-slate-800/60 dark:bg-card rounded-lg p-3 shadow-sm",
+                      "hover:shadow-md hover:border-primary/30 transition-all duration-200",
+                      "cursor-grab active:cursor-grabbing group"
                     )}
-                    <div className="flex items-center justify-between">
-                      <Badge variant="outline" className="text-xs border-border">
-                        {lead.source || "—"}
-                      </Badge>
-                      <span className="text-sm font-semibold text-success">
-                        ${lead.value.toLocaleString()}
-                      </span>
+                  >
+                    <div className="flex items-start justify-between mb-2">
+                      <div className="flex items-start gap-2">
+                        <GripVertical className="h-4 w-4 mt-0.5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0" />
+                        <div className="flex flex-col gap-1">
+                          <p
+                            className="font-semibold text-sm text-foreground hover:text-primary cursor-pointer transition-colors"
+                            onClick={() => navigate(`/crm/leads/${lead.id}`)}
+                            title="Lead Name"
+                          >
+                            {lead.name}
+                          </p>
+                          {lead.company && (
+                            <div className="text-xs font-medium text-muted-foreground" title="Customer Name">
+                              {lead.company}
+                            </div>
+                          )}
+                          {lead.email && (
+                            <div
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                navigate("/collaboration/mail", { state: { composeTo: lead.email } });
+                              }}
+                              className="text-xs text-muted-foreground hover:text-primary hover:underline transition-colors truncate block cursor-pointer"
+                            >
+                              {lead.email}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon" className="h-7 w-7 flex-shrink-0">
+                            <MoreHorizontal className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={() => navigate(`/crm/leads/${lead.id}`)}>
+                            View Details
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => convertLead.mutate(lead.id)}>
+                            Convert to Deal
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            className="text-destructive"
+                            onClick={() => setLeadToDelete(lead.id)}
+                          >
+                            Delete
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
+
+                    <div className="space-y-2 mt-2">
+                      {lead.phone && (
+                        <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                          <Phone className="h-3 w-3" />
+                          <ClickToCall
+                            phoneNumber={lead.phone}
+                            entityType="lead"
+                            entityId={lead.id}
+                            className="text-muted-foreground hover:text-primary hover:underline transition-colors truncate block"
+                          />
+                        </div>
+                      )}
+                      <div className="flex items-center justify-between">
+                        <Badge variant="outline" className="text-xs border-border">
+                          {lead.source || "—"}
+                        </Badge>
+                        <span className="text-sm font-semibold text-success">
+                          ${lead.value.toLocaleString()}
+                        </span>
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
+                ))}
 
-              {stageLeads.length === 0 && (
-                <div className="text-center py-8 text-muted-foreground text-sm">
-                  No leads in this stage
-                </div>
-              )}
+                {stageLeads.length === 0 && (
+                  <div className="text-center py-8 text-muted-foreground text-sm">
+                    No leads in this stage
+                  </div>
+                )}
+              </div>
             </div>
-          </div>
-        );
-      })}
+          );
+        })}
       </div>
       {/* Edit Stage Dialog */}
       <Dialog open={isEditStageOpen} onOpenChange={setIsEditStageOpen}>
@@ -439,7 +439,7 @@ export function LeadsKanbanView({ leads, onCreateLead, selectedStage }: LeadsKan
         </DialogContent>
       </Dialog>
 
-      <DeleteConfirmationDialog 
+      <DeleteConfirmationDialog
         open={!!stageToDelete}
         onOpenChange={(open) => !open && setStageToDelete(null)}
         onConfirm={() => {
@@ -454,7 +454,7 @@ export function LeadsKanbanView({ leads, onCreateLead, selectedStage }: LeadsKan
         description="Are you sure you want to delete this stage? Leads in this stage will need to be moved manually."
       />
 
-      <DeleteConfirmationDialog 
+      <DeleteConfirmationDialog
         open={!!leadToDelete}
         onOpenChange={(open) => !open && setLeadToDelete(null)}
         onConfirm={() => {

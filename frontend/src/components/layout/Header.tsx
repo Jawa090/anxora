@@ -201,7 +201,7 @@ export function TopBar({
               <ChevronDown className="h-3.5 w-3.5 opacity-80" />
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-52 rounded-2xl p-1.5 border border-border/80 shadow-xl">
+          {/* <DropdownMenuContent align="end" className="w-52 rounded-2xl p-1.5 border border-border/80 shadow-xl">
             <DropdownMenuLabel className="px-3 py-2 text-[10px] uppercase tracking-wider font-bold text-[#2DD4BF]">Create New</DropdownMenuLabel>
             <DropdownMenuSeparator className="my-1" />
             <DropdownMenuItem className="rounded-xl px-3 py-2 font-medium" onClick={() => navigate('/crm/leads/create')}>New Lead</DropdownMenuItem>
@@ -211,7 +211,7 @@ export function TopBar({
             <DropdownMenuSeparator className="my-1" />
             <DropdownMenuItem className="rounded-xl px-3 py-2 font-medium" onClick={() => navigate('/hrms/employees')}>New Employee</DropdownMenuItem>
             <DropdownMenuItem className="rounded-xl px-3 py-2 font-medium" onClick={() => navigate('/inventory/products')}>New Product</DropdownMenuItem>
-          </DropdownMenuContent>
+          </DropdownMenuContent> */}
         </DropdownMenu>
 
         {/* Softphone Toggle */}
@@ -226,7 +226,7 @@ export function TopBar({
         {/* User Menu */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" className="gap-1 md:gap-2.5 p-1 sm:pl-2.5 sm:pr-3 h-10 rounded-xl hover:bg-muted/80 transition-colors">
+            <Button variant="ghost" className="gap-1 md:gap-2.5 p-1 sm:pl-2.5 sm:pr-3 h-10 rounded-xl hover:bg-primary/20 transition-colors">
               <Avatar className="h-8 w-8 ring-2 ring-primary/10">
                 <AvatarImage src={getAvatarUrl(profile?.avatar_url)} />
                 <AvatarFallback className="bg-gradient-to-tr from-[#003136] to-[#0D646B] text-white text-xs font-bold">{getInitials(profile?.full_name || 'User')}</AvatarFallback>

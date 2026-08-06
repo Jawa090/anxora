@@ -23,7 +23,7 @@ export function ThemeToggle() {
       onClick={toggleTheme}
       className={cn(
         "gap-2 px-2.5 py-2 h-10 w-10 flex items-center justify-center active:scale-95 transition-all duration-200",
-        !isDark ? "text-black hover:text-white hover:bg-primary" : "text-primary hover:text-primary hover:bg-gray-800/100 border border-transparent hover:border-border"
+        !isDark ? "text-primary hover:text-white hover:bg-secondary-foreground" : "text-primary hover:text-white hover:bg-primary border border-transparent hover:border-border"
       )}
       title={`Current: ${isDark ? 'Dark' : 'Light'} - Click to switch themes`}
     >

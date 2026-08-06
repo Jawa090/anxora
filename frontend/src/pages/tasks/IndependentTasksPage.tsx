@@ -168,9 +168,9 @@ export default function IndependentTasksPage() {
     formData.status !== "done";
   const isDetailOverdue = selectedTask?.due_date
     ? isPast(new Date(selectedTask.due_date)) &&
-      !isToday(new Date(selectedTask.due_date)) &&
-      selectedTask.status !== "completed" &&
-      selectedTask.status !== "done"
+    !isToday(new Date(selectedTask.due_date)) &&
+    selectedTask.status !== "completed" &&
+    selectedTask.status !== "done"
     : false;
 
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
@@ -344,7 +344,7 @@ export default function IndependentTasksPage() {
         Math.min(
           95,
           ((taskStart.getTime() - timelineStart.getTime()) / totalDurationMs) *
-            100,
+          100,
         ),
       );
       const widthPercent = Math.max(
@@ -377,10 +377,10 @@ export default function IndependentTasksPage() {
         widthPercent,
         isOverdue,
         color: isCompleted
-          ? "bg-emerald-500/20 text-success border-emerald-500/30"
+          ? "bg-secondary-foreground dark:bg-emerald-500/20 text-white border-emerald-500/30"
           : isOverdue
             ? "bg-red-500/20 text-destructive border-red-500/30"
-            : "bg-blue-500/20 text-primary border-blue-500/30",
+            : "bg-primary/20 dark:bg-primary text-black border-blue-500/30",
       };
     });
 
@@ -674,143 +674,163 @@ export default function IndependentTasksPage() {
         )}
 
         {activeTab === "kanban" ? (
-          /* Kanban Board view mapping user status column preferences */
-          <div className="flex gap-4 items-start overflow-x-auto pb-4 custom-scrollbar w-full">
-            {[
-              { id: "new", label: "New", dot: "bg-blue-400" },
-              { id: "planning", label: "Planning", dot: "bg-purple-400" },
-              { id: "todo", label: "To Do", dot: "bg-indigo-400" },
-              { id: "in_progress", label: "In Progress", dot: "bg-amber-400" },
-              { id: "completed", label: "Completed", dot: "bg-emerald-400" },
-            ].map((col) => {
-              const colTasks = filteredTasks.filter(
-                (t) => (t.status || "new") === col.id,
-              );
-              return (
-                <div
-                  key={col.id}
-                  onDragOver={handleDragOver}
-                  onDrop={(e) => handleDrop(e, col.id)}
-                  className="flex flex-col min-w-[260px] md:min-w-[18%] flex-1 min-h-[500px] max-h-[750px] rounded-2xl border border-border/60 bg-card/20 backdrop-blur-md p-3 space-y-3"
-                >
-                  {/* Column Header */}
-                  <div className="flex items-center justify-between px-2 py-1 select-none">
-                    <div className="flex items-center gap-2">
-                      <span
-                        className={cn("h-2.5 w-2.5 rounded-full", col.dot)}
-                      />
-                      <span className="font-extrabold text-xs text-foreground uppercase tracking-wider">
-                        {col.label}
-                      </span>
-                    </div>
-                    <Badge
-                      variant="outline"
-                      className="text-[10px] px-2 py-0 border-border bg-background/50"
+          /* Kanban Board view */
+          <div className="space-y-4 max-w-full h-full flex flex-col animate-in fade-in duration-200">
+            <div className="flex justify-between items-center bg-card/40 backdrop-blur-md px-6 py-4 rounded-xl border border-border shrink-0">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                Kanban Board
+              </span>
+              <Button
+                onClick={() => setIsDialogOpen(true)}
+                size="sm"
+                className="gap-2"
+              >
+                <Plus className="h-4 w-4" />
+                Add Task
+              </Button>
+            </div>
+
+            <div className="flex-1 min-h-[500px] overflow-x-auto custom-scrollbar pb-4">
+              <div className="flex gap-4 items-start min-w-max">
+                {[
+                  { id: "new", label: "New", dot: "bg-blue-400", header: "bg-blue-500/40 border-blue-500/20" },
+                  { id: "planning", label: "Planning", dot: "bg-purple-400", header: "bg-purple-500/40 border-purple-500/20" },
+                  { id: "todo", label: "To Do", dot: "bg-indigo-400", header: "bg-indigo-500/40 border-indigo-500/20" },
+                  { id: "in_progress", label: "In Progress", dot: "bg-amber-400", header: "bg-amber-500/40 border-amber-500/20" },
+                  { id: "completed", label: "Completed", dot: "bg-emerald-400", header: "bg-emerald-500/40 border-emerald-500/20" },
+                ].map((col) => {
+                  const colTasks = filteredTasks.filter(
+                    (t) => (t.status || "new") === col.id,
+                  );
+                  return (
+                    <div
+                      key={col.id}
+                      onDragOver={handleDragOver}
+                      onDrop={(e) => handleDrop(e, col.id)}
+                      className="w-[288px] min-h-[230px] h-auto flex-shrink-0 rounded-2xl border flex flex-col transition-all duration-150 bg-slate-900/60 dark:bg-[#0f1929]/60 backdrop-blur-sm border-slate-800/50"
                     >
-                      {colTasks.length}
-                    </Badge>
-                  </div>
-
-                  {/* Tasks List */}
-                  <div className="flex-1 overflow-y-auto space-y-3 pr-1 custom-scrollbar">
-                    {colTasks.length === 0 ? (
-                      <div className="h-24 flex items-center justify-center rounded-xl border border-dashed border-border/40 text-[10px] text-muted-foreground/60 select-none">
-                        Drop tasks here
-                      </div>
-                    ) : (
-                      colTasks.map((task) => {
-                        const priorityColor =
-                          task.priority === "urgent"
-                            ? "bg-red-500/10 text-red-400 border-red-500/20"
-                            : task.priority === "high"
-                              ? "bg-orange-500/10 text-orange-400 border-orange-500/20"
-                              : task.priority === "low"
-                                ? "bg-slate-500/10 text-slate-400 border-slate-500/20"
-                                : "bg-blue-500/10 text-blue-400 border-blue-500/20";
-
-                        const isTaskOverdue = (() => {
-                          if (!task.due_date) return false;
-                          const dueDate = new Date(task.due_date);
-                          const isCompleted =
-                            task.status === "completed" ||
-                            task.status === "done";
-                          if (!isCompleted) {
-                            return isPast(dueDate) && !isToday(dueDate);
-                          } else {
-                            if (!task.completed_at) return false;
-                            return new Date(task.completed_at) > dueDate;
-                          }
-                        })();
-
-                        return (
-                          <div
-                            key={task.id}
-                            draggable
-                            onDragStart={(e) => handleDragStart(e, task.id)}
-                            onClick={() => handleOpenDetail(task)}
-                            className="group border border-border/85 rounded-xl bg-card/70 p-3.5 space-y-2.5 cursor-grab active:cursor-grabbing hover:border-primary/45 hover:shadow-md hover:shadow-primary/5 hover:-translate-y-0.5 transition-all duration-150 select-none"
+                      {/* Column Header */}
+                      <div className={cn("flex items-center justify-between px-4 py-3 rounded-t-2xl border-b", col.header)}>
+                        <div className="flex items-center gap-2">
+                          <span className={cn("h-2 w-2 rounded-full", col.dot)} />
+                          <span className="text-xs font-extrabold text-slate-200 uppercase tracking-wide">{col.label}</span>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          <span className={cn(
+                            "text-[10px] font-black px-2 py-0.5 rounded-full",
+                            colTasks.length > 0 ? "bg-slate-700 text-slate-300" : "text-white"
+                          )}>
+                            {colTasks.length}
+                          </span>
+                          <button
+                            onClick={() => setIsDialogOpen(true)}
+                            className="h-5 w-5 rounded-md flex items-center justify-center text-white hover:text-slate-200 hover:bg-slate-700 transition-colors"
                           >
-                            <div className="flex items-center justify-between">
-                              <Badge
+                            <Plus className="h-3.5 w-3.5" />
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Card list */}
+                      <div className="flex-1 overflow-y-auto p-3 space-y-2.5 min-h-[120px] transition-colors duration-150">
+                        {colTasks.length === 0 ? (
+                          <div className="flex flex-col items-center justify-center py-8 text-center ">
+                            <div className="h-8 w-8 rounded-xl border-2 border-dashed border-slate-700 flex items-center justify-center mb-2">
+                              <Plus className="h-4 w-4 text-slate-600" />
+                            </div>
+                            <p className="text-[10px] text-slate-600 font-medium">Drop tasks here</p>
+                          </div>
+                        ) : (
+                          colTasks.map((task) => {
+                            const priorityColor =
+                              task.priority === "urgent"
+                                ? "bg-red-500/15 text-red-400 border-red-500/20"
+                                : task.priority === "high"
+                                  ? "bg-orange-500/15 text-orange-400 border-orange-500/20"
+                                  : task.priority === "low"
+                                    ? "bg-slate-500/15 text-slate-400 border-slate-500/20"
+                                    : "bg-yellow-500/15 text-yellow-400 border-yellow-500/20";
+
+                            const isTaskOverdue = (() => {
+                              if (!task.due_date) return false;
+                              const dueDate = new Date(task.due_date);
+                              const isCompleted =
+                                task.status === "completed" ||
+                                task.status === "done";
+                              if (!isCompleted) {
+                                return isPast(dueDate) && !isToday(dueDate);
+                              } else {
+                                if (!task.completed_at) return false;
+                                return new Date(task.completed_at) > dueDate;
+                              }
+                            })();
+
+                            return (
+                              <Card
+                                key={task.id}
+                                onClick={() => handleOpenDetail(task)}
+                                draggable
+                                onDragStart={(e) => handleDragStart(e, task.id)}
                                 className={cn(
-                                  "text-[8px] uppercase tracking-wider font-extrabold border-none px-1.5 py-0.5",
-                                  priorityColor,
+                                  "border-slate-800/70 rounded-xl  shadow-md bg-slate-800 dark:bg-[#131B2E]/60 p-3.5 space-y-2.5 cursor-pointer",
+                                  "hover:border-primary-500/40 hover:shadow-primary/10 hover:shadow-lg hover:-translate-y-0.5",
+                                  "transition-all duration-150 select-none h-[160px] flex flex-col"
                                 )}
                               >
-                                {task.priority || "normal"}
-                              </Badge>
-                              {task.progress > 0 && (
-                                <span className="text-[10px] font-bold text-primary">
-                                  {task.progress}%
-                                </span>
-                              )}
-                            </div>
-
-                            <p className="text-xs font-bold text-foreground leading-snug line-clamp-2 group-hover:text-primary transition-colors font-sans">
-                              {task.title}
-                            </p>
-
-                            {task.description && (
-                              <p className="text-[10px] text-muted-foreground line-clamp-2 leading-relaxed">
-                                {task.description}
-                              </p>
-                            )}
-
-                            <div className="flex items-center justify-between pt-2 border-t border-border/40">
-                              {task.due_date ? (
-                                <span
-                                  className={cn(
-                                    "text-[9px] flex items-center gap-1 font-semibold",
-                                    isTaskOverdue
-                                      ? "text-destructive"
-                                      : "text-muted-foreground",
+                                {/* Priority */}
+                                <div className="flex items-center justify-between">
+                                  <Badge className={cn("text-[8px] uppercase tracking-wider font-extrabold border px-1.5 py-0.5", priorityColor)}>
+                                    {task.priority || "normal"}
+                                  </Badge>
+                                  {task.progress > 0 && (
+                                    <span className="text-[10px] font-bold text-primary">
+                                      {task.progress}%
+                                    </span>
                                   )}
-                                >
-                                  <CalendarIcon className="h-3 w-3 opacity-60" />
-                                  {format(new Date(task.due_date), "MMM d")}
-                                </span>
-                              ) : (
-                                <span />
-                              )}
+                                </div>
 
-                              <div className="flex items-center gap-1.5">
-                                {task.assigned_to_name ? (
-                                  <div className="h-4.5 w-4.5 rounded-full border border-border bg-secondary-foreground text-primary text-[8px] font-bold flex items-center justify-center">
-                                    {task.assigned_to_name[0].toUpperCase()}
-                                  </div>
-                                ) : (
-                                  <div className="h-4.5 w-4.5 rounded-full border border-dashed border-border" />
+                                {/* Title */}
+                                <p className="text-xs font-bold text-slate-100 leading-snug line-clamp-2">
+                                  {task.title}
+                                </p>
+
+                                {/* Description */}
+                                {task.description && (
+                                  <p className="text-[10px] text-slate-500 line-clamp-2 leading-relaxed">
+                                    {task.description}
+                                  </p>
                                 )}
-                              </div>
-                            </div>
-                          </div>
-                        );
-                      })
-                    )}
-                  </div>
-                </div>
-              );
-            })}
+
+                                {/* Footer */}
+                                <div className="flex items-center justify-between pt-1.5 border-t border-slate-800/40 mt-auto">
+                                  {task.due_date ? (
+                                    <span className={cn(
+                                      "text-[9.5px] flex items-center gap-1 font-medium",
+                                      isTaskOverdue ? "text-destructive" : "text-slate-400"
+                                    )}>
+                                      <CalendarIcon className="h-3 w-3 opacity-60" />
+                                      {format(new Date(task.due_date), "MMM d")}
+                                    </span>
+                                  ) : <span />}
+
+                                  {task.assigned_to_name ? (
+                                    <div className="h-5 w-5 rounded-full border border-slate-700 bg-blue-500/15 text-blue-400 text-[7px] font-black flex items-center justify-center">
+                                      {task.assigned_to_name[0].toUpperCase()}
+                                    </div>
+                                  ) : (
+                                    <div className="h-5 w-5 rounded-full border border-dashed border-slate-700" />
+                                  )}
+                                </div>
+                              </Card>
+                            );
+                          })
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
           </div>
         ) : activeTab === "gantt" ? (
           /* Gantt Roadmap Timeline for Independent Tasks */
@@ -975,7 +995,7 @@ export default function IndependentTasksPage() {
                               className={cn(
                                 "block max-w-[250px] truncate",
                                 task.status === "completed" &&
-                                  "line-through text-muted-foreground/60",
+                                "line-through text-muted-foreground/60",
                               )}
                             >
                               {task.title}

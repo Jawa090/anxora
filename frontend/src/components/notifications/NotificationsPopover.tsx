@@ -112,7 +112,7 @@ export function NotificationsPopover() {
   return (
     <Popover open={open} onOpenChange={handleOpenChange}>
       <PopoverTrigger asChild>
-        <Button variant="ghost" size="icon" className="relative group overflow-visible rounded-lg hover:bg-primary">
+        <Button variant="ghost" size="icon" className="relative group overflow-visible rounded-lg hover:bg-secondary-foreground dark:hover:bg-primary">
           <div className="grid h-7 w-7 place-items-center rounded text-primary group-hover:text-white transition-all duration-200">
             <Bell className="h-5 w-5" />
           </div>

@@ -26,19 +26,19 @@ import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 
 const KANBAN_COLS = [
-  { id: "backlog",     label: "Backlog",      dot: "bg-slate-400",   header: "bg-slate-500/10 border-slate-500/20" },
-  { id: "todo",        label: "To Do",        dot: "bg-blue-400",    header: "bg-blue-500/10 border-blue-500/20" },
-  { id: "in_progress", label: "In Progress",  dot: "bg-amber-400",   header: "bg-amber-500/10 border-amber-500/20" },
-  { id: "review",      label: "In Review",    dot: "bg-purple-400",  header: "bg-purple-500/10 border-purple-500/20" },
-  { id: "testing",     label: "QA / Testing", dot: "bg-rose-400",    header: "bg-rose-500/10 border-rose-500/20" },
-  { id: "done",        label: "Done",         dot: "bg-emerald-400", header: "bg-emerald-500/10 border-emerald-500/20" },
+  { id: "backlog", label: "Backlog", dot: "bg-slate-100", header: "bg-primary/40 border-slate-500/20" },
+  { id: "todo", label: "To Do", dot: "bg-blue-400", header: "bg-blue-500/40 border-blue-500/20" },
+  { id: "in_progress", label: "In Progress", dot: "bg-amber-400", header: "bg-amber-500/40 border-amber-500/20" },
+  { id: "review", label: "In Review", dot: "bg-purple-400", header: "bg-purple-500/40 border-purple-500/20" },
+  { id: "testing", label: "QA / Testing", dot: "bg-rose-400", header: "bg-rose-500/40 border-rose-500/20" },
+  { id: "done", label: "Done", dot: "bg-emerald-400", header: "bg-emerald-500/40 border-emerald-500/20" },
 ];
 
 const PRIORITY_COLORS: Record<string, string> = {
   urgent: "bg-red-500/15 text-red-400 border-red-500/20",
-  high:   "bg-orange-500/15 text-orange-400 border-orange-500/20",
+  high: "bg-orange-500/15 text-orange-400 border-orange-500/20",
   medium: "bg-yellow-500/15 text-yellow-400 border-yellow-500/20",
-  low:    "bg-slate-500/15 text-slate-400 border-slate-500/20",
+  low: "bg-slate-500/15 text-slate-400 border-slate-500/20",
   normal: "bg-slate-500/15 text-slate-400 border-slate-500/20",
 };
 
@@ -86,20 +86,20 @@ function TaskCard({ task, getMemberName, onClick, isDragging }: TaskCardProps) {
       <Card
         onClick={() => onClick(task)}
         className={cn(
-          "border-slate-800/70 rounded-xl shadow-md bg-[#131B2E]/60 p-3.5 space-y-2.5 cursor-pointer",
-          "hover:border-blue-500/40 hover:shadow-blue-500/5 hover:shadow-lg hover:-translate-y-0.5",
-          "transition-all duration-150 select-none",
-          isDragging && "shadow-2xl shadow-blue-500/20 border-blue-500/50 rotate-1 scale-105"
+          "border-slate-800/70 rounded-xl shadow-md bg-slate-800 dark:bg-[#131B2E] p-3.5 space-y-2.5 cursor-pointer",
+          "hover:border-primary-500/40 hover:shadow-primary/10 hover:shadow-lg hover:-translate-y-0.5",
+          "transition-all duration-150 select-none h-[160px] flex flex-col",
+          isDragging && "shadow-2xl shadow-primary/20 border-primary-500/50 rotate-1 scale-105"
         )}
       >
         {/* Drag handle + priority */}
         <div className="flex items-center justify-between">
-          <Badge className={cn("text-[8px] uppercase tracking-wider font-extrabold border px-1.5 py-0.5", PRIORITY_COLORS[priority])}>
+          <Badge className={cn("text-[8px] uppercase tracking-wider font-extrabold border px-1.5 py-0.5 ", PRIORITY_COLORS[priority])}>
             {priority}
           </Badge>
           <div
             {...listeners}
-            className="h-6 w-6 flex items-center justify-center rounded-lg text-slate-600 hover:text-slate-300 hover:bg-slate-800 transition-colors cursor-grab active:cursor-grabbing"
+            className="h-6 w-6 flex items-center justify-center rounded-lg text-white hover:text-slate-300 hover:bg-slate-800 transition-colors cursor-grab active:cursor-grabbing"
             onClick={e => e.stopPropagation()}
           >
             <GripVertical className="h-3.5 w-3.5" />
@@ -113,13 +113,13 @@ function TaskCard({ task, getMemberName, onClick, isDragging }: TaskCardProps) {
 
         {/* Description */}
         {task.description && (
-          <p className="text-[10px] text-slate-500 line-clamp-2 leading-relaxed">
+          <p className="text-[10px] text-slate-500 line-clamp-1 leading-relaxed">
             {task.description}
           </p>
         )}
 
         {/* Footer */}
-        <div className="flex items-center justify-between pt-1.5 border-t border-slate-800/40">
+        <div className="flex items-center justify-between pt-1.5 border-t border-slate-800/40 mt-auto">
           {task.due_date ? (
             <span className="text-[9.5px] text-slate-400 flex items-center gap-1 font-medium">
               <CalendarDays className="h-3 w-3 opacity-60" />
@@ -165,9 +165,9 @@ function KanbanColumn({ col, tasks, getMemberName, onTaskClick, onAddTask, isOve
       ref={setNodeRef}
       className={cn(
         "w-[288px] flex-shrink-0 rounded-2xl border flex flex-col transition-all duration-150",
-        "bg-[#0f1929]/60 backdrop-blur-sm",
+        "bg-slate-900/60 dark:bg-[#0f1929]/60 backdrop-blur-sm",
         isOver
-          ? "border-blue-500/50 bg-blue-500/5 shadow-lg shadow-blue-500/10"
+          ? "border-white/50 bg-white/20 shadow-lg shadow-white/10"
           : "border-slate-800/50"
       )}
     >
@@ -180,13 +180,13 @@ function KanbanColumn({ col, tasks, getMemberName, onTaskClick, onAddTask, isOve
         <div className="flex items-center gap-1.5">
           <span className={cn(
             "text-[10px] font-black px-2 py-0.5 rounded-full",
-            tasks.length > 0 ? "bg-slate-700 text-slate-300" : "text-slate-600"
+            tasks.length > 0 ? "bg-slate-700 text-slate-300" : "text-white"
           )}>
             {tasks.length}
           </span>
           <button
             onClick={() => onAddTask(col.id)}
-            className="h-5 w-5 rounded-md flex items-center justify-center text-slate-500 hover:text-slate-200 hover:bg-slate-700 transition-colors"
+            className="h-5 w-5 rounded-md flex items-center justify-center text-white hover:text-slate-200 hover:bg-slate-700 transition-colors"
           >
             <Plus className="h-3.5 w-3.5" />
           </button>
@@ -370,7 +370,7 @@ export function KanbanBoard({
           <TaskCard
             task={activeTask}
             getMemberName={getMemberName}
-            onClick={() => {}}
+            onClick={() => { }}
             isDragging
           />
         ) : null}
