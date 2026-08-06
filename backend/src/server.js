@@ -18,7 +18,7 @@ app.use(helmet({
   crossOriginResourcePolicy: { policy: "cross-origin" }
 }));
 app.use(cors({
-  origin: ['http://localhost:3000', 'http://localhost:3001', 'https://elinasmart.com/'], // Allow frontend ports + desktop app
+  origin: ['http://localhost:3000', 'http://localhost:3001', 'https://elinasmart.com'], // Allow frontend ports + desktop app
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
