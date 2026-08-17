@@ -170,16 +170,16 @@ const navigation: NavItem[] = [
 
     ],
   },
-  // {
-  //   title: "Collaboration",
-  //   icon: UsersRound,
-  //   children: [
-  //     { title: "Calendar", href: "/collaboration/calendar", icon: Calendar },
-  //     { title: "Drive", href: "/collaboration/drive", icon: FolderOpen },
-  //     { title: "Mail", href: "/collaboration/mail", icon: Mail },
-  //     { title: "Workgroups", href: "/collaboration/workgroups", icon: Users },
-  //   ],
-  // },
+  {
+    title: "Collaboration",
+    icon: UsersRound,
+    children: [
+      { title: "Calendar", href: "/collaboration/calendar", icon: Calendar },
+      { title: "Drive", href: "/collaboration/drive", icon: FolderOpen },
+      { title: "Mail", href: "/collaboration/mail", icon: Mail },
+      // { title: "Workgroups", href: "/collaboration/workgroups", icon: Users },
+    ],
+  },
   // {
   //   title: "CRM",
   //   icon: TrendingUp,

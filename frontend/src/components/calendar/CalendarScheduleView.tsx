@@ -1,28 +1,26 @@
-import { CalendarDays } from "lucide-react";
+import { CalendarDays, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { type CalendarEvent } from "@/hooks/useCalendarEvents";
-import { format, isToday, isTomorrow, isThisWeek } from "date-fns";
-import { SiGooglecalendar, SiApple } from "react-icons/si";
-import { FaMicrosoft } from "react-icons/fa";
+import { format, isToday, isTomorrow } from "date-fns";
 
 interface CalendarScheduleViewProps {
+  calendarMode?: "team" | "personal";
   onConnectClick: () => void;
+  onCreateMeetingClick?: () => void;
   hasConnectedCalendar: boolean;
   events: CalendarEvent[];
   onEventClick: (event: CalendarEvent) => void;
+  isSearching?: boolean;
 }
 
-const calendarIcons = [
-  { name: "Google Calendar", icon: SiGooglecalendar, color: "text-red-500" },
-  { name: "iCloud Calendar", icon: SiApple, color: "text-gray-800" },
-  { name: "Office365 Calendar", icon: FaMicrosoft, color: "text-red-500" },
-];
-
 export function CalendarScheduleView({
+  calendarMode = "team",
   onConnectClick,
+  onCreateMeetingClick,
   hasConnectedCalendar,
   events,
   onEventClick,
+  isSearching = false,
 }: CalendarScheduleViewProps) {
   // Show event list if we have events
   if (events.length > 0) {
@@ -100,62 +98,62 @@ export function CalendarScheduleView({
     );
   }
 
-  if (hasConnectedCalendar) {
+  // Personal mode empty state (Match user screenshot design)
+  if (calendarMode === "personal") {
     return (
-      <div className="flex flex-col items-center justify-center py-24 px-6 bg-card">
-        <div className="w-20 h-20 rounded-full bg-secondary-foreground dark:bg-primary flex items-center justify-center mb-6 shadow-lg">
-          <CalendarDays className="h-10 w-10 text-white dark:text-white" />
+      <div className="flex flex-col items-center justify-center py-20 px-6 bg-card text-center">
+        <div className="w-20 h-20 rounded-full bg-[#e6f4f1] dark:bg-teal-950/40 flex items-center justify-center mb-6 shadow-sm">
+          <CalendarDays className="h-9 w-9 text-[#0f5257] dark:text-[#2dd4bf]" />
         </div>
-        <h3 className="text-xl font-semibold text-foreground mb-2">
-          Your calendar is synchronized
+        <h3 className="text-2xl font-bold text-foreground mb-3">
+          Connect your calendars
         </h3>
-        <p className="text-muted-foreground text-center mb-8 max-w-md">
-          No upcoming events found. Create a new event to get started with your
-          schedule.
+        <p className="text-muted-foreground text-center mb-8 max-w-md text-sm leading-relaxed">
+          Sync with your existing calendars to keep all events in one place and
+          never miss an important meeting.
         </p>
+
+        <div className="flex items-center gap-2.5 mb-6 px-4 py-2 bg-secondary/30 rounded-xl border border-border/30">
+          <div className="w-6 h-6 rounded bg-[#4285F4] text-white text-[11px] font-bold flex items-center justify-center shadow-sm">
+            31
+          </div>
+          <span className="text-sm font-semibold text-foreground">
+            Google Calendar
+          </span>
+        </div>
+
         <Button
-          className="bg-secondary-foreground dark:bg-primary hover:from-blue-700 hover:to-blue-800 text-white shadow-lg shadow-blue-500/25"
-          onClick={() => {
-            /* Handle create event */
-          }}
+          className="bg-[#0f5257] hover:bg-[#0c4246] dark:bg-[#2dd4bf] dark:hover:bg-[#25b8a6] text-white dark:text-gray-900 font-semibold px-8 py-2.5 rounded-xl shadow-md transition-all"
+          onClick={onConnectClick}
         >
-          Create New Event
+          Connect Calendar
         </Button>
       </div>
     );
   }
 
+  // Team / Meeting mode empty state
   return (
-    <div className="flex flex-col items-center justify-center py-24 px-6 bg-card">
-      <div className="w-20 h-20 rounded-full bg-muted flex items-center justify-center mb-6 shadow-lg">
-        <CalendarDays className="h-10 w-10 text-muted-foreground" />
+    <div className="flex flex-col items-center justify-center py-20 px-6 bg-card text-center">
+      <div className="w-20 h-20 rounded-full bg-secondary/60 dark:bg-muted flex items-center justify-center mb-6 shadow-sm">
+        <CalendarDays className="h-9 w-9 text-muted-foreground" />
       </div>
-      <h3 className="text-xl font-semibold text-foreground mb-2">
-        Connect your calendars
+      <h3 className="text-2xl font-bold text-foreground mb-3">
+        {isSearching ? "No meetings found" : "No upcoming meetings"}
       </h3>
-      <p className="text-muted-foreground text-center mb-8 max-w-md">
-        Sync with your existing calendars to keep all events in one place and
-        never miss an important meeting.
+      <p className="text-muted-foreground text-center mb-8 max-w-md text-sm leading-relaxed">
+        {isSearching
+          ? "No meetings match your search query. Try searching for another term or create a new meeting."
+          : "Schedule a meeting with your team or clients to get started."}
       </p>
-
-      <div className="flex space-x-4">
-        {calendarIcons.map((cal) => {
-          const IconComponent = cal.icon; // assign component
-          return (
-            <div key={cal.name} className={`flex items-center gap-2`}>
-              <IconComponent className={`w-6 h-6 ${cal.color}`} />
-              <span>{cal.name}</span>
-            </div>
-          );
-        })}
-      </div>
-
       <Button
-        className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white shadow-lg shadow-blue-500/25 px-8"
-        onClick={onConnectClick}
+        className="bg-secondary-foreground hover:bg-secondary-foreground/90 dark:bg-primary dark:hover:bg-primary/90 text-white font-semibold px-8 py-2.5 rounded-xl shadow-md transition-all"
+        onClick={onCreateMeetingClick}
       >
-        Connect Calendar
+        <Plus className="w-4 h-4 mr-2" />
+        Create New Meeting
       </Button>
     </div>
   );
 }
+

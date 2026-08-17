@@ -1,5 +1,5 @@
-#7D5CE4 es clr ko primary kah do 
-#8A8E98 es ko gray 
+#7D5CE4 this colors is primary 
+#8A8E98 this color is gray 
 
 #00ADEA task and projects
 #00BC97 collabration

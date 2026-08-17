@@ -107,7 +107,7 @@ export function CreateFolderDialog({ open, onOpenChange, onCreateFolder }: Creat
                   className="p-2 rounded-lg"
                   style={{ backgroundColor: folderColors.find(c => c.value === selectedColor)?.color }}
                 >
-                  <FolderOpen className="h-5 w-5 text-primary" />
+                  <FolderOpen className="h-5 w-5 text-white" />
                 </div>
                 <div>
                   <p className="font-medium">{folderName || "New Folder"}</p>

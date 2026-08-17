@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -161,7 +162,8 @@ export default function DrivePage() {
   const displayFolders = useMemo(
     () =>
       searchQuery.length >= 2
-        ? searchResults.data?.filter((item: any) => item.type === "folder") || []
+        ? searchResults.data?.filter((item: any) => item.type === "folder") ||
+          []
         : folders,
     [searchQuery, searchResults.data, folders],
   );
@@ -184,7 +186,9 @@ export default function DrivePage() {
   const getFileUrl = (url: string | null) => {
     if (!url) return undefined;
     const baseUrl =
-      import.meta.env.VITE_API_URL?.replace("/api", "") || import.meta.env.VITE_APP_URL || "http://localhost:4000";
+      import.meta.env.VITE_API_URL?.replace("/api", "") ||
+      import.meta.env.VITE_APP_URL ||
+      "http://localhost:4000";
     return `${baseUrl}${url}`;
   };
 
@@ -445,7 +449,7 @@ export default function DrivePage() {
     const newParams = new URLSearchParams(searchParams);
     newParams.set("driveId", drive.id);
     setSearchParams(newParams);
-    
+
     setBrowsingDrive(drive);
   };
 
@@ -453,10 +457,10 @@ export default function DrivePage() {
   useEffect(() => {
     const urlDriveId = searchParams.get("driveId");
     if (urlDriveId && allDrives && !browsingDrive) {
-        const driveToRestore = allDrives.find(d => d.id === urlDriveId);
-        if (driveToRestore) {
-            setBrowsingDrive(driveToRestore);
-        }
+      const driveToRestore = allDrives.find((d) => d.id === urlDriveId);
+      if (driveToRestore) {
+        setBrowsingDrive(driveToRestore);
+      }
     }
   }, [allDrives, searchParams, browsingDrive]);
 
@@ -565,12 +569,12 @@ export default function DrivePage() {
           <DriveBrowser
             drive={browsingDrive}
             onClose={() => {
-                setBrowsingDrive(null);
-                const newParams = new URLSearchParams(searchParams);
-                newParams.delete("driveId");
-                newParams.delete("folder");
-                newParams.delete("filter");
-                setSearchParams(newParams);
+              setBrowsingDrive(null);
+              const newParams = new URLSearchParams(searchParams);
+              newParams.delete("driveId");
+              newParams.delete("folder");
+              newParams.delete("filter");
+              setSearchParams(newParams);
             }}
           />
         )}
@@ -630,9 +634,9 @@ export default function DrivePage() {
 
       {/* Header with Title, Add Button, and Search */}
       <div className="rounded-[22px] border border-border/40 bg-card/85 backdrop-blur-md px-6 py-4 shadow-sm">
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-2">
           <div className="flex items-center gap-2">
-            <h1 className="text-[22px] font-bold text-foreground">My Drive</h1>
+            <h1 className="text-[20px] font-bold text-foreground">My Drive</h1>
             <div className="h-6 w-px bg-border/60" />
             <p className="text-sm text-muted-foreground font-semibold">
               Manage Drive
@@ -644,7 +648,7 @@ export default function DrivePage() {
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button
-                  className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-semibold rounded-xl shadow-md shadow-blue-500/10 hover:shadow-blue-500/25 transition-all duration-300 active:scale-[0.98] shrink-0"
+                  className="bg-secondary-foreground hover:from-blue-700 hover:to-indigo-700 text-white font-semibold rounded-xl shadow-md shadow-blue-500/10 hover:shadow-blue-500/25 transition-all duration-300 active:scale-[0.98] shrink-0"
                   disabled={isRecycleBin}
                 >
                   <Plus className="h-4 w-4 mr-1" />
@@ -652,26 +656,35 @@ export default function DrivePage() {
                   <ChevronDown className="h-4 w-4 ml-1" />
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="start" className="w-56 rounded-2xl p-1.5 border border-border/80 shadow-xl">
-                <DropdownMenuItem className="rounded-xl px-3 py-2 font-medium" onSelect={handleFileUpload}>
+              <DropdownMenuContent
+                align="start"
+                className="w-56 rounded-2xl p-1.5 border border-border/80 shadow-xl"
+              >
+                <DropdownMenuItem
+                  className="rounded-xl px-2 py-2 font-medium"
+                  onSelect={handleFileUpload}
+                >
                   <FileUp className="h-4 w-4 mr-2" />
                   {selectedFolder
                     ? "Upload to Current Folder"
-                    : "Upload File (Select folder first)"}
+                    : "Upload File (Select folder)"}
                 </DropdownMenuItem>
-                <DropdownMenuItem className="rounded-xl px-3 py-2 font-medium" onSelect={handleCreateFolder}>
+                <DropdownMenuItem
+                  className="rounded-xl px-2 py-2 font-medium"
+                  onSelect={handleCreateFolder}
+                >
                   <FolderPlus className="h-4 w-4 mr-2" />
                   Create Folder
                 </DropdownMenuItem>
                 <DropdownMenuSeparator className="my-1" />
                 <DropdownMenuSub>
-                  <DropdownMenuSubTrigger className="rounded-xl px-3 py-2 font-medium">
+                  <DropdownMenuSubTrigger className="rounded-xl px-2 py-2 font-medium">
                     <FileText className="h-4 w-4 mr-2" />
                     Google Docs
                   </DropdownMenuSubTrigger>
                   <DropdownMenuSubContent className="rounded-2xl p-1.5 border border-border/80 shadow-xl">
                     <DropdownMenuItem
-                      className="rounded-xl px-3 py-2 font-medium"
+                      className="rounded-xl px-2 py-2 font-medium"
                       onSelect={() =>
                         window.open(
                           "https://docs.new",
@@ -753,12 +766,12 @@ export default function DrivePage() {
                   </DropdownMenuSubContent>
                 </DropdownMenuSub>
                 <DropdownMenuSeparator className="my-1" />
-                {isAdmin && (
+                {/* {isAdmin && (
                   <DropdownMenuItem className="rounded-xl px-3 py-2 font-medium text-blue-500" onClick={() => setCompanyDriveDialogOpen(true)}>
                     <Server className="h-4 w-4 mr-2" />
                     Connect Company Drive
                   </DropdownMenuItem>
-                )}
+                )} */}
               </DropdownMenuContent>
             </DropdownMenu>
 
@@ -774,12 +787,16 @@ export default function DrivePage() {
             </div>
 
             {/* Recycle Bin & Settings */}
-            <Button variant="outline" className="gap-2 rounded-xl border-border/60 hover:border-red-500/30 hover:bg-red-500/5 hover:text-red-500 transition-all font-semibold" onClick={handleRecycleBin}>
+            <Button
+              variant="outline"
+              className="gap-2 rounded-xl border-border/60 hover:border-red-500/30 hover:bg-red-500/5 hover:text-red-500 transition-all font-semibold"
+              onClick={handleRecycleBin}
+            >
               <Trash2 className="h-4 w-4" />
               Recycle Bin
             </Button>
             <Button
-              className="bg-gradient-to-tr from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 text-white font-semibold rounded-xl shadow-md shadow-violet-500/10 hover:shadow-violet-500/25 transition-all duration-300 active:scale-[0.98] gap-2"
+              className="bg-secondary-foreground hover:from-violet-700  text-white font-semibold rounded-xl shadow-md shadow-violet-500/10 hover:shadow-violet-500/25 transition-all duration-300 active:scale-[0.98] gap-2"
               onClick={() => setPersonalDriveDialogOpen(true)}
             >
               <Cloud className="h-4 w-4" />
@@ -825,7 +842,7 @@ export default function DrivePage() {
           {selectedFolder && (
             <>
               <span>/</span>
-              <span className="font-medium text-blue-600 dark:text-blue-400">
+              <span className="font-medium text-primary dark:text-primary">
                 {currentFolderName || "Loading..."}
               </span>
             </>
@@ -834,7 +851,7 @@ export default function DrivePage() {
             <Button
               variant="ghost"
               size="sm"
-              className="h-7 px-2 text-xs ml-2 hover:bg-primary"
+              className="h-7 px-2 text-xs ml-2 hover:bg-primary hover:text-white"
               onClick={() =>
                 handleSelectAll([...displayFolders, ...displayFiles])
               }
@@ -859,7 +876,7 @@ export default function DrivePage() {
                 variant="ghost"
                 size="sm"
                 onClick={() => setSelectedFiles([])}
-                className="h-7 text-xs text-muted-foreground hover:text-foreground"
+                className="h-7 text-xs hover:text-white"
               >
                 Clear
               </Button>
@@ -903,7 +920,7 @@ export default function DrivePage() {
                     bulkMoveToTrashItems.mutate(selectedFiles);
                     setSelectedFiles([]);
                   }}
-                  className="h-8 gap-2 text-red-600 hover:bg-red-500 hover:text-white"
+                  className="h-8 gap-2 text-red-600 hover:bg-red-50 hover:text-red-500 "
                 >
                   <Trash2 className="h-3.5 w-3.5" />
                   Move to Trash
@@ -917,7 +934,11 @@ export default function DrivePage() {
           {/* Sort Dropdown */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="sm" className="gap-1">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="gap-1 hover:text-white hover:bg-secondary-foreground dark:hover:bg-primary"
+              >
                 {sortOptions.find((o) => o.value === sortBy)?.label}
                 <ChevronDown className="h-4 w-4" />
               </Button>
@@ -939,23 +960,23 @@ export default function DrivePage() {
             <Button
               variant={viewMode === "list" ? "secondary" : "ghost"}
               size="icon"
-              className="h-8 w-8 rounded-none rounded-l-md"
+              className="h-8 w-8 rounded-none rounded-l-md hover:text-white hover:bg-primary"
               onClick={() => setViewMode("list")}
             >
               <List className="h-4 w-4" />
             </Button>
-            <Button
+            {/* <Button
               variant={viewMode === "compact" ? "secondary" : "ghost"}
               size="icon"
               className="h-8 w-8 rounded-none border-x"
               onClick={() => setViewMode("compact")}
             >
               <Grid3X3 className="h-4 w-4" />
-            </Button>
+            </Button> */}
             <Button
               variant={viewMode === "grid" ? "secondary" : "ghost"}
               size="icon"
-              className="h-8 w-8 rounded-none rounded-r-md"
+              className="h-8 w-8 rounded-none rounded-r-md hover:text-white hover:bg-primary"
               onClick={() => setViewMode("grid")}
             >
               <LayoutGrid className="h-4 w-4" />
@@ -975,11 +996,11 @@ export default function DrivePage() {
                   {sortedFolders.map((folder) => (
                     <Card
                       key={folder.id}
-                      className="cursor-pointer hover:shadow-md transition-all group relative overflow-hidden"
+                      className="cursor-pointer hover:shadow-md transition-all group relative overflow-hidden "
                       onClick={() => handleFolderClick(folder.id, folder.name)}
                     >
-                      <CardContent className="p-0">
-                        <div className="relative">
+                      <CardContent className="p-0 ">
+                        <div className="relative ">
                           {/* Folder visual */}
                           <div
                             className="h-24 rounded-t-lg relative"
@@ -1004,14 +1025,18 @@ export default function DrivePage() {
                         </div>
                         {/* Selection Checkbox Overlay */}
                         <div
-                          className={`absolute top-2 left-2 z-10  transition-opacity ${selectedFiles.includes(folder.id) ? "opacity-100" : "opacity-0 group-hover:opacity-100"}`}
+                          className={`absolute top-2 left-2 z-10 transition-opacity ${selectedFiles.includes(folder.id) ? "opacity-100" : "opacity-0 group-hover:opacity-100"}`}
                           onClick={(e) => toggleSelection(folder.id, e)}
                         >
                           <div
-                            className={`h-5 w-5 rounded-full bg-white border-2 flex items-center justify-center transition-colors ${selectedFiles.includes(folder.id) ? "bg-primary border-primary" : "bg-white/50 border-white hover:border-primary/50"}`}
+                            className={`h-5 w-5 rounded-full border-2 flex items-center justify-center transition-colors ${
+                              selectedFiles.includes(folder.id)
+                                ? "bg-primary border-primary"
+                                : "bg-background/90 border-slate-300 dark:border-slate-600 hover:border-primary dark:hover:border-primary"
+                            }`}
                           >
                             {selectedFiles.includes(folder.id) && (
-                              <CheckCircle2 className="h-3 w-3 text-primary" />
+                              <CheckCircle2 className="h-3.5 w-3.5 text-primary-foreground" />
                             )}
                           </div>
                         </div>
@@ -1030,7 +1055,7 @@ export default function DrivePage() {
                             <Button
                               variant="ghost"
                               size="icon"
-                              className="absolute top-2 right-2 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity bg-white/80 hover:bg-white"
+                              className="absolute top-2 right-2 h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity bg-background/80 hover:bg-background hover:text-primary dark:hover:text-primary text-muted-foreground"
                               onClick={(e) => e.stopPropagation()}
                             >
                               <MoreVertical className="h-4 w-4" />
@@ -1152,6 +1177,14 @@ export default function DrivePage() {
                     <Card
                       key={file.id}
                       className="group relative cursor-pointer hover:shadow-sm transition-all"
+                      onClick={() =>
+                        handleFileClick(
+                          file.name,
+                          file.file_url,
+                          file.mime_type || "",
+                          file.id,
+                        )
+                      }
                     >
                       <CardContent className="p-3">
                         <div className="flex flex-col items-center text-center space-y-2">
@@ -1185,41 +1218,34 @@ export default function DrivePage() {
 
                         {/* Selection Checkbox */}
                         <div
-                          className={`absolute top-2 left-2 z-10 transition-opacity
-                               ${
-                                 selectedFiles.includes(file.id)
-                                   ? "opacity-100"
-                                   : "opacity-0 group-hover:opacity-100"
-                               }`}
+                          className={`absolute top-2 left-2 z-10 transition-opacity ${
+                            selectedFiles.includes(file.id)
+                              ? "opacity-100"
+                              : "opacity-0 group-hover:opacity-100"
+                          }`}
                           onClick={(e) => toggleSelection(file.id, e)}
                         >
                           <div
-                            className={`h-5 w-5 rounded-full border-2 flex items-center justify-center transition-all
-                               ${
-                                 selectedFiles.includes(file.id)
-                                   ? "bg-primary border-primary"
-                                   : "bg-white/70 border-white group-hover:bg-primary group-hover:border-primary"
-                               }`}
+                            className={`h-5 w-5 rounded-full border-2 flex items-center justify-center transition-colors ${
+                              selectedFiles.includes(file.id)
+                                ? "bg-primary border-primary"
+                                : "bg-background/90 border-slate-300 dark:border-slate-600 hover:border-primary dark:hover:border-primary"
+                            }`}
                           >
-                            <CheckCircle2
-                              className={`h-3 w-3 transition-opacity
-                               ${
-                                 selectedFiles.includes(file.id)
-                                   ? "opacity-100 text-white"
-                                   : "opacity-0"
-                               }`}
-                            />
+                            {selectedFiles.includes(file.id) && (
+                              <CheckCircle2 className="h-3.5 w-3.5 text-primary-foreground" />
+                            )}
                           </div>
                         </div>
 
                         {/* 3 dots menu */}
-                        <div className="absolute top-2 right-2 opacity-60 hover:opacity-100 transition-opacity">
+                        <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
                               <Button
                                 variant="ghost"
                                 size="icon"
-                                className="h-7 w-7 bg-white/80 dark:bg-slate-800/80"
+                                className="h-7 w-7 bg-background/80 hover:bg-background hover:text-primary dark:hover:text-primary text-muted-foreground transition-colors"
                                 onClick={(e) => e.stopPropagation()}
                               >
                                 <MoreVertical className="h-4 w-4" />
@@ -1351,6 +1377,7 @@ export default function DrivePage() {
                               <Button
                                 variant="ghost"
                                 size="icon"
+                                className="hover:text-primary dark:hover:text-primary text-muted-foreground transition-colors"
                                 onClick={(e) => {
                                   e.stopPropagation();
                                 }}
@@ -1441,20 +1468,20 @@ export default function DrivePage() {
                 <ArrowLeft className="h-4 w-4" />
               </Button>
               <div className="flex items-center gap-2">
-                <FolderOpen className="h-5 w-5 text-blue-600" />
+                <FolderOpen className="h-5 w-5 text-primary" />
                 <h2 className="text-xl font-semibold">
                   {folders.find((f) => f.id === selectedFolder)?.name ||
                     "Folder"}
                 </h2>
               </div>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 ">
               {!isRecycleBin && (
                 <Button
                   variant="outline"
                   size="sm"
                   onClick={() => fileInputRef.current?.click()}
-                  className="gap-2"
+                  className="gap-2 hover:bg-secondary-foreground hover:text-white dark:hover:bg-primary"
                 >
                   <Upload className="h-4 w-4" />
                   Upload Files
@@ -1528,10 +1555,14 @@ export default function DrivePage() {
                         onClick={(e) => toggleSelection(file.id, e)}
                       >
                         <div
-                          className={`h-5 w-5 rounded-full border-2 flex items-center justify-center transition-colors ${selectedFiles.includes(file.id) ? "bg-primary border-primary" : "bg-white/50 border-white hover:border-primary/50"}`}
+                          className={`h-5 w-5 rounded-full border-2 flex items-center justify-center transition-colors ${
+                            selectedFiles.includes(file.id)
+                              ? "bg-primary border-primary"
+                              : "bg-background/90 border-slate-300 dark:border-slate-600 hover:border-primary dark:hover:border-primary"
+                          }`}
                         >
                           {selectedFiles.includes(file.id) && (
-                            <CheckCircle2 className="h-3 w-3 text-primary-foreground" />
+                            <CheckCircle2 className="h-3.5 w-3.5 text-primary-foreground" />
                           )}
                         </div>
                       </div>
@@ -1543,7 +1574,7 @@ export default function DrivePage() {
                             <Button
                               variant="ghost"
                               size="icon"
-                              className="h-7 w-7 bg-white/80 hover:bg-white dark:bg-slate-800/80 dark:hover:bg-slate-800"
+                              className="h-7 w-7 bg-background/80 hover:bg-background hover:text-primary dark:hover:text-primary text-muted-foreground transition-colors"
                               onClick={(e) => e.stopPropagation()}
                             >
                               <MoreVertical className="h-4 w-4" />
@@ -1682,6 +1713,7 @@ export default function DrivePage() {
                             <Button
                               variant="ghost"
                               size="icon"
+                              className="hover:text-primary dark:hover:text-primary text-muted-foreground transition-colors"
                               onClick={(e) => {
                                 e.stopPropagation();
                               }}
@@ -1840,9 +1872,9 @@ export default function DrivePage() {
                 <DialogTitle className="truncate pr-4 text-base font-semibold">
                   {previewFile.name}
                 </DialogTitle>
-                <p className="text-xs text-muted-foreground truncate">
+                <DialogDescription className="text-xs text-muted-foreground truncate">
                   {previewFile.mimeType}
-                </p>
+                </DialogDescription>
               </div>
               <div className="flex items-center gap-2 pr-8">
                 <Button
@@ -1853,7 +1885,9 @@ export default function DrivePage() {
                     handleDownload(
                       previewFile.name,
                       previewFile.url.replace(
-                          import.meta.env.VITE_API_URL?.replace("/api", "") || import.meta.env.VITE_APP_URL || "http://localhost:4000",
+                        import.meta.env.VITE_API_URL?.replace("/api", "") ||
+                          import.meta.env.VITE_APP_URL ||
+                          "http://localhost:4000",
                         "",
                       ),
                     )
@@ -1910,12 +1944,12 @@ export default function DrivePage() {
                     className="max-w-full max-h-full object-contain shadow-2xl rounded-sm transition-all duration-300"
                   />
                 </div>
-              ) : previewFile.mimeType === "application/pdf" ? (
-                <iframe
-                  src={previewFile.url}
+              ) : (previewFile.mimeType === "application/pdf" || previewFile.mimeType.includes("pdf") || previewFile.name.toLowerCase().endsWith(".pdf")) ? (
+                  <iframe
+                    src={previewFile.url}
                   className="w-full h-full border-none shadow-inner bg-white"
-                  title={previewFile.name}
-                />
+                    title={previewFile.name}
+                  />
               ) : (
                 <div className="flex-1 flex flex-col items-center justify-center p-12 text-center">
                   <div className="relative mb-6">
@@ -1947,7 +1981,9 @@ export default function DrivePage() {
                         handleDownload(
                           previewFile.name,
                           previewFile.url.replace(
-                              import.meta.env.VITE_API_URL?.replace("/api", "") || import.meta.env.VITE_APP_URL || "http://localhost:4000",
+                            import.meta.env.VITE_API_URL?.replace("/api", "") ||
+                              import.meta.env.VITE_APP_URL ||
+                              "http://localhost:4000",
                             "",
                           ),
                         )
@@ -2032,13 +2068,13 @@ export default function DrivePage() {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel className="hover:bg-secondary-foreground hover:text-white hover:dark:bg-primary">Cancel</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleConfirmDelete}
               className={
                 deleteConfirmation?.permanent
-                  ? "bg-red-600 hover:bg-red-700"
-                  : "bg-blue-600 hover:bg-blue-700"
+                  ? "bg-secondary-foreground hover:bg-secondary-foreground/80"
+                  : "bg-secondary-foreground hover:bg-secondary-foreground/80 "
               }
             >
               {deleteConfirmation?.permanent

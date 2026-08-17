@@ -22,7 +22,7 @@ router.delete('/folders/:id/permanent', driveController.permanentDeleteFolder);
 
 // Files
 router.get('/files', driveController.getFiles);
-router.post('/files/upload', upload.single('file'), driveController.uploadFile);
+router.post('/files/upload', driveController.uploadFile);
 router.delete('/files/:id', driveController.deleteFile);
 router.post('/files/:id/restore', driveController.restoreFile);
 router.delete('/files/:id/permanent', driveController.permanentDeleteFile);

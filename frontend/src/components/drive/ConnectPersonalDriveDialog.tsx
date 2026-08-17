@@ -218,7 +218,7 @@ export function ConnectPersonalDriveDialog({
                     size="sm"
                     onClick={() => handleConnect(drive.id)}
                     disabled={isConnecting}
-                    className="bg-blue-600 hover:bg-blue-700 text-white rounded-lg px-4"
+                    className="bg-secondary-foreground hover:bg-secondary-foreground/80 text-white rounded-lg px-4"
                   >
                     {isConnecting ? (
                       "Connecting..."
@@ -237,7 +237,8 @@ export function ConnectPersonalDriveDialog({
         </div>
 
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
+          <Button variant="outline" onClick={() => onOpenChange(false)}
+            className=" hover:text-white hover:bg-secondary-foreground dark:hover:bg-primary">
             Close
           </Button>
         </DialogFooter>

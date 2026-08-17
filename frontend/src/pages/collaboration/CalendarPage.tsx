@@ -187,10 +187,8 @@ export default function CalendarPage() {
       // Team view: only CRM events (shared)
       filtered = filtered.filter((e) => !e.external_provider);
     } else {
-      // Personal view: User's own CRM events + User's external events
-      filtered = filtered.filter(
-        (e) => !!e.external_provider || e.created_by === profile?.id,
-      );
+      // Personal view: Only external connected calendar events (e.g. Google Calendar)
+      filtered = filtered.filter((e) => !!e.external_provider);
 
       // Apply type filters based on colors assigned during sync
       filtered = filtered.filter((e) => {
@@ -330,10 +328,34 @@ export default function CalendarPage() {
     if (debouncedSearchQuery.trim()) {
       return (
         <CalendarScheduleView
+          calendarMode={calendarMode}
           onConnectClick={() => setConnectDialogOpen(true)}
+          onCreateMeetingClick={() => {
+            setDefaultEventHour(undefined);
+            setCreateEventOpen(true);
+          }}
           hasConnectedCalendar={hasConnectedCalendar}
           events={events}
           onEventClick={handleEventClick}
+          isSearching={true}
+        />
+      );
+    }
+
+    // In personal mode, if no connected calendar, show Connect Calendars view
+    if (calendarMode === "personal" && !hasConnectedCalendar) {
+      return (
+        <CalendarScheduleView
+          calendarMode={calendarMode}
+          onConnectClick={() => setConnectDialogOpen(true)}
+          onCreateMeetingClick={() => {
+            setDefaultEventHour(undefined);
+            setCreateEventOpen(true);
+          }}
+          hasConnectedCalendar={hasConnectedCalendar}
+          events={events}
+          onEventClick={handleEventClick}
+          isSearching={false}
         />
       );
     }
@@ -372,10 +394,16 @@ export default function CalendarPage() {
       case "schedule":
         return (
           <CalendarScheduleView
+            calendarMode={calendarMode}
             onConnectClick={() => setConnectDialogOpen(true)}
+            onCreateMeetingClick={() => {
+              setDefaultEventHour(undefined);
+              setCreateEventOpen(true);
+            }}
             hasConnectedCalendar={hasConnectedCalendar}
             events={events}
             onEventClick={handleEventClick}
+            isSearching={false}
           />
         );
       case "invitations":
@@ -441,7 +469,11 @@ export default function CalendarPage() {
               <div className="relative group">
                 <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground group-focus-within:text-primary transition-colors" />
                 <Input
-                  placeholder="Search Meeting"
+                  placeholder={
+                    calendarMode === "personal"
+                      ? "Search Personal Events"
+                      : "Search Meeting"
+                  }
                   className="pl-9 h-10 bg-secondary/70 border-transparent hover:bg-secondary focus-visible:bg-background focus-visible:ring-2 focus-visible:ring-[#2DD4BF]/25 focus-visible:border-[#2DD4BF] rounded-xl transition-all w-full text-xs sm:text-sm font-medium"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}

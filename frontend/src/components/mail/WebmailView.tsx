@@ -275,7 +275,7 @@ export function WebmailView({ mailboxes, onBackToIntegration, initialOpenCompose
               <Button
                 variant="ghost"
                 size="icon"
-                className="h-8 w-8"
+                className="h-8 w-8  bg-secondary-foreground hover:bg-secondary-foreground/80 dark:bg-primary dark:hover:bg-primary/80 hover:text-white text-white shadow-lg"
                 disabled={isSyncing}
                 onClick={() => {
                   if (activeMailbox !== "all") {
@@ -292,7 +292,7 @@ export function WebmailView({ mailboxes, onBackToIntegration, initialOpenCompose
             <TooltipContent>Sync emails</TooltipContent>
           </Tooltip>
           <Button
-            className="bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg"
+            className="bg-secondary-foreground hover:bg-secondary-foreground/90 text-white shadow-lg"
             onClick={() => {
               setReplyTo(null);
               setForwardEmail(null);

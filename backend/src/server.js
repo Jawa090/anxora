@@ -15,7 +15,10 @@ app.set('trust proxy', 1);
 const PORT = process.env.PORT || 4000;
 
 app.use(helmet({
-  crossOriginResourcePolicy: { policy: "cross-origin" }
+  crossOriginResourcePolicy: { policy: "cross-origin" },
+  crossOriginEmbedderPolicy: false,
+  frameguard: false,
+  contentSecurityPolicy: false
 }));
 app.use(cors({
   origin: ['http://localhost:3000', 'http://localhost:3001', 'https://elinasmart.com'], // Allow frontend ports + desktop app
@@ -29,16 +32,13 @@ app.use(morgan('[:user-email] :method :url :status :response-time ms - :res[cont
 app.use(cookieParser());
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
-app.use('/uploads', express.static(path.join(__dirname, '../public/uploads')));
-
-// const limiter = rateLimit({
-//   windowMs: 15 * 60 * 1000, // 15 minutes
-//   max: 1000, // Increased from 100 to 1000 requests per window
-//   message: { error: 'Too many requests, please try again later.' },
-//   standardHeaders: true,
-//   legacyHeaders: false,
-// });
-// app.use('/api', limiter);
+app.use('/uploads', (req, res, next) => {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
+  res.setHeader('Content-Security-Policy', "frame-ancestors 'self' http://localhost:3000 http://localhost:3001 http://localhost:8080 *;");
+  res.removeHeader('X-Frame-Options');
+  next();
+}, express.static(path.join(__dirname, '../public/uploads')));
 
 app.use(appRoutes);
 
@@ -78,5 +78,3 @@ async function bootstrap() {
 }
 
 bootstrap();
-
-
