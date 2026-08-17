@@ -414,10 +414,15 @@ export default function BroadcastPage() {
       return 0;
     });
 
-  const totalMembers = broadcasts.reduce(
-    (sum, b) => sum + Number(b.member_count || 0),
-    0,
-  );
+  const totalMembers = useMemo(() => {
+    const teamMembers = orgMembers.filter(
+      (m: any) =>
+        m.role !== "super_admin" &&
+        !m.email?.includes("superadmin") &&
+        m.id !== user?.id,
+    );
+    return teamMembers.length;
+  }, [orgMembers, user?.id]);
   const totalUnread = broadcasts.reduce(
     (sum, b) => sum + Number(b.unread_count || 0),
     0,
@@ -460,23 +465,25 @@ export default function BroadcastPage() {
           },
         ]}
         actions={
-          <div className="flex gap-2">
+          <div className="flex items-center gap-2 shrink-0">
             <Button
               variant="outline"
-              size="sm"
+              size="default"
               onClick={() => navigate("/collaboration/workgroups")}
+              className="rounded-xl whitespace-nowrap gap-2 font-medium h-9 px-3 hover:bg-secondary-foreground dark:hover:bg-primary hover:text-white"
             >
-              <ArrowLeft className="h-4 w-4 mr-2" />
+              <ArrowLeft className="h-4 w-4" />
               Back to Workgroups
             </Button>
             <Button
-              size="sm"
+              size="default"
               onClick={() => {
                 resetForm();
                 setShowCreate(true);
               }}
+              className="rounded-xl whitespace-nowrap gap-2 font-medium bg-secondary-foreground h-9 px-3"
             >
-              <Plus className="h-4 w-4 mr-2" />
+              <Plus className="h-4 w-4" />
               New Broadcast
             </Button>
           </div>
@@ -529,10 +536,11 @@ export default function BroadcastPage() {
               <div
                 key={wg.id}
                 onClick={() => setSelectedId(wg.id)}
-                className={`relative group flex flex-col rounded-xl border-2 border-indigo-200 p-4 cursor-pointer hover:shadow-md ${unreadCount > 0
-                  ? "bg-primary/10 border-primary shadow-sm shadow-primary/20 hover:border-primary"
-                  : "bg-card hover:border-indigo-300"
-                  }`}
+                className={`relative group flex flex-col rounded-xl border border-primary p-4 cursor-pointer hover:shadow-md ${
+                  unreadCount > 0
+                    ? "bg-primary/10 shadow-sm shadow-primary/20"
+                    : "bg-card"
+                }`}
               >
                 {unreadCount > 0 && (
                   <div className="absolute top-0 left-0 bottom-0 w-1.5 bg-primary rounded-l-xl" />
@@ -543,7 +551,7 @@ export default function BroadcastPage() {
                       <AvatarImage
                         src={getAvatarUrl(wg.avatar_url) || undefined}
                       />
-                      <AvatarFallback className="bg-indigo-500 text-white font-bold text-base">
+                      <AvatarFallback className="bg-secondary-foreground text-secondary dark:bg-primary dark:text-primary-foreground font-bold text-base">
                         {wg.name.slice(0, 2).toUpperCase()}
                       </AvatarFallback>
                     </Avatar>
@@ -567,7 +575,7 @@ export default function BroadcastPage() {
                       <Button
                         variant="ghost"
                         size="icon"
-                        className={`h-7 w-7 transition-colors ${pinnedBroadcasts.has(wg.id) ? "text-yellow-500" : "text-muted-foreground hover:text-white"}`}
+                        className={`h-7 w-7 transition-colors hover:bg-secondary-foreground dark:hover:bg-primary hover:text-white ${pinnedBroadcasts.has(wg.id) ? "text-yellow-500" : "text-muted-foreground hover:text-white"}`}
                         onClick={(e) => togglePin(wg.id, e)}
                         title={pinnedBroadcasts.has(wg.id) ? "Unpin" : "Pin"}
                       >
@@ -580,7 +588,7 @@ export default function BroadcastPage() {
                           <Button
                             variant="ghost"
                             size="icon"
-                            className="h-7 w-7 text-muted-foreground hover:text-white"
+                            className="h-7 w-7 hover:bg-secondary-foreground dark:hover:bg-primary hover:text-white text-muted-foreground hover:text-white"
                             onClick={() => openEdit(wg)}
                           >
                             <Edit className="h-3.5 w-3.5" />
@@ -588,7 +596,7 @@ export default function BroadcastPage() {
                           <Button
                             variant="ghost"
                             size="icon"
-                            className="h-7 w-7 text-muted-foreground hover:bg-red-500/10 hover:text-destructive"
+                            className="h-7 w-7  text-muted-foreground hover:bg-red-500/10 hover:text-destructive"
                             onClick={() => setDeleteTarget(wg)}
                           >
                             <Trash2 className="h-3.5 w-3.5" />
@@ -612,7 +620,7 @@ export default function BroadcastPage() {
                     {(wg.settings?.member_manager_user_id === user?.id ||
                       wg.settings?.manage_member_user_id === user?.id ||
                       (wg as any).manage_member_user_id === user?.id) && (
-                        <Badge className="shrink-0 text-[9px] px-1.5 py-0 bg-muted text-green-500 border-green-300 dark:text-green-500 dark:border-green-700 font-bold">
+                        <Badge className="shrink-0 text-[9px] px-1.5 py-0 bg-secondary-foreground dark:bg-primary/10 text-white border-green-300 dark:text-white dark:border-green-700 font-bold">
                           Moderator
                         </Badge>
                       )}
@@ -621,8 +629,8 @@ export default function BroadcastPage() {
                   {/* Bottom Row */}
                   <div className="flex items-start justify-between gap-2">
                     {unreadCount > 0 && wg.last_message_sender_name ? (
-                      <p className="text-xs font-semibold text-primary truncate mb-1 flex-1">
-                        💬 {wg.last_message_sender_name}: new message
+                      <p className="text-xs font-semibold text-primary truncate mb-1 flex items-center">
+                        <MessageSquare className="h-3.5 w-3.5 mr-1" /> {wg.last_message_sender_name}: new message
                       </p>
                     ) : wg.description ? (
                       <p className="text-xs text-muted-foreground line-clamp-2 mb-1 flex-1">
@@ -647,7 +655,7 @@ export default function BroadcastPage() {
                   </div>
                   <Badge
                     variant="outline"
-                    className="text-[10px] px-1.5 py-0 text-indigo-600 border-indigo-300 dark:text-indigo-400 dark:border-indigo-700"
+                    className="text-[10px] px-1.5 py-0 bg-secondary-foreground text-white dark:bg-primary/10 dark:text-primary border-primary/20"
                   >
                     Broadcast
                   </Badge>
@@ -665,10 +673,11 @@ export default function BroadcastPage() {
               <div
                 key={wg.id}
                 onClick={() => setSelectedId(wg.id)}
-                className={`relative group flex items-center gap-4 rounded-xl border-2 border-indigo-200 p-4 cursor-pointer hover:shadow-md transition-all ${unreadCount > 0
-                  ? "bg-primary/10 border-primary shadow-sm shadow-primary/20 hover:border-primary"
-                  : "bg-card hover:border-indigo-300"
-                  }`}
+                className={`relative group flex items-center gap-4 rounded-xl border border-primary p-4 cursor-pointer hover:shadow-md transition-all ${
+                  unreadCount > 0
+                    ? "bg-primary/10 shadow-sm shadow-primary/20"
+                    : "bg-card"
+                }`}
               >
                 {unreadCount > 0 && (
                   <div className="absolute top-0 left-0 bottom-0 w-1.5 bg-primary rounded-l-xl" />
@@ -680,7 +689,7 @@ export default function BroadcastPage() {
                     <AvatarImage
                       src={getAvatarUrl(wg.avatar_url) || undefined}
                     />
-                    <AvatarFallback className="bg-indigo-500 text-white font-bold text-lg">
+                    <AvatarFallback className="bg-secondary-foreground text-secondary dark:bg-primary dark:text-primary-foreground font-bold text-lg">
                       {wg.name.slice(0, 2).toUpperCase()}
                     </AvatarFallback>
                   </Avatar>
@@ -814,7 +823,7 @@ export default function BroadcastPage() {
               >
                 <Avatar className="h-16 w-16">
                   <AvatarImage src={avatarPreview || undefined} />
-                  <AvatarFallback className="bg-indigo-500 text-white font-bold text-lg">
+                  <AvatarFallback className="bg-secondary-foreground text-white font-bold text-lg">
                     {form.name ? (
                       form.name.slice(0, 2).toUpperCase()
                     ) : (
@@ -1138,7 +1147,7 @@ export default function BroadcastPage() {
               >
                 <Avatar className="h-16 w-16">
                   <AvatarImage src={avatarPreview || undefined} />
-                  <AvatarFallback className="bg-indigo-500 text-white font-bold text-lg">
+                  <AvatarFallback className="bg-secondary-foreground text-secondary dark:bg-primary dark:text-primary-foreground font-bold text-lg">
                     {form.name ? (
                       form.name.slice(0, 2).toUpperCase()
                     ) : (

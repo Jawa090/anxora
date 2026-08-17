@@ -93,7 +93,7 @@ export function ConfirmDialog({
         <AlertDialogFooter className="gap-2 sm:gap-2">
           <AlertDialogCancel
             disabled={isLoading}
-            className="rounded-xl border-slate-700 bg-slate-900 hover:bg-slate-800 text-slate-300 hover:text-slate-100 font-bold text-xs h-9 px-4"
+            className="rounded-xl border-slate-700 bg-slate-900 hover:bg-secondary-foreground dark:hover:bg-primary hover:text-white text-slate-300 font-bold text-xs h-9 px-4 transition-colors"
           >
             {cancelText}
           </AlertDialogCancel>

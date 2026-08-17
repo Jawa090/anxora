@@ -308,7 +308,7 @@ export default function DirectChatPage() {
         <div className="absolute top-0 right-0 w-64 h-64 bg-primary/5 rounded-full -mr-32 -mt-32 blur-3xl transition-colors group-hover:bg-primary/10" />
         <div className="flex items-center justify-between gap-3 relative z-10">
           <div className="flex items-center gap-4">
-            <div className="w-12 h-12 bg-gradient-to-br from-primary to-blue-600 rounded-xl flex items-center justify-center shadow-lg shadow-primary/20">
+            <div className="w-12 h-12 bg-secondary-foreground dark:bg-primary/10 rounded-xl flex items-center justify-center shadow-lg ">
               <MessageCircle className="h-6 w-6 text-white" />
             </div>
             <div>
@@ -323,7 +323,7 @@ export default function DirectChatPage() {
           <Button
             variant="outline"
             onClick={() => navigate("/collaboration/workgroups")}
-            className="rounded-xl border-border/60 hover:bg-muted transition-all hover:scale-105 active:scale-95"
+            className="rounded-xl border-border/60 hover:bg-secondary-foreground dark:hover:bg-primary hover:text-white "
           >
             <ArrowLeft className="h-4 w-4 mr-2" /> Back to Workgroups
           </Button>
@@ -356,13 +356,13 @@ export default function DirectChatPage() {
                 }}
                 onFocus={() => setShowSearchDropdown(true)}
                 placeholder="Search teammates..."
-                className="pl-9 bg-muted/30 border-transparent focus-visible:bg-background focus-visible:ring-1 focus-visible:ring-primary/20 rounded-xl transition-all"
+                className="pl-9 bg-muted border-transparent text-foreground  focus-visible:bg-background focus-visible:ring-2 focus-visible:ring-primary/20 rounded-xl transition-all"
               />
 
               {showSearchDropdown && (
                 <div className="absolute top-full left-0 z-50 w-full mt-2 rounded-xl border border-border/60 bg-card/95 backdrop-blur-lg shadow-2xl max-h-64 overflow-y-auto animate-in slide-in-from-top-2 duration-200 custom-scrollbar">
                   <div className="p-2 border-b border-border/40">
-                    <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground/60 px-2 py-1">
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-primary/60 px-2 py-1">
                       Search results
                     </p>
                   </div>
@@ -448,7 +448,7 @@ export default function DirectChatPage() {
                           }
                         />
                         <AvatarFallback
-                          className={`${chat.avatar_color} text-white font-bold text-sm`}
+                          className={`${chat.avatar_color} text-white font-bold text-sm bg-secondary-foreground dark:bg-primary`}
                         >
                           {chatDisplayName.slice(0, 2).toUpperCase()}
                         </AvatarFallback>
@@ -456,7 +456,7 @@ export default function DirectChatPage() {
                       <span
                         className={`absolute -right-0.5 -bottom-0.5 h-3.5 w-3.5 rounded-full border-2 ${
                           isActive ? "border-primary" : "border-card"
-                        } ${isOnline ? "bg-primary" : "bg-gray-400"}`}
+                        } ${isOnline ? "bg-emerald-500" : "bg-gray-400"}`}
                       />
                     </div>
 
@@ -471,7 +471,7 @@ export default function DirectChatPage() {
                       <div className="flex items-center gap-2">
                       <div className="flex flex-col">
                         <p
-                          className={`text-[11px] font-bold ${isActive ? "text-white/80" : isOnline ? "text-primary" : "text-red-500"}`}
+                          className={`text-[11px] font-bold ${isActive ? "text-white/80" : isOnline ? "text-emerald-500" : "text-red-500"}`}
                         >
                           {isOnline ? "Online" : "Offline"}
                         </p>

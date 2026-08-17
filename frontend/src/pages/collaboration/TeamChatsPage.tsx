@@ -46,7 +46,6 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { Switch } from "@/components/ui/switch";
 import {
   Users,
   Plus,
@@ -56,31 +55,21 @@ import {
   Hash,
   Lock,
   Building2,
-  MessageCircle,
   LayoutGrid,
   List,
   Camera,
   Search,
   Pin,
-  Megaphone,
-  Send,
+  ArrowLeft,
   Check,
   ChevronsUpDown,
-  Calendar,
-  ChevronRight,
-  Clock,
-  Phone,
-  Video,
 } from "lucide-react";
-import { formatDistanceToNow } from "date-fns";
-import { useVideoCall } from "@/contexts/VideoCallContext";
 import {
   useWorkgroups,
   useCreateWorkgroup,
   useUpdateWorkgroup,
   useDeleteWorkgroup,
   useWorkgroupMembers,
-  useAddWorkgroupMember,
   type WorkgroupMember,
   type Workgroup,
 } from "@/hooks/useWorkgroups";
@@ -93,9 +82,9 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useRealtime } from "@/hooks/useRealtime";
 import { useAdminUsers } from "@/hooks/useAdminUsers";
+import { Switch } from "@/components/ui/switch";
 import { workgroupsApi } from "@/lib/api";
 import { getAvatarUrl, cn } from "@/lib/utils";
-import { FaTeamspeak } from "react-icons/fa";
 
 const WORKGROUP_TYPES = [
   { value: "team" as const, label: "Team", icon: Users },
@@ -111,7 +100,23 @@ const TYPE_COLORS: Record<string, string> = {
   private: "bg-rose-100 text-rose-700 border-rose-200",
 };
 
-export default function WorkgroupsPage() {
+function formatWorkgroupTime(dateStr?: string | null): string {
+  if (!dateStr) return "Recent";
+  const d = new Date(dateStr);
+  if (isNaN(d.getTime())) return "Recent";
+  const now = new Date();
+  const diffMinutes = Math.floor((now.getTime() - d.getTime()) / (1000 * 60));
+  if (diffMinutes < 1) return "Just now";
+  if (diffMinutes < 60) return `${diffMinutes}m ago`;
+  const diffHours = Math.floor(diffMinutes / 60);
+  if (diffHours < 24) return `${diffHours}h ago`;
+  const diffDays = Math.floor(diffHours / 24);
+  if (diffDays === 1) return "Yesterday";
+  if (diffDays < 7) return `${diffDays}d ago`;
+  return d.toLocaleDateString([], { month: "short", day: "numeric" });
+}
+
+export default function TeamChatsPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -127,8 +132,6 @@ export default function WorkgroupsPage() {
   const createWg = useCreateWorkgroup();
   const updateWg = useUpdateWorkgroup();
   const deleteWg = useDeleteWorkgroup();
-  const addMember = useAddWorkgroupMember();
-  const { startCall: startVideoCall, callState } = useVideoCall();
 
   const visibleWorkgroups = workgroups.filter(
     (wg) => !wg.is_private || Boolean(wg.is_member || wg.user_role),
@@ -140,42 +143,6 @@ export default function WorkgroupsPage() {
         wg.type === "private" && Boolean((wg.settings as any)?.is_direct_chat)
       ) && !(wg.settings as any)?.is_broadcast,
   );
-
-  // Broadcast unread total
-  const broadcastWorkgroups = visibleWorkgroups.filter(
-    (wg) => (wg.settings as any)?.is_broadcast,
-  );
-  const totalBroadcastUnread = broadcastWorkgroups.reduce(
-    (sum, wg) => sum + Number((wg as any).unread_count || 0),
-    0,
-  );
-
-  // Direct chat unread total
-  const directChatWorkgroups = visibleWorkgroups.filter(
-    (wg) =>
-      wg.type === "private" && Boolean((wg.settings as any)?.is_direct_chat),
-  );
-  const totalDirectChatUnread = directChatWorkgroups.reduce(
-    (sum, wg) => sum + Number((wg as any).unread_count || 0),
-    0,
-  );
-
-  const totalTeamUnread = teamOnlyWorkgroups.reduce(
-    (sum, wg) => sum + Number((wg as any).unread_count || 0),
-    0,
-  );
-
-  const totalMembers = teamOnlyWorkgroups.reduce(
-    (sum, wg) => sum + Number(wg.member_count || 0),
-    0,
-  );
-  const todayMessages = teamOnlyWorkgroups.reduce(
-    (sum, wg) => sum + Number(wg.today_message_count || 0),
-    0,
-  );
-  const unreadTeams = teamOnlyWorkgroups.filter(
-    (wg) => Number(wg.unread_count || 0) > 0,
-  ).length;
 
   const [search, setSearch] = useState("");
   const [filterPinned, setFilterPinned] = useState("all");
@@ -201,26 +168,28 @@ export default function WorkgroupsPage() {
     add_members: true,
     delete_members: true,
   });
+
   const [pinnedTeams, setPinnedTeams] = useState<Set<string>>(() => {
     try {
       const saved = localStorage.getItem("workgroup_pinned_teams");
       if (saved) {
-        const parsed = JSON.parse(saved);
-        return new Set(parsed);
+        return new Set(JSON.parse(saved));
       }
     } catch (error) {
       console.error("Error loading pinned teams:", error);
     }
     return new Set();
   });
-  const avatarInputRef = useRef<HTMLInputElement>(null);
 
+  const avatarInputRef = useRef<HTMLInputElement>(null);
   const selectedId = searchParams.get("team");
+
   const openWorkgroup = (id: string) => {
     const next = new URLSearchParams(searchParams);
     next.set("team", id);
     setSearchParams(next);
   };
+
   const closeWorkgroup = () => {
     const next = new URLSearchParams(searchParams);
     next.delete("team");
@@ -230,7 +199,7 @@ export default function WorkgroupsPage() {
   const [form, setForm] = useState({
     name: "",
     description: "",
-    avatar_color: "bg-primary",
+    avatar_color: "bg-blue-500",
     type: "team" as "team" | "project" | "private" | "department",
     is_private: false,
   });
@@ -253,13 +222,11 @@ export default function WorkgroupsPage() {
         return matchesSearch && matchesPinned;
       })
       .sort((a, b) => {
-        // First sort by pinned status
         const aPinned = pinnedTeams.has(a.id);
         const bPinned = pinnedTeams.has(b.id);
         if (aPinned && !bPinned) return -1;
         if (!aPinned && bPinned) return 1;
 
-        // Then sort by the selected sort option
         if (sortBy === "name") return a.name.localeCompare(b.name);
         if (sortBy === "members")
           return Number(b.member_count || 0) - Number(a.member_count || 0);
@@ -271,69 +238,6 @@ export default function WorkgroupsPage() {
         );
       });
   }, [teamOnlyWorkgroups, search, filterPinned, pinnedTeams, sortBy]);
-
-  // Helper to format timestamps to relative time ("2m ago", "Yesterday", etc.)
-  const formatWorkgroupTime = (dateStr?: string | null): string => {
-    if (!dateStr) return "Recent";
-    const d = new Date(dateStr);
-    if (isNaN(d.getTime())) return "Recent";
-    const now = new Date();
-    const diffMinutes = Math.floor((now.getTime() - d.getTime()) / (1000 * 60));
-    if (diffMinutes < 1) return "Just now";
-    if (diffMinutes < 60) return `${diffMinutes}m ago`;
-    const diffHours = Math.floor(diffMinutes / 60);
-    if (diffHours < 24) return `${diffHours}h ago`;
-    const diffDays = Math.floor(diffHours / 24);
-    if (diffDays === 1) return "Yesterday";
-    if (diffDays < 7) return `${diffDays}d ago`;
-    return d.toLocaleDateString([], { month: "short", day: "numeric" });
-  };
-
-  // Real Data ONLY: Direct Chats
-  const displayDirectChats = useMemo(() => {
-    return directChatWorkgroups.map((wg) => ({
-      id: wg.id,
-      wgId: wg.id,
-      name: wg.name,
-      avatar: getAvatarUrl(wg.avatar_url) || undefined,
-      time: formatWorkgroupTime(wg.last_message_at || wg.created_at),
-      snippet: wg.description || "Direct conversation",
-      unread: Number(wg.unread_count || 0),
-    }));
-  }, [directChatWorkgroups]);
-
-  // Real Data ONLY: Team Chats (Middle row)
-  const displayTeamChats = useMemo(() => {
-    return teamOnlyWorkgroups.map((wg) => ({
-      id: wg.id,
-      wgId: wg.id,
-      name: wg.name,
-      avatar: getAvatarUrl(wg.avatar_url) || undefined,
-      avatarColor: wg.avatar_color || "bg-blue-500",
-      time: formatWorkgroupTime(
-        wg.last_message_at || wg.updated_at || wg.created_at,
-      ),
-      memberCount: Number(wg.member_count || 1),
-      typeLabel: wg.type
-        ? wg.type.charAt(0).toUpperCase() + wg.type.slice(1)
-        : "Team",
-      snippet: wg.description || "Team collaboration workspace",
-      unread: Number(wg.unread_count || 0),
-    }));
-  }, [teamOnlyWorkgroups]);
-
-  // Real Data ONLY: Broadcasts
-  const displayBroadcasts = useMemo(() => {
-    return broadcastWorkgroups.map((wg) => ({
-      id: wg.id,
-      wgId: wg.id,
-      name: wg.name,
-      sentTo: `Sent to ${wg.member_count || 1} members`,
-      time: formatWorkgroupTime(wg.last_message_at || wg.created_at),
-      snippet: wg.description || "Official announcement broadcast",
-      unread: Number(wg.unread_count || 0),
-    }));
-  }, [broadcastWorkgroups]);
 
   const resetForm = () => {
     setForm({
@@ -356,24 +260,18 @@ export default function WorkgroupsPage() {
     setAvatarPreview(null);
     setAvatarFile(null);
     setSelectedUsers([]);
-    setUserSearch("");
   };
 
-  const togglePinTeam = (teamId: string) => {
-    console.log("Pin clicked for team ID:", teamId);
+  const togglePinTeam = (id: string) => {
     setPinnedTeams((prev) => {
       const newSet = new Set(prev);
-      console.log("Current pinned teams before toggle:", Array.from(prev));
-      if (newSet.has(teamId)) {
-        newSet.delete(teamId);
-        toast.success("Team unpinned");
+      if (newSet.has(id)) {
+        newSet.delete(id);
+        toast.info("Unpinned team");
       } else {
-        newSet.add(teamId);
-        toast.success("Team pinned");
+        newSet.add(id);
+        toast.success("Pinned team to top");
       }
-      console.log("New pinned teams after toggle:", Array.from(newSet));
-
-      // Save to localStorage
       try {
         localStorage.setItem(
           "workgroup_pinned_teams",
@@ -382,7 +280,6 @@ export default function WorkgroupsPage() {
       } catch (error) {
         console.error("Error saving pinned teams:", error);
       }
-
       return newSet;
     });
   };
@@ -429,98 +326,6 @@ export default function WorkgroupsPage() {
     setEditing(wg);
   };
 
-  // Realtime sync
-  useEffect(() => {
-    const handleWorkgroupUpdated = (payload: any) => {
-      const targetId = payload?.workgroup?.id || payload?.workgroup_id;
-      if (targetId && payload?.action !== "created") {
-        queryClient.setQueriesData(
-          { queryKey: ["workgroups"] },
-          (prev: Workgroup[] | undefined) => {
-            if (!Array.isArray(prev)) return prev;
-            if (payload?.action === "deleted")
-              return prev.filter((wg) => wg.id !== targetId);
-            return prev.map((wg) =>
-              wg.id === targetId ? { ...wg, ...(payload.workgroup || {}) } : wg,
-            );
-          },
-        );
-      }
-      queryClient.invalidateQueries({ queryKey: ["workgroups"] });
-      if (selectedId && (!targetId || targetId === selectedId)) {
-        queryClient.invalidateQueries({ queryKey: ["workgroup", selectedId] });
-      }
-    };
-    onRealtime("workgroup:updated", handleWorkgroupUpdated);
-    onRealtime("connect", handleWorkgroupUpdated);
-    return () => {
-      offRealtime("workgroup:updated", handleWorkgroupUpdated);
-      offRealtime("connect", handleWorkgroupUpdated);
-    };
-  }, [onRealtime, offRealtime, queryClient, selectedId]);
-
-  useEffect(() => {
-    if (!selectedId) return;
-    queryClient.setQueriesData(
-      { queryKey: ["workgroups"] },
-      (prev: any[] | undefined) => {
-        if (!Array.isArray(prev)) return prev;
-        return prev.map((wg) =>
-          wg?.id === selectedId ? { ...wg, unread_count: 0 } : wg,
-        );
-      },
-    );
-  }, [selectedId, queryClient]);
-
-  useEffect(() => {
-    const handleWorkgroupPost = (payload: {
-      workgroup_id?: string;
-      user_id?: string;
-      author_name?: string;
-      created_at?: string;
-    }) => {
-      if (!payload?.workgroup_id) return;
-      let found = false;
-      queryClient.setQueriesData(
-        { queryKey: ["workgroups"] },
-        (prev: any[] | undefined) => {
-          if (!Array.isArray(prev)) return prev;
-          return prev.map((wg) => {
-            if (wg?.id !== payload.workgroup_id) return wg;
-            found = true;
-            const isOwnMessage = payload.user_id === user?.id;
-            const isActiveWorkgroup = selectedId === payload.workgroup_id;
-            return {
-              ...wg,
-              unread_count:
-                isOwnMessage || isActiveWorkgroup
-                  ? 0
-                  : Number(wg.unread_count || 0) + 1,
-              last_message_at: payload.created_at || new Date().toISOString(),
-              last_message_sender_name:
-                payload.author_name || wg.last_message_sender_name,
-            };
-          });
-        },
-      );
-      if (!found) queryClient.invalidateQueries({ queryKey: ["workgroups"] });
-    };
-    onRealtime("workgroup_post:new", handleWorkgroupPost);
-    return () => offRealtime("workgroup_post:new", handleWorkgroupPost);
-  }, [onRealtime, offRealtime, queryClient, selectedId, user?.id]);
-
-  useEffect(() => {
-    const ids = visibleWorkgroups.map((wg) => wg.id);
-    ids.forEach((id) => subscribeToWorkgroup(id));
-    return () => ids.forEach((id) => unsubscribeFromWorkgroup(id));
-  }, [visibleWorkgroups, subscribeToWorkgroup, unsubscribeFromWorkgroup]);
-
-  useEffect(() => {
-    if (!editing || manageMembersUserId === "none") return;
-    if (!assignableMembers.some((m) => m.user_id === manageMembersUserId))
-      setManageMembersUserId("none");
-  }, [editing, assignableMembers, manageMembersUserId]);
-
   const handleCreate = () => {
     createWg.mutate(
       {
@@ -539,7 +344,6 @@ export default function WorkgroupsPage() {
       },
       {
         onSuccess: async (newWg: any) => {
-          // Upload avatar if provided
           if (avatarFile && newWg?.id) {
             try {
               await workgroupsApi.uploadAvatar(newWg.id, avatarFile);
@@ -547,7 +351,6 @@ export default function WorkgroupsPage() {
             } catch {}
           }
 
-          // Add selected members
           const membersToAdd = [...selectedUsers];
           if (
             manageMembersUserId !== "none" &&
@@ -573,9 +376,7 @@ export default function WorkgroupsPage() {
           setShowCreate(false);
           setManageMembersUserId("none");
           resetForm();
-          toast.success(
-            `"${form.name}" created with ${membersToAdd.length} member${membersToAdd.length !== 1 ? "s" : ""}!`,
-          );
+          toast.success(`"${form.name}" created successfully!`);
         },
       },
     );
@@ -601,7 +402,7 @@ export default function WorkgroupsPage() {
       },
       {
         onSuccess: async () => {
-          if (avatarFile && editing?.id) {
+          if (avatarFile && editing.id) {
             try {
               await workgroupsApi.uploadAvatar(editing.id, avatarFile);
               queryClient.invalidateQueries({ queryKey: ["workgroups"] });
@@ -610,7 +411,7 @@ export default function WorkgroupsPage() {
           setEditing(null);
           setManageMembersUserId("none");
           resetForm();
-          toast.success(`"${form.name}" updated!`);
+          toast.success("Team updated!");
         },
       },
     );
@@ -631,154 +432,35 @@ export default function WorkgroupsPage() {
   const getTypeIcon = (type: string) =>
     WORKGROUP_TYPES.find((t) => t.value === type)?.icon ?? Users;
 
-  const renderWorkgroupCard = (wg: Workgroup) => {
-    const TypeIcon = getTypeIcon(wg.type);
-    const unreadCount = selectedId === wg.id ? 0 : Number(wg.unread_count || 0);
-
-    const isModerator =
-      wg.settings?.member_manager_user_id === user?.id ||
-      wg.settings?.manage_member_user_id === user?.id ||
-      (wg as any).manage_member_user_id === user?.id;
-
-    const canEdit =
-      wg.user_role === "owner" ||
-      wg.created_by === user?.id ||
-      (isModerator && wg.settings?.moderator_permissions?.edit_group);
-
-    const canDelete =
-      wg.user_role === "owner" ||
-      wg.created_by === user?.id ||
-      (isModerator && wg.settings?.moderator_permissions?.delete_group);
-
-    const isPinned = pinnedTeams.has(wg.id);
-
-    return (
-      <div
-        key={wg.id}
-        onClick={() => openWorkgroup(wg.id)}
-        className={`relative group flex flex-col rounded-xl border border-primary dark:border dark:hover:border-2 p-4 cursor-pointer hover:shadow-md ${
-          unreadCount > 0
-            ? "bg-primary/10 shadow-sm shadow-primary/20"
-            : "bg-card"
-        }`}
-      >
-        {unreadCount > 0 && (
-          <div className="absolute top-0 left-0 bottom-0 w-1.5 bg-primary rounded-l-xl" />
-        )}
-        <div className="flex items-start justify-between mb-3">
-          <div className="relative">
-            <Avatar className="h-12 w-12">
-              <AvatarImage src={getAvatarUrl(wg.avatar_url) || undefined} />
-              <AvatarFallback className="bg-secondary-foreground text-secondary dark:bg-primary dark:text-primary-foreground font-bold text-base">
-                {wg.name.slice(0, 2).toUpperCase()}
-              </AvatarFallback>
-            </Avatar>
-            <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-background rounded-full flex items-center justify-center border border-border">
-              <TypeIcon className="h-3 w-3 text-muted-foreground" />
-            </div>
-            {unreadCount > 0 && (
-              <span className="absolute -top-1 -right-1 w-4 h-4 bg-primary dark:bg-gray-200 rounded-full" />
-            )}
-          </div>
-          <div
-            className="flex flex-col items-end gap-1"
-            onClick={(e) => e.stopPropagation()}
-          >
-            {unreadCount > 0 && (
-              <span className="inline-flex items-center justify-center min-w-[22px] h-[22px] rounded-full bg-primary text-white text-xs font-bold px-1.5">
-                {unreadCount}
-              </span>
-            )}
-            <div className="flex items-center gap-1">
-              <Button
-                variant="ghost"
-                size="icon"
-                className={`h-7 w-7 hover:bg-secondary-foreground dark:hover:bg-primary hover:text-white   ${isPinned ? "text-yellow-500" : "text-muted-foreground"}`}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  togglePinTeam(wg.id);
-                }}
-              >
-                <Pin
-                  className={`h-3.5 w-3.5 ${isPinned ? "fill-current" : ""}`}
-                />
-              </Button>
-              {canEdit && (
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-7 w-7 hover:bg-secondary-foreground dark:hover:bg-primary hover:text-white text-muted-foreground hover:text-white"
-                  onClick={() => openEdit(wg)}
-                >
-                  <Edit className="h-3.5 w-3.5" />
-                </Button>
-              )}
-              {canDelete && (
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-7 w-7 text-muted-foreground hover:bg-red-500/10 hover:text-destructive"
-                  onClick={() => setDeleteTarget(wg)}
-                >
-                  <Trash2 className="h-3.5 w-3.5" />
-                </Button>
-              )}
-            </div>
-          </div>
-        </div>
-
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center justify-between gap-2">
-            <h3
-              className={`font-bold text-base truncate ${
-                unreadCount > 0 ? "text-primary" : "text-foreground"
-              }`}
-            >
-              {wg.name}
-            </h3>
-            {isModerator && (
-              <Badge className="shrink-0 text-[8px] px-1 py-0 bg-secondary-foreground dark:bg-primary/10 text-white border-green-200 font-bold">
-                Moderator
-              </Badge>
-            )}
-          </div>
-
-          <div className="flex items-start justify-between gap-2">
-            {unreadCount > 0 && wg.last_message_sender_name ? (
-              <p className="text-xs font-semibold text-primary truncate mb-1 flex-1">
-                💬 {wg.last_message_sender_name}: new message
-              </p>
-            ) : wg.description ? (
-              <p className="text-xs text-muted-foreground line-clamp-2 mb-1 flex-1">
-                {wg.description}
-              </p>
-            ) : (
-              <div className="flex-1" />
-            )}
-          </div>
-        </div>
-
-        <div className="flex items-center justify-between mt-3 pt-3 border-t border-border/50">
-          <div className="flex items-center gap-3 text-xs text-muted-foreground">
-            <span className="flex items-center gap-1">
-              <Users className="h-3.5 w-3.5" />
-              {wg.member_count || 0}
-            </span>
-            <span className="flex items-center gap-1">
-              <MessageSquare className="h-3.5 w-3.5" />
-              {wg.message_count || 0}
-            </span>
-          </div>
-          <Badge
-            variant="outline"
-            className={`text-[10px] px-1.5 py-0 ${TYPE_COLORS[wg.type] || ""}`}
-          >
-            {getTypeLabel(wg.type)}
-          </Badge>
-        </div>
-      </div>
+  const totalMembers = useMemo(() => {
+    const teamMembers = orgMembers.filter(
+      (m: any) =>
+        m.role !== "super_admin" &&
+        !m.email?.includes("superadmin") &&
+        m.id !== user?.id,
     );
-  };
+    return teamMembers.length;
+  }, [orgMembers, user?.id]);
+
+  const unreadTeams = useMemo(() => {
+    return teamOnlyWorkgroups.reduce(
+      (acc, w) => acc + (Number(w.unread_count || 0) > 0 ? 1 : 0),
+      0,
+    );
+  }, [teamOnlyWorkgroups]);
+
+  const todayMessages = useMemo(() => {
+    const today = new Date().toDateString();
+    return teamOnlyWorkgroups.reduce((acc, w) => {
+      if (
+        w.last_message_at &&
+        new Date(w.last_message_at).toDateString() === today
+      ) {
+        return acc + Number(w.message_count || 0);
+      }
+      return acc;
+    }, 0);
+  }, [teamOnlyWorkgroups]);
 
   if (selectedId) {
     return (
@@ -793,328 +475,419 @@ export default function WorkgroupsPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 animate-in fade-in duration-500">
       <PageHeader
-        title="Workgroups"
-        description="Collaborate with your team in dedicated workspaces."
+        title="Team Chats"
+        description="Dedicated team & project workspaces for your organization."
+        meta={[
+          { label: "Teams", value: teamOnlyWorkgroups.length, tone: "info" },
+          { label: "Pinned", value: pinnedTeams.size, tone: "warning" },
+          { label: "Members", value: totalMembers, tone: "success" },
+          {
+            label: "Unread",
+            value: unreadTeams,
+            tone: unreadTeams > 0 ? "warning" : "default",
+          },
+          { label: "Messages Today", value: todayMessages, tone: "default" },
+        ]}
         actions={
-          <div className="flex gap-2">
+          <div className="flex items-center gap-2 shrink-0">
             <Button
-              size="sm"
-              onClick={() => navigate("/collaboration/direct-chats")}
-              className="relative"
+              variant="outline"
+              size="default"
+              onClick={() => navigate("/collaboration/workgroups")}
+              className="rounded-xl whitespace-nowrap gap-2 font-medium h-9 px-3 hover:bg-secondary-foreground dark:hover:bg-primary hover:text-white"
             >
-              <MessageCircle className="h-4 w-4 mr-2" />
-              Direct Chats
-              {totalDirectChatUnread > 0 && (
-                <span className="ml-2 inline-flex items-center justify-center min-w-[18px] h-[18px] rounded-full bg-white text-black text-[10px] font-bold px-1">
-                  {totalDirectChatUnread > 99 ? "99+" : totalDirectChatUnread}
-                </span>
-              )}
+              <ArrowLeft className="h-4 w-4" /> Back to Workgroups
             </Button>
             <Button
-              size="sm"
-              onClick={() => {
-                navigate("/collaboration/team-chats");
-              }}
-            >
-              <Users className="h-4 w-4 mr-2" />
-              Team Groups
-              {totalTeamUnread > 0 && (
-                <span className="ml-2 inline-flex items-center justify-center min-w-[18px] h-[18px] rounded-full bg-white text-black text-[10px] font-bold px-1">
-                  {totalTeamUnread > 99 ? "99+" : totalTeamUnread}
-                </span>
-              )}
-            </Button>
-            <Button
-              size="sm"
-              onClick={() => navigate("/collaboration/broadcast")}
-              className="relative"
-            >
-              <Send className="h-4 w-4 mr-2" />
-              Broadcasts
-              {totalBroadcastUnread > 0 && (
-                <span className="ml-2 inline-flex items-center justify-center min-w-[18px] h-[18px] rounded-full bg-white text-black text-[10px] font-bold px-1">
-                  {totalBroadcastUnread > 99 ? "99+" : totalBroadcastUnread}
-                </span>
-              )}
-            </Button>
-
-            {/* <Button
-              size="sm"
-              className="bg-primary"
+              size="default"
+              className="bg-secondary-foreground rounded-xl whitespace-nowrap gap-2 font-medium h-9 px-3"
               onClick={() => {
                 resetForm();
                 setShowCreate(true);
               }}
             >
-              <Plus className="h-4 w-4 mr-2" />
-              New Team
-            </Button> */}
+              <Plus className="h-4 w-4" /> New Team
+            </Button>
           </div>
         }
       />
 
-      {/* ========================================================================= */}
-      {/* IMAGE 1 SECTIONS: Direct Chats, Team Chats, Broadcasts                    */}
-      {/* ========================================================================= */}
-      <div className="space-y-6 mb-6">
-        {/* 1. Direct Chats Section */}
-        <div className="space-y-3.5 bg-card border border-border/60 rounded-2xl p-4 lg:p-5 shadow-sm">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-2xl  bg-primary/10 text-primary  flex items-center justify-center shrink-0">
-                <MessageSquare className="w-5 h-5" />
-              </div>
-              <div>
-                <h2 className="text-base font-bold text-foreground">
-                  Direct Chats
-                </h2>
-                <p className="text-xs text-muted-foreground">
-                  Direct 1-on-1 conversations
-                </p>
-              </div>
-            </div>
-            {directChatWorkgroups.length > 0 && (
-              <Button
-                variant="outline"
-                size="sm"
-                className="rounded-xl gap-1 text-xs hover:bg-secondary-foreground dark:hover:bg-primary hover:text-white font-medium "
-                onClick={() => navigate("/collaboration/direct-chats")}
-              >
-                View all
-                <ChevronRight className="w-3.5 h-3.5" />
-              </Button>
-            )}
-          </div>
+      <DataToolbar
+        search={search}
+        onSearchChange={setSearch}
+        searchPlaceholder="Search teams and workgroups..."
+        filters={[
+          {
+            label: "Pinned",
+            value: filterPinned,
+            onChange: setFilterPinned,
+            options: [
+              { label: "All Teams", value: "all" },
+              { label: "Pinned Only", value: "pinned" },
+              { label: "Unpinned Only", value: "unpinned" },
+            ],
+          },
+        ]}
+        sortValue={sortBy}
+        sortOptions={[
+          { label: "Recent Activity", value: "recent" },
+          { label: "Name (A–Z)", value: "name" },
+          { label: "Team Size", value: "members" },
+        ]}
+        onSortChange={setSortBy}
+        view={viewMode}
+        viewOptions={[
+          {
+            id: "grid",
+            label: "Grid",
+            icon: <LayoutGrid className="h-4 w-4" />,
+          },
+          { id: "list", label: "List", icon: <List className="h-4 w-4" /> },
+        ]}
+        onViewChange={(v) => setViewMode(v as "grid" | "list")}
+      />
 
-          {directChatWorkgroups.length > 0 ? (
-            <div className="grid gap-3 grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3">
-              {directChatWorkgroups.slice(0, 6).map((chat) => {
-                const isOnline = Boolean(chat.is_online);
-                const chatDisplayName = chat.display_name || chat.name;
+      <Card className="border-0 shadow-card">
+        <CardContent className="p-4 lg:p-6">
+          {isLoading ? (
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {[...Array(6)].map((_, i) => (
+                <div
+                  key={i}
+                  className="h-40 rounded-xl bg-muted/40 animate-pulse"
+                />
+              ))}
+            </div>
+          ) : filtered.length === 0 ? (
+            <EmptyState
+              title="No teams found"
+              description={
+                search
+                  ? `No teams match "${search}"`
+                  : "Create your first team to start collaborating."
+              }
+              actionLabel="Create Team"
+              onAction={() => {
+                resetForm();
+                setShowCreate(true);
+              }}
+              icon={<Users className="h-6 w-6" />}
+            />
+          ) : viewMode === "grid" ? (
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+              {filtered.map((wg) => {
+                const TypeIcon = getTypeIcon(wg.type);
+                const unreadCount =
+                  selectedId === wg.id ? 0 : Number(wg.unread_count || 0);
+
+                const isModerator =
+                  wg.settings?.member_manager_user_id === user?.id ||
+                  wg.settings?.manage_member_user_id === user?.id ||
+                  (wg as any).manage_member_user_id === user?.id;
+
+                const canEdit =
+                  wg.user_role === "owner" ||
+                  wg.created_by === user?.id ||
+                  (isModerator &&
+                    wg.settings?.moderator_permissions?.edit_group);
+
+                const canDelete =
+                  wg.user_role === "owner" ||
+                  wg.created_by === user?.id ||
+                  (isModerator &&
+                    wg.settings?.moderator_permissions?.delete_group);
+
+                const isPinned = pinnedTeams.has(wg.id);
 
                 return (
-                  <Card
-                    key={chat.id}
-                    onClick={() => openWorkgroup(chat.id)}
-                    className="p-3.5 rounded-2xl border border-primary hover:shadow-md transition-all cursor-pointer bg-background flex items-center justify-between gap-3 relative group"
+                  <div
+                    key={wg.id}
+                    onClick={() => openWorkgroup(wg.id)}
+                    className={`relative group flex flex-col rounded-xl border border-primary p-4 cursor-pointer hover:shadow-md ${
+                      unreadCount > 0
+                        ? "bg-primary/10 shadow-sm shadow-primary/20"
+                        : "bg-card"
+                    }`}
                   >
-                    <div className="flex items-center gap-3 min-w-0">
-                      <div className="relative shrink-0">
-                        <Avatar className="h-11 w-11 border border-border/40">
+                    {unreadCount > 0 && (
+                      <div className="absolute top-0 left-0 bottom-0 w-1.5 bg-primary rounded-l-xl" />
+                    )}
+                    <div className="flex items-start justify-between mb-3">
+                      <div className="relative">
+                        <Avatar className="h-12 w-12">
                           <AvatarImage
-                            src={
-                              getAvatarUrl(
-                                chat.avatar_url ||
-                                  chat.direct_peer_avatar_url ||
-                                  (chat as any).avatar,
-                              ) || undefined
-                            }
+                            src={getAvatarUrl(wg.avatar_url) || undefined}
                           />
-                          <AvatarFallback className="bg-secondary-foreground text-secondary dark:bg-primary dark:text-primary-foreground font-bold text-sm">
-                            {chatDisplayName.slice(0, 2).toUpperCase()}
+                          <AvatarFallback className="bg-secondary-foreground text-secondary dark:bg-primary dark:text-primary-foreground font-bold text-base">
+                            {wg.name.slice(0, 2).toUpperCase()}
                           </AvatarFallback>
                         </Avatar>
-                        <span
-                          className={`absolute -right-0.5 -bottom-0.5 h-3.5 w-3.5 rounded-full border-2 border-background ${
-                            isOnline ? "bg-emerald-500" : "bg-slate-400"
-                          }`}
-                        />
+                        <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-background rounded-full flex items-center justify-center border border-border">
+                          <TypeIcon className="h-3 w-3 text-muted-foreground" />
+                        </div>
+                        {unreadCount > 0 && (
+                          <span className="absolute -top-1 -right-1 w-4 h-4 bg-primary rounded-full" />
+                        )}
                       </div>
-
-                      <div className="min-w-0 flex-1">
-                        <h3 className="font-bold text-sm text-foreground truncate">
-                          {chatDisplayName}
-                        </h3>
-                        <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
-                          <span
-                            className={`text-xs font-semibold ${
-                              isOnline ? "text-emerald-500" : "text-red-500"
-                            }`}
-                          >
-                            {isOnline ? "Online" : "Offline"}
+                      <div
+                        className="flex flex-col items-end gap-1"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        {unreadCount > 0 && (
+                          <span className="inline-flex items-center justify-center min-w-[22px] h-[22px] rounded-full bg-primary text-white text-xs font-bold px-1.5">
+                            {unreadCount}
                           </span>
-                          {!isOnline && (
-                            <span className="text-[11px] text-muted-foreground truncate">
-                              {chat.last_seen_at
-                                ? `• Last seen ${formatDistanceToNow(
-                                    new Date(chat.last_seen_at),
-                                    { addSuffix: true },
-                                  )}`
-                                : "• Offline"}
-                            </span>
+                        )}
+                        <div className="flex items-center gap-1">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className={`h-7 w-7 hover:bg-secondary-foreground dark:hover:bg-primary hover:text-white ${isPinned ? "text-yellow-500" : "text-muted-foreground"}`}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              togglePinTeam(wg.id);
+                            }}
+                          >
+                            <Pin
+                              className={`h-3.5 w-3.5 ${isPinned ? "fill-current" : ""}`}
+                            />
+                          </Button>
+                          {canEdit && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-7 w-7  hover:bg-secondary-foreground dark:hover:bg-primary hover:text-white text-muted-foreground hover:text-white"
+                              onClick={() => openEdit(wg)}
+                            >
+                              <Edit className="h-3.5 w-3.5" />
+                            </Button>
+                          )}
+                          {canDelete && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-7 w-7 text-muted-foreground hover:bg-red-500/10 hover:text-destructive"
+                              onClick={() => setDeleteTarget(wg)}
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </Button>
                           )}
                         </div>
                       </div>
                     </div>
 
-                    <div
-                      className="flex items-center gap-1.5 shrink-0"
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      {isOnline && (
-                        <>
-                          <Button
-                            variant="outline"
-                            size="icon"
-                            className="h-6 w-6 rounded-full bg-card hover:bg-primary/10 hover:text-primary dark:hover:text-primary hover:border-emerald-500/30 transition-all shadow-sm"
-                            title="Audio Call"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              if (callState !== "idle") {
-                                toast.error("Already in a call");
-                                return;
-                              }
-                              startVideoCall(
-                                chat.direct_peer_user_id,
-                                chatDisplayName,
-                                null,
-                                "audio",
-                                chat.id,
-                              );
-                            }}
-                          >
-                            <Phone className="h-4 w-4" />
-                          </Button>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between gap-2">
+                        <h3
+                          className={`font-bold text-base truncate ${
+                            unreadCount > 0 ? "text-primary" : "text-foreground"
+                          }`}
+                        >
+                          {wg.name}
+                        </h3>
+                        {isModerator && (
+                          <Badge className="shrink-0 text-[8px] px-1 py-0 bg-secondary-foreground text-white dark:bg-primary/10 dark:text-white border-primary/10 font-bold">
+                            Moderator
+                          </Badge>
+                        )}
+                      </div>
 
-                          <Button
-                            variant="outline"
-                            size="icon"
-                            className="h-6 w-6 rounded-full bg-card hover:bg-primary/10 hover:text-primary dark:hover:text-primary hover:border-blue-500/30 transition-all shadow-sm"
-                            title="Video Call"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              if (callState !== "idle") {
-                                toast.error("Already in a call");
-                                return;
-                              }
-                              startVideoCall(
-                                chat.direct_peer_user_id,
-                                chatDisplayName,
-                                null,
-                                "video",
-                                chat.id,
-                              );
-                            }}
-                          >
-                            <Video className="h-4 w-4" />
-                          </Button>
-                        </>
-                      )}
-
-                      <Button
-                        variant="outline"
-                        size="icon"
-                        className="h-6 w-6 rounded-full bg-card hover:bg-red-500/10 hover:text-destructive hover:border-red-500/30 transition-all shadow-sm"
-                        title="Delete Chat"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setDeleteTarget(chat);
-                        }}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                      {Number((chat as any).unread_count || 0) > 0 && (
-                        <span className="inline-flex items-center justify-center min-w-[20px] h-[20px] rounded-full bg-primary text-white text-[11px] font-bold px-1.5 mr-1 shadow-sm">
-                          {Number((chat as any).unread_count || 0) > 99
-                            ? "99+"
-                            : (chat as any).unread_count}
-                        </span>
-                      )}
+                      <div className="flex items-start justify-between gap-2">
+                        {unreadCount > 0 && wg.last_message_sender_name ? (
+                          <p className="text-xs font-semibold text-primary truncate mb-1 flex items-center">
+                            <MessageSquare className="h-3.5 w-3.5 mr-1" /> {wg.last_message_sender_name}: new message
+                          </p>
+                        ) : wg.description ? (
+                          <p className="text-xs text-muted-foreground line-clamp-2 mb-1 flex-1">
+                            {wg.description}
+                          </p>
+                        ) : (
+                          <div className="flex-1" />
+                        )}
+                      </div>
                     </div>
-                  </Card>
+
+                    <div className="flex items-center justify-between mt-3 pt-3 border-t border-border/50">
+                      <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                        <span className="flex items-center gap-1">
+                          <Users className="h-3.5 w-3.5" />
+                          {wg.member_count || 0}
+                        </span>
+                        <span className="flex items-center gap-1">
+                          <MessageSquare className="h-3.5 w-3.5" />
+                          {wg.message_count || 0}
+                        </span>
+                      </div>
+                      <Badge
+                        variant="outline"
+                        className={`text-[10px] px-1.5 py-0 ${TYPE_COLORS[wg.type] || ""}`}
+                      >
+                        {getTypeLabel(wg.type)}
+                      </Badge>
+                    </div>
+                  </div>
                 );
               })}
             </div>
           ) : (
-            <div className="p-4 rounded-xl border border-dashed border-border/70 text-center text-xs text-muted-foreground bg-muted/20">
-              No direct chats yet. Select a team member to start a direct
-              message.
+            <div className="space-y-3">
+              {filtered.map((wg) => {
+                const TypeIcon = getTypeIcon(wg.type);
+                const unreadCount =
+                  selectedId === wg.id ? 0 : Number(wg.unread_count || 0);
+
+                const isModerator =
+                  wg.settings?.member_manager_user_id === user?.id ||
+                  wg.settings?.manage_member_user_id === user?.id ||
+                  (wg as any).manage_member_user_id === user?.id;
+
+                const canEdit =
+                  wg.user_role === "owner" ||
+                  wg.created_by === user?.id ||
+                  (isModerator &&
+                    wg.settings?.moderator_permissions?.edit_group);
+
+                const canDelete =
+                  wg.user_role === "owner" ||
+                  wg.created_by === user?.id ||
+                  (isModerator &&
+                    wg.settings?.moderator_permissions?.delete_group);
+
+                const isPinned = pinnedTeams.has(wg.id);
+
+                return (
+                  <div
+                    key={wg.id}
+                    onClick={() => openWorkgroup(wg.id)}
+                    className={`relative group flex items-center justify-between rounded-xl border border-primary p-4 cursor-pointer hover:shadow-md transition-all bg-card ${
+                      unreadCount > 0
+                        ? "bg-primary/10 shadow-sm shadow-primary/20"
+                        : "bg-card"
+                    }`}
+                  >
+                    {unreadCount > 0 && (
+                      <div className="absolute top-0 left-0 bottom-0 w-1.5 bg-primary rounded-l-xl" />
+                    )}
+
+                    <div className="flex items-center gap-4 min-w-0 flex-1">
+                      <div className="relative shrink-0">
+                        <Avatar className="h-12 w-12">
+                          <AvatarImage
+                            src={getAvatarUrl(wg.avatar_url) || undefined}
+                          />
+                          <AvatarFallback className="bg-secondary-foreground text-secondary dark:bg-primary dark:text-primary-foreground font-bold text-base">
+                            {wg.name.slice(0, 2).toUpperCase()}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-background rounded-full flex items-center justify-center border border-border">
+                          <TypeIcon className="h-3 w-3 text-muted-foreground" />
+                        </div>
+                        {unreadCount > 0 && (
+                          <span className="absolute -top-1 -right-1 w-4 h-4 bg-primary rounded-full" />
+                        )}
+                      </div>
+
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2 mb-0.5">
+                          <h3
+                            className={`font-bold text-base truncate ${
+                              unreadCount > 0
+                                ? "text-primary"
+                                : "text-foreground"
+                            }`}
+                          >
+                            {wg.name}
+                          </h3>
+                          {isModerator && (
+                            <Badge className="shrink-0 text-[8px] px-1 py-0 bg-mute text-green-500 border-green-200 font-bold">
+                              Moderator
+                            </Badge>
+                          )}
+                        </div>
+
+                        {wg.description && (
+                          <p className="text-xs text-muted-foreground line-clamp-1 mb-1.5">
+                            {wg.description}
+                          </p>
+                        )}
+
+                        <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                          <span className="flex items-center gap-1">
+                            <Users className="h-3.5 w-3.5" />
+                            {wg.member_count || 0}
+                          </span>
+                          <span className="flex items-center gap-1">
+                            <MessageSquare className="h-3.5 w-3.5" />
+                            {wg.message_count || 0}
+                          </span>
+                          <Badge
+                            variant="outline"
+                            className={`text-[10px] px-2 py-0.5 rounded-full ${TYPE_COLORS[wg.type] || ""}`}
+                          >
+                            {getTypeLabel(wg.type)}
+                          </Badge>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div
+                      className="flex items-center gap-1.5 shrink-0 ml-4"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      {unreadCount > 0 && (
+                        <span className="inline-flex items-center justify-center min-w-[22px] h-[22px] rounded-full bg-primary text-white text-xs font-bold px-1.5 mr-1">
+                          {unreadCount}
+                        </span>
+                      )}
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className={`h-8 w-8 ${isPinned ? "text-yellow-500" : "text-muted-foreground hover:text-foreground"}`}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          togglePinTeam(wg.id);
+                        }}
+                      >
+                        <Pin
+                          className={`h-4 w-4 ${isPinned ? "fill-current" : ""}`}
+                        />
+                      </Button>
+                      {canEdit && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-muted-foreground hover:text-foreground"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            openEdit(wg);
+                          }}
+                        >
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                      )}
+                      {canDelete && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-muted-foreground hover:bg-red-500/10 hover:text-destructive"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setDeleteTarget(wg);
+                          }}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           )}
-        </div>
-
-        {/* 2. Team Chats Section */}
-        <div className="space-y-3.5 bg-card border border-border/60 rounded-2xl p-4 lg:p-5 shadow-sm">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-2xl bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
-                <Users className="w-5 h-5" />
-              </div>
-              <div>
-                <h2 className="text-base font-bold text-foreground">
-                  Team Chats
-                </h2>
-                <p className="text-xs text-muted-foreground">
-                  Active team & group workspaces
-                </p>
-              </div>
-            </div>
-            {teamOnlyWorkgroups.length > 0 && (
-              <Button
-                variant="outline"
-                size="sm"
-                className="rounded-xl gap-1 text-xs hover:bg-muted font-medium hover:bg-secondary-foreground dark:hover:bg-primary hover:text-white"
-                onClick={() => navigate("/collaboration/team-chats")}
-              >
-                View all
-                <ChevronRight className="w-3.5 h-3.5" />
-              </Button>
-            )}
-          </div>
-
-          {teamOnlyWorkgroups.length > 0 ? (
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-              {teamOnlyWorkgroups.slice(0, 4).map(renderWorkgroupCard)}
-            </div>
-          ) : (
-            <div className="p-4 rounded-xl border border-dashed border-border/70 text-center text-xs text-muted-foreground bg-muted/20">
-              No team chats created yet. Click "+ New Team" to create one.
-            </div>
-          )}
-        </div>
-
-        {/* 3. Broadcasts Section */}
-        <div className="space-y-3.5 bg-card border border-border/60 rounded-2xl p-4 lg:p-5 shadow-sm">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-2xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
-                <Megaphone className="w-5 h-5" />
-              </div>
-              <div>
-                <h2 className="text-base font-bold text-foreground">
-                  Broadcasts
-                </h2>
-                <p className="text-xs text-muted-foreground">
-                  Team broadcasts & announcements
-                </p>
-              </div>
-            </div>
-            {broadcastWorkgroups.length > 0 && (
-              <Button
-                variant="outline"
-                size="sm"
-                className="rounded-xl gap-1 text-xs hover:bg-muted font-medium hover:bg-secondary-foreground dark:hover:bg-primary hover:text-white"
-                onClick={() => navigate("/collaboration/broadcast")}
-              >
-                View all
-                <ChevronRight className="w-3.5 h-3.5" />
-              </Button>
-            )}
-          </div>
-
-          {broadcastWorkgroups.length > 0 ? (
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-              {broadcastWorkgroups.slice(0, 4).map(renderWorkgroupCard)}
-            </div>
-          ) : (
-            <div className="p-4 rounded-xl border border-dashed border-border/70 text-center text-xs text-muted-foreground bg-muted/20">
-              No broadcast channels created yet.
-            </div>
-          )}
-        </div>
-      </div>
+        </CardContent>
+      </Card>
 
       {/* Create / Edit Dialog */}
       <Dialog
@@ -1131,7 +904,7 @@ export default function WorkgroupsPage() {
         <DialogContent className="max-w-lg max-h-[95vh] overflow-y-auto">
           {(() => {
             const isAdminOrOwner =
-              !editing || // Creating new team
+              !editing ||
               editing.user_role === "owner" ||
               editing.user_role === "admin" ||
               editing.created_by === user?.id;
@@ -1149,7 +922,6 @@ export default function WorkgroupsPage() {
                   </DialogDescription>
                 </DialogHeader>
                 <div className="space-y-4 py-2">
-                  {/* Avatar Upload */}
                   {isAdminOrOwner && (
                     <div className="flex items-center gap-4">
                       <div
@@ -1232,7 +1004,6 @@ export default function WorkgroupsPage() {
                     />
                   </div>
 
-                  {/* modiator section  */}
                   {isAdminOrOwner && (
                     <div className="space-y-1.5 flex flex-col">
                       <Label htmlFor="assign-member-manager">Moderator</Label>
@@ -1337,7 +1108,6 @@ export default function WorkgroupsPage() {
                     </div>
                   )}
 
-                  {/* Global Permissions Section */}
                   <div className="space-y-4 p-4 rounded-xl border-2 border-blue-100">
                     <h4 className="text-sm font-bold text-blue-900 flex items-center gap-2">
                       <Lock className="h-4 w-4" />
@@ -1375,7 +1145,6 @@ export default function WorkgroupsPage() {
                     </div>
                   </div>
 
-                  {/* Moderator Permissions Section (if moderator selected) */}
                   {isAdminOrOwner && manageMembersUserId !== "none" && (
                     <div className="space-y-4 p-4 rounded-xl border-2 border-orange-100">
                       <h4 className="text-sm font-bold text-blue-900 flex items-center gap-2">
@@ -1481,7 +1250,6 @@ export default function WorkgroupsPage() {
                     </div>
                   )}
 
-                  {/* User Selection */}
                   {isAdminOrOwner && (
                     <div className="space-y-3">
                       <div className="flex items-center justify-between">

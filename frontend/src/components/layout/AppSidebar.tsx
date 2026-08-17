@@ -177,7 +177,7 @@ const navigation: NavItem[] = [
       { title: "Calendar", href: "/collaboration/calendar", icon: Calendar },
       { title: "Drive", href: "/collaboration/drive", icon: FolderOpen },
       { title: "Mail", href: "/collaboration/mail", icon: Mail },
-      // { title: "Workgroups", href: "/collaboration/workgroups", icon: Users },
+      { title: "Workgroups", href: "/collaboration/workgroups", icon: Users },
     ],
   },
   // {
@@ -934,7 +934,7 @@ export function AppSidebar({
                     ? "text-primary"
                     : "text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
                 )}>
-                  Direct Messages
+                  Direct Chats
                 </span>
                 {totalDMUnread > 0 && (
                   <span className="inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-red-600 px-1.5 text-[9px] font-bold text-white">
@@ -986,10 +986,7 @@ export function AppSidebar({
                               }
                             />
                             <AvatarFallback
-                              className={cn(
-                                dm.avatar_color,
-                                "text-white text-[10px]",
-                              )}
+                              className="bg-primary text-primary-foreground font-bold text-[10px]"
                             >
                               {(dm.display_name || dm.name || "DM")
                                 .slice(0, 2)
@@ -1124,7 +1121,7 @@ export function AppSidebar({
                               src={getAvatarUrl(wg.avatar_url) || undefined}
                             />
                             <AvatarFallback
-                              className={`${wg.avatar_color || "bg-primary"} text-white text-[10px]`}
+                              className="bg-primary text-primary-foreground font-bold text-[10px]"
                             >
                               {(wg.display_name || wg.name)
                                 .slice(0, 2)
@@ -1246,7 +1243,7 @@ export function AppSidebar({
                               src={getAvatarUrl(bc.avatar_url) || undefined}
                             />
                             <AvatarFallback
-                              className={`${bc.avatar_color || "bg-indigo-500"} text-white text-[10px]`}
+                              className="bg-primary text-primary-foreground font-bold text-[10px]"
                             >
                               {(bc.display_name || bc.name)
                                 .slice(0, 2)

@@ -40,6 +40,7 @@ import UniboxPage from "./pages/crm/UniboxPage";
 import WorkgroupsPage from "./pages/collaboration/WorkgroupsPage";
 import BroadcastPage from "./pages/collaboration/BroadcastPage";
 import DirectChatPage from "./pages/collaboration/DirectChatPage";
+import TeamChatsPage from "./pages/collaboration/TeamChatsPage";
 import { NotificationsProvider } from "./contexts/NotificationsContext";
 import { usePushNotifications } from "./hooks/usePushNotifications";
 import { useFcm } from "./hooks/useFcm";
@@ -228,6 +229,7 @@ const App = () => (
                         <Route path="/crm/dashboard" element={<CrmDashboardPage />} />
                         <Route path="/crm/unibox" element={<UniboxPage />} />
                         <Route path="/collaboration/workgroups" element={<WorkgroupsPage />} />
+                        <Route path="/collaboration/team-chats" element={<TeamChatsPage />} />
                         <Route path="/collaboration/broadcast" element={<BroadcastPage />} />
                         <Route path="/collaboration/direct-chats" element={<DirectChatPage />} />
                         {/* CRM Routes */}

@@ -1854,7 +1854,7 @@ export default function WorkgroupDetailView({ workgroupId, onBack }: Props) {
                 )}
               />
               <AvatarFallback
-                className={`${workgroup.avatar_color} text-white font-semibold`}
+                className={`bg-secondary-foreground dark:bg-primary text-white font-semibold`}
               >
                 {workgroupDisplayName.slice(0, 2).toUpperCase()}
               </AvatarFallback>
@@ -1963,7 +1963,7 @@ export default function WorkgroupDetailView({ workgroupId, onBack }: Props) {
                 </p>
                 <button
                   onClick={() => setShowAboutModal(true)}
-                  className="text-xs text-blue-600 hover:text-blue-700 font-medium whitespace-nowrap"
+                  className="text-xs text-primary dark:text-primary hover:text-primary/80 font-medium whitespace-nowrap"
                 >
                   Read more
                 </button>
@@ -1975,7 +1975,7 @@ export default function WorkgroupDetailView({ workgroupId, onBack }: Props) {
           <div className="flex gap-2">
             <Button
               size="sm"
-              className="flex-1 bg-blue-600 hover:bg-blue-700 text-white gap-2"
+              className="flex-1 bg-secondary-foreground text-white gap-2"
               onClick={handleStartMeeting}
             >
               <Video className="h-4 w-4" />
@@ -1983,8 +1983,7 @@ export default function WorkgroupDetailView({ workgroupId, onBack }: Props) {
             </Button>
             <Button
               size="sm"
-              variant="outline"
-              className="flex-1 gap-2"
+              className="flex-1 bg-secondary-foreground text-white gap-2"
               onClick={handleStartCall}
             >
               <Phone className="h-4 w-4" />
@@ -2019,8 +2018,8 @@ export default function WorkgroupDetailView({ workgroupId, onBack }: Props) {
             <div className="space-y-1 mt-3 animate-in fade-in slide-in-from-top-2 duration-200">
               <div
                 className={`flex items-center gap-2 px-3  py-2 rounded-lg cursor-pointer transition-colors ${activeTab === "posts"
-                  ? "bg-blue-50 dark:bg-blue-900/20 text-primary dark:text-blue-300"
-                  : "hover:bg-primary hover:text-white"
+                  ? "bg-primary/10 dark:bg-primary/10 text-primary dark:text-primary"
+                  : "hover:bg-primary hover:text-white dark:hover:bg-primary"
                   }`}
                 onClick={() => setActiveTab("posts")}
               >
@@ -2032,7 +2031,7 @@ export default function WorkgroupDetailView({ workgroupId, onBack }: Props) {
               </div>
               <div
                 className={`flex items-center gap-2 px-3 py-2 rounded-lg cursor-pointer transition-colors ${activeTab === "files"
-                  ? "bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300"
+                  ? "bg-primary/10 dark:bg-primary/10 text-primary dark:text-primary"
                   : "hover:bg-primary hover:text-white dark:hover:bg-primary"
                   }`}
                 onClick={() => setActiveTab("files")}
@@ -2045,7 +2044,7 @@ export default function WorkgroupDetailView({ workgroupId, onBack }: Props) {
               </div>
               <div
                 className={`flex items-center gap-2 px-3 py-2 rounded-lg cursor-pointer transition-colors ${activeTab === "wiki"
-                  ? "bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300"
+                  ? "bg-primary/10 dark:bg-primary/10 text-primary dark:text-primary"
                   : "hover:bg-primary hover:text-white dark:hover:bg-primary"
                   }`}
                 onClick={() => setActiveTab("wiki")}
@@ -2074,7 +2073,7 @@ export default function WorkgroupDetailView({ workgroupId, onBack }: Props) {
                   size="sm"
                   variant="ghost"
                   onClick={() => setShowAddMember(true)}
-                  className="h-8 w-8 p-0 hover:bg-blue-50 hover:text-blue-600"
+                  className="h-8 w-8 p-0 hover:bg-secondary-foreground dark:hover:bg-primary hover:text-white"
                   title="Add Member"
                 >
                   <UserPlus className="h-4 w-4" />
@@ -2110,7 +2109,7 @@ export default function WorkgroupDetailView({ workgroupId, onBack }: Props) {
                 <div className="relative">
                   <Avatar className="h-8 w-8 shrink-0">
                     <AvatarImage src={getAvatarUrl(member.avatar_url)} />
-                    <AvatarFallback className="bg-muted text-muted-foreground text-xs">
+                    <AvatarFallback className="bg-secondary-foreground dark:bg-primary text-white text-xs">
                       {(member.full_name || "?").slice(0, 2).toUpperCase()}
                     </AvatarFallback>
                   </Avatar>
@@ -2124,7 +2123,7 @@ export default function WorkgroupDetailView({ workgroupId, onBack }: Props) {
                     {assignedMemberManagerId &&
                       String(member.user_id || (member as any).id) ===
                       String(assignedMemberManagerId) && (
-                        <Badge className="bg-indigo-600 hover:bg-indigo-600 text-white font-bold px-2 py-0.5 ml-8 text-[9px]">
+                        <Badge className="bg-secondary-foreground hover:bg-secondary-foreground dark:bg-primary text-white font-bold px-2 py-0.5 ml-8 text-[9px]">
                           Moderator
                         </Badge>
                       )}
@@ -2140,7 +2139,7 @@ export default function WorkgroupDetailView({ workgroupId, onBack }: Props) {
                     )}
                     <span
                       className={`text-xs font-bold ${member.is_online
-                        ? "text-primary text-[10px]"
+                        ? "text-emerald-500 text-[10px]"
                         : "text-red-500 dark:text-red-400 text-[10px]"
                         }`}
                     >
@@ -2912,7 +2911,7 @@ export default function WorkgroupDetailView({ workgroupId, onBack }: Props) {
                                   <Button
                                     variant="ghost"
                                     size="icon"
-                                    className="h-8 w-8 text-gray-400 hover:text-blue-500 hover:bg-transparent"
+                                    className="h-8 w-8 text-gray-400 hover:text-secondary-foreground dark:hover:text-primary hover:bg-transparent"
                                     disabled={!canSendMessages}
                                     onClick={() =>
                                       setShowInputEmojiPicker((prev) => !prev)
@@ -2923,7 +2922,7 @@ export default function WorkgroupDetailView({ workgroupId, onBack }: Props) {
                                   <Button
                                     variant="ghost"
                                     size="icon"
-                                    className="h-8 w-8 text-gray-400 hover:text-blue-500 hover:bg-transparent"
+                                    className="h-8 w-8 text-gray-400 hover:text-secondary-foreground dark:hover:text-primary hover:bg-transparent"
                                     disabled={isSendingFile}
                                     onClick={() =>
                                       attachmentInputRef.current?.click()
@@ -2938,12 +2937,12 @@ export default function WorkgroupDetailView({ workgroupId, onBack }: Props) {
                                   <Button
                                     variant="ghost"
                                     size="icon"
-                                    className="h-8 w-8 text-gray-400 hover:text-blue-500 hover:bg-transparent"
+                                    className="h-8 w-8 text-gray-400 hover:text-secondary-foreground dark:hover:text-primary hover:bg-transparent"
                                     disabled={!canSendMessages}
                                     onClick={() => setShowEventDialog(true)}
                                     title="Schedule Meeting"
                                   >
-                                    <Calendar className="h-5 w-5" />
+                                    <Calendar className="h-5 w-5 hover:text-secondary-foreground dark:hover:text-primary hover:text-secondary-foreground/80 dark:hover:text-primary/80" />
                                   </Button>
                                   <button
                                     onClick={handlePost}
@@ -2953,7 +2952,7 @@ export default function WorkgroupDetailView({ workgroupId, onBack }: Props) {
                                       createPost.isPending
                                     }
                                     className={`h-8 w-8 flex items-center justify-center rounded-full transition-all ${(newPost.trim() || pendingFiles.length > 0)
-                                      ? "bg-blue-600 text-white shadow-md hover:scale-105 active:scale-95"
+                                      ? "bg-secondary-foreground text-secondary dark:bg-primary dark:text-primary-foreground text-white shadow-md hover:scale-105 active:scale-95"
                                       : "bg-muted text-muted-foreground pointer-events-none"
                                       }`}
                                   >
@@ -2985,7 +2984,6 @@ export default function WorkgroupDetailView({ workgroupId, onBack }: Props) {
                         </p>
                         <div className="flex items-center gap-2">
                           <Button
-                            variant="outline"
                             size="sm"
                             onClick={clearForwardSelection}
                           >
@@ -3035,7 +3033,6 @@ export default function WorkgroupDetailView({ workgroupId, onBack }: Props) {
                           </div>
                           <div className="flex items-center gap-2">
                             <Button
-                              variant="outline"
                               size="sm"
                               onClick={clearDeleteSelection}
                             >
@@ -3534,7 +3531,7 @@ export default function WorkgroupDetailView({ workgroupId, onBack }: Props) {
         <DialogContent className="sm:max-w-[500px]">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <Shield className="h-5 w-5 text-blue-600" />
+              <Shield className="h-5 w-5 text-foreground" />
               About {workgroupDisplayName}
             </DialogTitle>
             <DialogDescription>
@@ -3550,7 +3547,7 @@ export default function WorkgroupDetailView({ workgroupId, onBack }: Props) {
             </div>
           </div>
           <DialogFooter>
-            <Button onClick={() => setShowAboutModal(false)} className="bg-blue-600 hover:bg-blue-700 text-white">
+            <Button onClick={() => setShowAboutModal(false)} className="hover:text-white bg-secondary-foreground">
               Close
             </Button>
           </DialogFooter>
@@ -3561,7 +3558,7 @@ export default function WorkgroupDetailView({ workgroupId, onBack }: Props) {
         <DialogContent className="sm:max-w-[450px]">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <UserPlus className="h-5 w-5 text-blue-600" />
+              <UserPlus className="h-5 w-5 text-foreground" />
               Add Team Members
             </DialogTitle>
             <DialogDescription>
@@ -3648,7 +3645,7 @@ export default function WorkgroupDetailView({ workgroupId, onBack }: Props) {
                               />
                               <Avatar className="h-8 w-8 shrink-0">
                                 <AvatarImage src={getAvatarUrl((u as any).avatar_url)} />
-                                <AvatarFallback className="bg-blue-100 text-blue-700 text-xs font-bold">
+                                <AvatarFallback className="bg-secondary-foreground dark:bg-primary text-white text-xs font-bold">
                                   {initials}
                                 </AvatarFallback>
                               </Avatar>
@@ -3672,8 +3669,8 @@ export default function WorkgroupDetailView({ workgroupId, onBack }: Props) {
                 </div>
 
                 {selectedUserIds.length > 0 && (
-                  <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
-                    <p className="text-xs font-medium text-blue-600 dark:text-blue-400 mb-2">
+                  <div className="p-3 bg-primary/10 rounded-lg border border-primary/20">
+                    <p className="text-xs font-medium text-primary mb-2">
                       {selectedUserIds.length} member{selectedUserIds.length > 1 ? "s" : ""} selected
                     </p>
                     <div className="flex flex-wrap gap-2">
@@ -3684,7 +3681,7 @@ export default function WorkgroupDetailView({ workgroupId, onBack }: Props) {
                           <div key={uid} className="flex items-center gap-1.5 bg-white dark:bg-zinc-800 rounded-full px-2 py-1 border border-blue-200 dark:border-blue-700">
                             <Avatar className="h-5 w-5">
                               <AvatarImage src={getAvatarUrl((u as any).avatar_url)} />
-                              <AvatarFallback className="bg-blue-100 text-blue-700 text-[8px]">
+                              <AvatarFallback className="bg-secondary-foreground dark:bg-primary text-white text-[8px]">
                                 {(u.full_name || "?").slice(0, 2).toUpperCase()}
                               </AvatarFallback>
                             </Avatar>
@@ -3709,7 +3706,6 @@ export default function WorkgroupDetailView({ workgroupId, onBack }: Props) {
           </div>
           <DialogFooter>
             <Button
-              variant="outline"
               onClick={() => {
                 setShowAddMember(false);
                 setSelectedUserIds([]);
@@ -3721,7 +3717,7 @@ export default function WorkgroupDetailView({ workgroupId, onBack }: Props) {
               <Button
                 onClick={handleAddMember}
                 disabled={selectedUserIds.length === 0 || isAddingMembers}
-                className="bg-blue-600 hover:bg-blue-700 text-white gap-2"
+                className="bg-secondary-foreground dark:bg-primary text-white text-white gap-2"
               >
                 {isAddingMembers ? (
                   <>
@@ -3978,13 +3974,15 @@ export default function WorkgroupDetailView({ workgroupId, onBack }: Props) {
                   setShowMembersList(false);
                   setShowAddMember(true);
                 }}
-                className="bg-blue-600 hover:bg-blue-700 text-white gap-2"
+                className="bg-secondary-foreground hover:bg-secondary-foreground/80 text-white gap-2"
               >
                 <UserPlus className="h-4 w-4" />
                 Add Member
               </Button>
             )}
-            <Button variant="outline" onClick={() => setShowMembersList(false)}>
+            <Button variant="outline" onClick={() => setShowMembersList(false)}
+              className="hover:bg-secondary-foreground dark:hover:bg-primary hover:text-white"
+              >
               Close
             </Button>
           </DialogFooter>
@@ -4015,13 +4013,13 @@ export default function WorkgroupDetailView({ workgroupId, onBack }: Props) {
                   key={notification.id}
                   className={`p-3 rounded-lg border cursor-pointer transition-colors ${notification.is_read
                     ? "border-border bg-card"
-                    : "border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-900/20"
+                    : "border-primary dark:border-primary bg-primary-50 dark:bg-blue-900/20"
                     }`}
                   onClick={() => markNotificationAsRead(notification.id)}
                 >
                   <div className="flex items-start gap-3">
                     <div
-                      className={`w-2 h-2 rounded-full mt-2 ${notification.is_read ? "bg-gray-300" : "bg-blue-500"}`}
+                      className={`w-2 h-2 rounded-full mt-2 ${notification.is_read ? "bg-gray-300" : "bg-primary"}`}
                     ></div>
                     <div className="flex-1">
                       <p
@@ -4069,12 +4067,13 @@ export default function WorkgroupDetailView({ workgroupId, onBack }: Props) {
             )}
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={markAllNotificationsAsRead}>
+            <Button className="bg-secondary-foreground hover:bg-secondary-foreground/80 text-white" onClick={markAllNotificationsAsRead}>
               Mark All Read
             </Button>
             <Button
               variant="outline"
               onClick={() => setShowNotifications(false)}
+              className="hover:bg-secondary-foreground dark:hover:bg-primary hover:text-white"
             >
               Close
             </Button>
@@ -4895,7 +4894,7 @@ function PostCard({
         {!isAuthor && (
           <Avatar className="h-7 w-7 flex-shrink-0 mb-0.5">
             <AvatarImage src={getAvatarUrl(post.author_avatar)} />
-            <AvatarFallback className="bg-emerald-100 text-emerald-700 text-[10px] font-bold">
+            <AvatarFallback className="bg-secondary-foreground text-secondary dark:bg-primary dark:text-primary-foreground text-[10px] font-bold">
               {(post.author_name || "?").slice(0, 2).toUpperCase()}
             </AvatarFallback>
           </Avatar>
@@ -5576,7 +5575,7 @@ function PostCard({
         {isAuthor && (
           <Avatar className="h-7 w-7 flex-shrink-0 mb-0.5">
             <AvatarImage src={getAvatarUrl(post.author_avatar)} />
-            <AvatarFallback className="bg-blue-100 text-blue-700 text-[10px] font-bold">
+            <AvatarFallback className="bg-secondary-foreground text-secondary dark:bg-primary dark:text-primary-foreground text-[10px] font-bold">
               {(post.author_name || "?").slice(0, 2).toUpperCase()}
             </AvatarFallback>
           </Avatar>

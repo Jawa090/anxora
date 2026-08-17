@@ -4,7 +4,7 @@ import path from "path";
 
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => ({
-  base: "/", // Support absolute paths for BrowserRouter
+  base: "./", // Use relative base path for flexible live deployment (Nginx, Subdomains, Express, Apache)
   server: {
     host: "::",
     port: 3000,

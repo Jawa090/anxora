@@ -42,6 +42,19 @@ app.use('/uploads', (req, res, next) => {
 
 app.use(appRoutes);
 
+// Serve built frontend assets if frontend/dist exists
+const fs = require('fs');
+const frontendDistPath = path.join(__dirname, '../../frontend/dist');
+if (fs.existsSync(frontendDistPath)) {
+  app.use(express.static(frontendDistPath));
+  app.get('*', (req, res, next) => {
+    if (req.path.startsWith('/api') || req.path.startsWith('/uploads') || req.path.startsWith('/ws')) {
+      return next();
+    }
+    res.sendFile(path.join(frontendDistPath, 'index.html'));
+  });
+}
+
 const db = require('./config/database');
 const realtimeService = require('./services/realtimeService');
 const scheduledWorkflows = require('./services/scheduledWorkflows');
