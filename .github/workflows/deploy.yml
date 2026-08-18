@@ -23,7 +23,7 @@ jobs:
           key: ${{ secrets.VPS_SSH_KEY }}
           port: ${{ secrets.VPS_PORT }}
           script: |
-            sudo bash -c '
+            echo "${{ secrets.VPS_PASSWORD }}" | sudo -S bash -c '
             set -e
             echo "Starting deployment on VPS as root ($(whoami))..."
             SITE_DIR="/home/elinasmart.com"
