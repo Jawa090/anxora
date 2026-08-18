@@ -29,6 +29,11 @@ jobs:
 
             echo "1. Fetching latest code..."
             cd $SITE_DIR
+            if [ ! -d ".git" ]; then
+              echo "Initializing git repository in $SITE_DIR..."
+              git init
+              git remote add origin https://github.com/Jawa090/anxora.git || git remote set-url origin https://github.com/Jawa090/anxora.git
+            fi
             git fetch --all
             git reset --hard origin/main
 
