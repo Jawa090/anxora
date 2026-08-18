@@ -41,7 +41,7 @@ function isViewingWorkgroup(workgroupId: string): boolean {
 
 // Show an OS-level notification. Uses the service worker's showNotification() which
 // works reliably on macOS Safari/Chrome/Firefox in async contexts. Falls back to the
-// Notification constructor if no SW is controlling the page.
+// Notification constructor if no SW is controlling the pages.
 function showOsNotification(
   title: string,
   body: string,
