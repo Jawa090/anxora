@@ -240,6 +240,30 @@ export default function WorkgroupsPage() {
     (m) => !["owner", "admin"].includes(m.role),
   );
 
+  const existingMemberUserIds = useMemo(() => {
+    if (!editing || !editingMembers) return new Set<string>();
+    return new Set(
+      (editingMembers as any[]).map((m: any) => String(m.user_id || m.id)),
+    );
+  }, [editing, editingMembers]);
+
+  const availableMembers = useMemo(() => {
+    if (!editing) return orgMembers;
+    return orgMembers.filter(
+      (m: any) => !existingMemberUserIds.has(String(m.id)),
+    );
+  }, [editing, orgMembers, existingMemberUserIds]);
+
+  const isEditingBroadcast = Boolean(
+    editing &&
+    ((editing as any).type === "broadcast" ||
+      (editing.settings as any)?.is_broadcast ||
+      (editing as any)?.is_broadcast ||
+      (editing.type === "private" && (editing.settings as any)?.is_broadcast)),
+  );
+  const isFormBroadcast =
+    (form.type as string) === "broadcast" || isEditingBroadcast;
+
   const filtered = useMemo(() => {
     return teamOnlyWorkgroups
       .filter((w) => {
@@ -388,18 +412,36 @@ export default function WorkgroupsPage() {
   };
 
   const openEdit = (wg: Workgroup) => {
+    let parsedSettings: any = wg.settings || {};
+    if (typeof parsedSettings === "string") {
+      try {
+        parsedSettings = JSON.parse(parsedSettings);
+      } catch (e) {
+        parsedSettings = {};
+      }
+    }
+
     const isModerator =
-      wg.settings?.member_manager_user_id === user?.id ||
-      wg.settings?.manage_member_user_id === user?.id ||
-      (wg as any).manage_member_user_id === user?.id;
+      parsedSettings?.member_manager_user_id === user?.id ||
+      parsedSettings?.manage_member_user_id === user?.id ||
+      (wg as any).manage_member_user_id === user?.id ||
+      (wg as any).member_manager_user_id === user?.id;
 
     if (
       wg.user_role !== "owner" &&
       wg.created_by !== user?.id &&
-      !(isModerator && wg.settings?.moderator_permissions?.edit_group)
+      !(isModerator && parsedSettings?.moderator_permissions?.edit_group)
     ) {
       return;
     }
+
+    const modId =
+      parsedSettings?.member_manager_user_id ||
+      parsedSettings?.manage_member_user_id ||
+      (wg as any).manage_member_user_id ||
+      (wg as any).member_manager_user_id ||
+      "none";
+
     setForm({
       name: wg.name,
       description: wg.description || "",
@@ -407,13 +449,11 @@ export default function WorkgroupsPage() {
       type: wg.type,
       is_private: wg.is_private,
     });
-    setManageMembersUserId(
-      (wg.settings?.member_manager_user_id as string) || "none",
-    );
-    setIsChatLocked(!!wg.settings?.is_chat_locked);
-    setIsReactionsLocked(!!wg.settings?.is_reactions_locked);
+    setManageMembersUserId(modId && modId !== "null" ? String(modId) : "none");
+    setIsChatLocked(!!parsedSettings?.is_chat_locked);
+    setIsReactionsLocked(!!parsedSettings?.is_reactions_locked);
     setModeratorPermissions(
-      wg.settings?.moderator_permissions || {
+      parsedSettings?.moderator_permissions || {
         edit_group: true,
         delete_group: false,
         lock_chat: true,
@@ -428,6 +468,31 @@ export default function WorkgroupsPage() {
     setAvatarFile(null);
     setEditing(wg);
   };
+
+  useEffect(() => {
+    if (editing) {
+      const currentWg = workgroups.find((w) => w.id === editing.id);
+      if (currentWg) {
+        let parsedSettings: any = currentWg.settings || {};
+        if (typeof parsedSettings === "string") {
+          try {
+            parsedSettings = JSON.parse(parsedSettings);
+          } catch (e) {
+            parsedSettings = {};
+          }
+        }
+        const modId =
+          parsedSettings?.member_manager_user_id ||
+          parsedSettings?.manage_member_user_id ||
+          (currentWg as any).manage_member_user_id ||
+          (currentWg as any).member_manager_user_id ||
+          "none";
+        if (modId && modId !== "null" && modId !== "none") {
+          setManageMembersUserId(String(modId));
+        }
+      }
+    }
+  }, [editing, workgroups]);
 
   // Realtime sync
   useEffect(() => {
@@ -515,11 +580,6 @@ export default function WorkgroupsPage() {
     return () => ids.forEach((id) => unsubscribeFromWorkgroup(id));
   }, [visibleWorkgroups, subscribeToWorkgroup, unsubscribeFromWorkgroup]);
 
-  useEffect(() => {
-    if (!editing || manageMembersUserId === "none") return;
-    if (!assignableMembers.some((m) => m.user_id === manageMembersUserId))
-      setManageMembersUserId("none");
-  }, [editing, assignableMembers, manageMembersUserId]);
 
   const handleCreate = () => {
     createWg.mutate(
@@ -736,17 +796,13 @@ export default function WorkgroupsPage() {
             >
               {wg.name}
             </h3>
-            {isModerator && (
-              <Badge className="shrink-0 text-[8px] px-1 py-0 bg-secondary-foreground dark:bg-primary/10 text-white border-green-200 font-bold">
-                Moderator
-              </Badge>
-            )}
           </div>
 
           <div className="flex items-start justify-between gap-2">
             {unreadCount > 0 && wg.last_message_sender_name ? (
-              <p className="text-xs font-semibold text-primary truncate mb-1 flex-1">
-                💬 {wg.last_message_sender_name}: new message
+              <p className="text-xs font-semibold text-primary truncate flex items-center">
+                <MessageSquare className="h-3.5 w-3.5 mr-1" />{" "}
+                {wg.last_message_sender_name}: new message
               </p>
             ) : wg.description ? (
               <p className="text-xs text-muted-foreground line-clamp-2 mb-1 flex-1">
@@ -769,6 +825,11 @@ export default function WorkgroupsPage() {
               {wg.message_count || 0}
             </span>
           </div>
+          {isModerator && (
+            <Badge className="shrink-0 text-[8px] px-1 bg-secondary-foreground hover:bg-secondary-foreground dark:bg-primary/10 text-white border-green-200 font-bold">
+              Moderator
+            </Badge>
+          )}
           <Badge
             variant="outline"
             className={`text-[10px] px-1.5 py-0 ${TYPE_COLORS[wg.type] || ""}`}
@@ -1140,12 +1201,22 @@ export default function WorkgroupsPage() {
               <>
                 <DialogHeader>
                   <DialogTitle>
-                    {editing ? "Edit Team" : "Create New Team"}
+                    {editing
+                      ? isEditingBroadcast
+                        ? "Edit Broadcast"
+                        : "Edit Team"
+                      : isFormBroadcast
+                        ? "Create Broadcast"
+                        : "Create New Team"}
                   </DialogTitle>
                   <DialogDescription>
                     {editing
-                      ? "Update your team details."
-                      : "Set up a new team for your organization."}
+                      ? isEditingBroadcast
+                        ? "Update broadcast channel details, moderator and settings."
+                        : "Update your team details."
+                      : isFormBroadcast
+                        ? "Create a broadcast channel for announcements."
+                        : "Set up a new team for your organization."}
                   </DialogDescription>
                 </DialogHeader>
                 <div className="space-y-4 py-2">
@@ -1172,7 +1243,7 @@ export default function WorkgroupsPage() {
                       </div>
                       <div>
                         <p className="text-sm font-medium text-foreground">
-                          Group Logo
+                          {isFormBroadcast ? "Broadcast Logo" : "Group Logo"}
                         </p>
                         <p className="text-xs text-muted-foreground mb-1">
                           Click the avatar to upload an image
@@ -1206,7 +1277,9 @@ export default function WorkgroupsPage() {
                     </div>
                   )}
                   <div className="space-y-1.5">
-                    <Label htmlFor="name">Name *</Label>
+                    <Label htmlFor="name">
+                      {isFormBroadcast ? "Broadcast Name *" : "Name *"}
+                    </Label>
                     <Input
                       id="name"
                       value={form.name}
@@ -1217,7 +1290,11 @@ export default function WorkgroupsPage() {
                           name: v.charAt(0).toUpperCase() + v.slice(1),
                         });
                       }}
-                      placeholder={`e.g., Sales ${getTypeLabel(form.type)}`}
+                      placeholder={
+                        isFormBroadcast
+                          ? "e.g. Company Announcements"
+                          : `e.g., Sales ${getTypeLabel(form.type)}`
+                      }
                     />
                   </div>
                   <div className="space-y-1.5">
@@ -1228,7 +1305,11 @@ export default function WorkgroupsPage() {
                       onChange={(e) =>
                         setForm({ ...form, description: e.target.value })
                       }
-                      placeholder="What is this team for?"
+                      placeholder={
+                        isFormBroadcast
+                          ? "What is this broadcast for?"
+                          : "What is this team for?"
+                      }
                     />
                   </div>
 
@@ -1249,16 +1330,42 @@ export default function WorkgroupsPage() {
                           >
                             {manageMembersUserId === "none"
                               ? "None (Owner/Admin only)"
-                              : orgMembers.find(
-                                    (m: any) => m.id === manageMembersUserId,
-                                  )
-                                ? orgMembers.find(
-                                    (m: any) => m.id === manageMembersUserId,
-                                  )?.full_name ||
-                                  orgMembers.find(
-                                    (m: any) => m.id === manageMembersUserId,
-                                  )?.email
-                                : "Select a moderator"}
+                              : (() => {
+                                  const selectedMember = orgMembers.find(
+                                    (m: any) =>
+                                      String(m.id || m.user_id) ===
+                                      String(manageMembersUserId),
+                                  );
+                                  if (!selectedMember)
+                                    return orgMembers.length === 0
+                                      ? "Loading moderator..."
+                                      : "Moderator assigned";
+                                  const initials =
+                                    selectedMember.full_name
+                                      ?.split(" ")
+                                      .map((w: string) => w[0])
+                                      .join("")
+                                      .toUpperCase()
+                                      .slice(0, 2) || "?";
+                                  return (
+                                    <div className="flex items-center gap-2 truncate">
+                                      <Avatar className="h-6 w-6 shrink-0">
+                                        <AvatarImage
+                                          src={getAvatarUrl(
+                                            selectedMember.avatar_url,
+                                          )}
+                                        />
+                                        <AvatarFallback className="bg-primary/10 text-primary text-[9px] font-bold">
+                                          {initials}
+                                        </AvatarFallback>
+                                      </Avatar>
+                                      <span className="truncate">
+                                        {selectedMember.full_name ||
+                                          selectedMember.email}
+                                      </span>
+                                    </div>
+                                  );
+                                })()}
                             <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                           </Button>
                         </PopoverTrigger>
@@ -1338,148 +1445,152 @@ export default function WorkgroupsPage() {
                   )}
 
                   {/* Global Permissions Section */}
-                  <div className="space-y-4 p-4 rounded-xl border-2 border-blue-100">
-                    <h4 className="text-sm font-bold text-blue-900 flex items-center gap-2">
-                      <Lock className="h-4 w-4" />
-                      Global Permissions
-                    </h4>
-
-                    <div className="flex items-center justify-between">
-                      <div className="space-y-0.5">
-                        <Label className="text-sm font-semibold">
-                          Lock Chat
-                        </Label>
-                        <p className="text-xs text-muted-foreground">
-                          Only Admins and Moderators can send messages
-                        </p>
-                      </div>
-                      <Switch
-                        checked={isChatLocked}
-                        onCheckedChange={setIsChatLocked}
-                      />
-                    </div>
-
-                    <div className="flex items-center justify-between">
-                      <div className="space-y-0.5">
-                        <Label className="text-sm font-semibold">
-                          Lock Reactions
-                        </Label>
-                        <p className="text-xs text-muted-foreground">
-                          Only Admins and Moderators can react with emojis
-                        </p>
-                      </div>
-                      <Switch
-                        checked={isReactionsLocked}
-                        onCheckedChange={setIsReactionsLocked}
-                      />
-                    </div>
-                  </div>
-
-                  {/* Moderator Permissions Section (if moderator selected) */}
-                  {isAdminOrOwner && manageMembersUserId !== "none" && (
-                    <div className="space-y-4 p-4 rounded-xl border-2 border-orange-100">
+                  {!isFormBroadcast && (
+                    <div className="space-y-4 p-4 rounded-xl border-2 border-blue-100">
                       <h4 className="text-sm font-bold text-blue-900 flex items-center gap-2">
-                        <Users className="h-4 w-4" />
-                        Moderator Permissions
+                        <Lock className="h-4 w-4" />
+                        Global Permissions
                       </h4>
 
-                      <div className="grid grid-cols-2 gap-4">
-                        <div className="flex items-center space-x-2">
-                          <Checkbox
-                            id="perm-edit"
-                            checked={moderatorPermissions.edit_group}
-                            onCheckedChange={(val) =>
-                              setModeratorPermissions((prev) => ({
-                                ...prev,
-                                edit_group: !!val,
-                              }))
-                            }
-                          />
-                          <Label htmlFor="perm-edit" className="text-xs">
-                            Edit Group Name
+                      <div className="flex items-center justify-between">
+                        <div className="space-y-0.5">
+                          <Label className="text-sm font-semibold">
+                            Lock Chat
                           </Label>
+                          <p className="text-xs text-muted-foreground">
+                            Only Admins and Moderators can send messages
+                          </p>
                         </div>
-                        <div className="flex items-center space-x-2">
-                          <Checkbox
-                            id="perm-delete"
-                            checked={moderatorPermissions.delete_group}
-                            onCheckedChange={(val) =>
-                              setModeratorPermissions((prev) => ({
-                                ...prev,
-                                delete_group: !!val,
-                              }))
-                            }
-                          />
-                          <Label htmlFor="perm-delete" className="text-xs">
-                            Delete Group
-                          </Label>
-                        </div>
-                        <div className="flex items-center space-x-2">
-                          <Checkbox
-                            id="perm-lock-chat"
-                            checked={moderatorPermissions.lock_chat}
-                            onCheckedChange={(val) =>
-                              setModeratorPermissions((prev) => ({
-                                ...prev,
-                                lock_chat: !!val,
-                              }))
-                            }
-                          />
-                          <Label htmlFor="perm-lock-chat" className="text-xs">
-                            Lock/Unlock Chat
-                          </Label>
-                        </div>
-                        <div className="flex items-center space-x-2">
-                          <Checkbox
-                            id="perm-lock-reactions"
-                            checked={moderatorPermissions.lock_reactions}
-                            onCheckedChange={(val) =>
-                              setModeratorPermissions((prev) => ({
-                                ...prev,
-                                lock_reactions: !!val,
-                              }))
-                            }
-                          />
-                          <Label
-                            htmlFor="perm-lock-reactions"
-                            className="text-xs"
-                          >
+                        <Switch
+                          checked={isChatLocked}
+                          onCheckedChange={setIsChatLocked}
+                        />
+                      </div>
+
+                      <div className="flex items-center justify-between">
+                        <div className="space-y-0.5">
+                          <Label className="text-sm font-semibold">
                             Lock Reactions
                           </Label>
+                          <p className="text-xs text-muted-foreground">
+                            Only Admins and Moderators can react with emojis
+                          </p>
                         </div>
-                        <div className="flex items-center space-x-2">
-                          <Checkbox
-                            id="perm-add"
-                            checked={moderatorPermissions.add_members}
-                            onCheckedChange={(val) =>
-                              setModeratorPermissions((prev) => ({
-                                ...prev,
-                                add_members: !!val,
-                              }))
-                            }
-                          />
-                          <Label htmlFor="perm-add" className="text-xs">
-                            Add Members
-                          </Label>
-                        </div>
-                        <div className="flex items-center space-x-2">
-                          <Checkbox
-                            id="perm-remove"
-                            checked={moderatorPermissions.delete_members}
-                            onCheckedChange={(val) =>
-                              setModeratorPermissions((prev) => ({
-                                ...prev,
-                                delete_members: !!val,
-                              }))
-                            }
-                          />
-                          <Label htmlFor="perm-remove" className="text-xs">
-                            Remove Members
-                          </Label>
-                        </div>
+                        <Switch
+                          checked={isReactionsLocked}
+                          onCheckedChange={setIsReactionsLocked}
+                        />
                       </div>
                     </div>
                   )}
+
+                  {/* Moderator Permissions Section (if moderator selected) */}
+                  {!isFormBroadcast &&
+                    isAdminOrOwner &&
+                    manageMembersUserId !== "none" && (
+                      <div className="space-y-4 p-4 rounded-xl border-2 border-orange-100">
+                        <h4 className="text-sm font-bold text-blue-900 flex items-center gap-2">
+                          <Users className="h-4 w-4" />
+                          Moderator Permissions
+                        </h4>
+
+                        <div className="grid grid-cols-2 gap-4">
+                          <div className="flex items-center space-x-2">
+                            <Checkbox
+                              id="perm-edit"
+                              checked={moderatorPermissions.edit_group}
+                              onCheckedChange={(val) =>
+                                setModeratorPermissions((prev) => ({
+                                  ...prev,
+                                  edit_group: !!val,
+                                }))
+                              }
+                            />
+                            <Label htmlFor="perm-edit" className="text-xs">
+                              Edit Group Name
+                            </Label>
+                          </div>
+                          <div className="flex items-center space-x-2">
+                            <Checkbox
+                              id="perm-delete"
+                              checked={moderatorPermissions.delete_group}
+                              onCheckedChange={(val) =>
+                                setModeratorPermissions((prev) => ({
+                                  ...prev,
+                                  delete_group: !!val,
+                                }))
+                              }
+                            />
+                            <Label htmlFor="perm-delete" className="text-xs">
+                              Delete Group
+                            </Label>
+                          </div>
+                          <div className="flex items-center space-x-2">
+                            <Checkbox
+                              id="perm-lock-chat"
+                              checked={moderatorPermissions.lock_chat}
+                              onCheckedChange={(val) =>
+                                setModeratorPermissions((prev) => ({
+                                  ...prev,
+                                  lock_chat: !!val,
+                                }))
+                              }
+                            />
+                            <Label htmlFor="perm-lock-chat" className="text-xs">
+                              Lock/Unlock Chat
+                            </Label>
+                          </div>
+                          <div className="flex items-center space-x-2">
+                            <Checkbox
+                              id="perm-lock-reactions"
+                              checked={moderatorPermissions.lock_reactions}
+                              onCheckedChange={(val) =>
+                                setModeratorPermissions((prev) => ({
+                                  ...prev,
+                                  lock_reactions: !!val,
+                                }))
+                              }
+                            />
+                            <Label
+                              htmlFor="perm-lock-reactions"
+                              className="text-xs"
+                            >
+                              Lock Reactions
+                            </Label>
+                          </div>
+                          <div className="flex items-center space-x-2">
+                            <Checkbox
+                              id="perm-add"
+                              checked={moderatorPermissions.add_members}
+                              onCheckedChange={(val) =>
+                                setModeratorPermissions((prev) => ({
+                                  ...prev,
+                                  add_members: !!val,
+                                }))
+                              }
+                            />
+                            <Label htmlFor="perm-add" className="text-xs">
+                              Add Members
+                            </Label>
+                          </div>
+                          <div className="flex items-center space-x-2">
+                            <Checkbox
+                              id="perm-remove"
+                              checked={moderatorPermissions.delete_members}
+                              onCheckedChange={(val) =>
+                                setModeratorPermissions((prev) => ({
+                                  ...prev,
+                                  delete_members: !!val,
+                                }))
+                              }
+                            />
+                            <Label htmlFor="perm-remove" className="text-xs">
+                              Remove Members
+                            </Label>
+                          </div>
+                        </div>
+                      </div>
+                    )}
 
                   {/* User Selection */}
                   {isAdminOrOwner && (
@@ -1490,15 +1601,15 @@ export default function WorkgroupsPage() {
                           <Checkbox
                             id="select-all-team-members"
                             checked={
-                              orgMembers.length > 0 &&
-                              orgMembers.every((member: any) =>
+                              availableMembers.length > 0 &&
+                              availableMembers.every((member: any) =>
                                 selectedUsers.includes(member.id),
                               )
                             }
                             onCheckedChange={(checked) => {
                               if (checked) {
                                 setSelectedUsers(
-                                  orgMembers.map((m: any) => m.id),
+                                  availableMembers.map((m: any) => m.id),
                                 );
                               } else {
                                 setSelectedUsers([]);
@@ -1525,58 +1636,64 @@ export default function WorkgroupsPage() {
                       </div>
 
                       <div className="max-h-48 overflow-y-auto space-y-1 p-1 rounded-md border border-border bg-muted/30">
-                        {orgMembers
-                          .filter(
-                            (m: any) =>
-                              m.full_name
-                                ?.toLowerCase()
-                                .includes(userSearch.toLowerCase()) ||
-                              m.email
-                                ?.toLowerCase()
-                                .includes(userSearch.toLowerCase()),
-                          )
-                          .map((member: any) => (
-                            <div
-                              key={member.id}
-                              className="flex items-center space-x-3 p-2 rounded-md hover:bg-background transition-colors"
-                            >
-                              <Checkbox
-                                id={`user-${member.id}`}
-                                checked={selectedUsers.includes(member.id)}
-                                onCheckedChange={(checked) => {
-                                  if (checked) {
-                                    setSelectedUsers((prev) => [
-                                      ...prev,
-                                      member.id,
-                                    ]);
-                                  } else {
-                                    setSelectedUsers((prev) =>
-                                      prev.filter((id) => id !== member.id),
-                                    );
-                                  }
-                                }}
-                              />
-                              <div className="flex items-center gap-2">
-                                <Avatar className="h-6 w-6">
-                                  <AvatarImage
-                                    src={member.avatar_url || undefined}
-                                  />
-                                  <AvatarFallback className="text-[10px] bg-primary/10 text-primary">
-                                    {member.full_name
-                                      ?.slice(0, 2)
-                                      .toUpperCase() ||
-                                      member.email?.slice(0, 2).toUpperCase()}
-                                  </AvatarFallback>
-                                </Avatar>
-                                <Label
-                                  htmlFor={`user-${member.id}`}
-                                  className="text-sm font-normal cursor-pointer flex-1"
-                                >
-                                  {member.full_name || member.email}
-                                </Label>
+                        {availableMembers.length === 0 ? (
+                          <p className="text-xs text-muted-foreground p-3 text-center">
+                            All organization users are already members.
+                          </p>
+                        ) : (
+                          availableMembers
+                            .filter(
+                              (m: any) =>
+                                m.full_name
+                                  ?.toLowerCase()
+                                  .includes(userSearch.toLowerCase()) ||
+                                m.email
+                                  ?.toLowerCase()
+                                  .includes(userSearch.toLowerCase()),
+                            )
+                            .map((member: any) => (
+                              <div
+                                key={member.id}
+                                className="flex items-center space-x-3 p-2 rounded-md hover:bg-background transition-colors"
+                              >
+                                <Checkbox
+                                  id={`user-${member.id}`}
+                                  checked={selectedUsers.includes(member.id)}
+                                  onCheckedChange={(checked) => {
+                                    if (checked) {
+                                      setSelectedUsers((prev) => [
+                                        ...prev,
+                                        member.id,
+                                      ]);
+                                    } else {
+                                      setSelectedUsers((prev) =>
+                                        prev.filter((id) => id !== member.id),
+                                      );
+                                    }
+                                  }}
+                                />
+                                <div className="flex items-center gap-2">
+                                  <Avatar className="h-6 w-6">
+                                    <AvatarImage
+                                      src={member.avatar_url || undefined}
+                                    />
+                                    <AvatarFallback className="text-[10px] bg-primary/10 text-primary">
+                                      {member.full_name
+                                        ?.slice(0, 2)
+                                        .toUpperCase() ||
+                                        member.email?.slice(0, 2).toUpperCase()}
+                                    </AvatarFallback>
+                                  </Avatar>
+                                  <Label
+                                    htmlFor={`user-${member.id}`}
+                                    className="text-sm font-normal cursor-pointer flex-1"
+                                  >
+                                    {member.full_name || member.email}
+                                  </Label>
+                                </div>
                               </div>
-                            </div>
-                          ))}
+                            ))
+                        )}
                       </div>
                       {selectedUsers.length > 0 && (
                         <p className="text-xs text-muted-foreground">
@@ -1599,6 +1716,7 @@ export default function WorkgroupsPage() {
                 setManageMembersUserId("none");
                 resetForm();
               }}
+              className="hover:bg-secondary-foreground dark:hover:bg-primary hover:text-white"
             >
               Cancel
             </Button>
@@ -1607,7 +1725,6 @@ export default function WorkgroupsPage() {
               disabled={
                 !form.name.trim() || createWg.isPending || updateWg.isPending
               }
-              className="bg-primary"
             >
               {createWg.isPending || updateWg.isPending ? (
                 <>

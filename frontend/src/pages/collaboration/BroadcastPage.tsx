@@ -42,6 +42,7 @@ import {
   useCreateWorkgroup,
   useUpdateWorkgroup,
   useDeleteWorkgroup,
+  useWorkgroupMembers,
   type Workgroup,
 } from "@/hooks/useWorkgroups";
 import { PageHeader } from "@/components/crm/ui/PageHeader";
@@ -83,9 +84,39 @@ export default function BroadcastPage() {
   );
 
   const [search, setSearch] = useState("");
+  const [userSearch, setUserSearch] = useState("");
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [showCreate, setShowCreate] = useState(false);
   const [editing, setEditing] = useState<Workgroup | null>(null);
+  const { data: editingMembers = [] } = useWorkgroupMembers(editing?.id || "");
+
+  const existingMemberUserIds = useMemo(() => {
+    if (!editing || !editingMembers) return new Set<string>();
+    return new Set(
+      (editingMembers as any[]).map((m: any) => String(m.user_id || m.id)),
+    );
+  }, [editing, editingMembers]);
+
+  const availableMembers = useMemo(() => {
+    if (!editing) return orgMembers;
+    return orgMembers.filter(
+      (m: any) => !existingMemberUserIds.has(String(m.id)),
+    );
+  }, [editing, orgMembers, existingMemberUserIds]);
+
+  useEffect(() => {
+    if (editing && editingMembers.length > 0) {
+      const existingUserIds = (editingMembers as any[])
+        .map((m: any) => m.user_id || m.id)
+        .filter(Boolean);
+      setForm((prev) => ({
+        ...prev,
+        selectedUserIds: Array.from(
+          new Set([...prev.selectedUserIds, ...existingUserIds]),
+        ),
+      }));
+    }
+  }, [editing?.id, editingMembers]);
   const [deleteTarget, setDeleteTarget] = useState<Workgroup | null>(null);
   const selectedId = searchParams.get("team");
   const setSelectedId = (id: string | null) => {
@@ -101,7 +132,7 @@ export default function BroadcastPage() {
     try {
       const saved = localStorage.getItem("broadcast_pinned_items");
       if (saved) return new Set(JSON.parse(saved));
-    } catch { }
+    } catch {}
     return new Set();
   });
 
@@ -270,7 +301,9 @@ export default function BroadcastPage() {
 
   // Helper: form permissions (add/delete/send) ko WorkgroupDetailView ke
   // expected keys (add_members/delete_members) mein map karo
-  const buildModeratorPermissions = (perms: typeof form.moderatorPermissions) => ({
+  const buildModeratorPermissions = (
+    perms: typeof form.moderatorPermissions,
+  ) => ({
     add_members: perms.add,
     delete_members: perms.delete,
     send: perms.send,
@@ -310,7 +343,7 @@ export default function BroadcastPage() {
           if (avatarFile && newWg?.id) {
             try {
               await workgroupsApi.uploadAvatar(newWg.id, avatarFile);
-            } catch { }
+            } catch {}
           }
 
           // Add selected members
@@ -368,9 +401,45 @@ export default function BroadcastPage() {
           if (avatarFile && editing?.id) {
             try {
               await workgroupsApi.uploadAvatar(editing.id, avatarFile);
-            } catch { }
+            } catch {}
           }
+
+          // Sync members (add new ones, remove unselected ones)
+          if (editing?.id) {
+            const currentMemberUserIds = (editingMembers as any[]).map(
+              (m: any) => m.user_id || m.id,
+            );
+            const toAdd = form.selectedUserIds.filter(
+              (id) => !currentMemberUserIds.includes(id),
+            );
+            const toRemove = (editingMembers as any[]).filter(
+              (m: any) =>
+                m.role !== "owner" &&
+                !form.selectedUserIds.includes(m.user_id || m.id),
+            );
+
+            for (const userId of toAdd) {
+              try {
+                await workgroupsApi.addMember(editing.id, {
+                  user_id: userId,
+                  role: userId === form.moderatorId ? "admin" : "member",
+                });
+              } catch (err) {
+                console.error("Error adding member:", err);
+              }
+            }
+
+            for (const m of toRemove) {
+              try {
+                await workgroupsApi.removeMember(m.id, editing.id);
+              } catch (err) {
+                console.error("Error removing member:", err);
+              }
+            }
+          }
+
           queryClient.invalidateQueries({ queryKey: ["workgroups"] });
+          queryClient.invalidateQueries({ queryKey: ["workgroup_members"] });
           setEditing(null);
           resetForm();
           toast.success("Broadcast updated!");
@@ -380,14 +449,29 @@ export default function BroadcastPage() {
   };
 
   const openEdit = (wg: Workgroup) => {
+    let parsedSettings: any = wg.settings || {};
+    if (typeof parsedSettings === "string") {
+      try {
+        parsedSettings = JSON.parse(parsedSettings);
+      } catch (e) {
+        parsedSettings = {};
+      }
+    }
+
+    const modId =
+      parsedSettings?.member_manager_user_id ||
+      parsedSettings?.manage_member_user_id ||
+      (wg as any).manage_member_user_id ||
+      (wg as any).member_manager_user_id ||
+      "none";
+
     setEditing(wg);
-    const savedPerms = wg.settings?.moderator_permissions as any;
+    const savedPerms = parsedSettings?.moderator_permissions as any;
     setForm({
       name: wg.name,
       description: wg.description || "",
-      moderatorId: (wg.settings?.member_manager_user_id as string) || "none",
+      moderatorId: modId && modId !== "null" ? String(modId) : "none",
       moderatorPermissions: {
-        // DB mein add_members/delete_members keys hain, form mein add/delete
         add: savedPerms?.add_members ?? savedPerms?.add ?? true,
         delete: savedPerms?.delete_members ?? savedPerms?.delete ?? true,
         send: savedPerms?.send ?? true,
@@ -399,6 +483,34 @@ export default function BroadcastPage() {
     );
     setAvatarFile(null);
   };
+
+  useEffect(() => {
+    if (editing) {
+      const currentWg = broadcasts.find((w) => w.id === editing.id);
+      if (currentWg) {
+        let parsedSettings: any = currentWg.settings || {};
+        if (typeof parsedSettings === "string") {
+          try {
+            parsedSettings = JSON.parse(parsedSettings);
+          } catch (e) {
+            parsedSettings = {};
+          }
+        }
+        const modId =
+          parsedSettings?.member_manager_user_id ||
+          parsedSettings?.manage_member_user_id ||
+          (currentWg as any).manage_member_user_id ||
+          (currentWg as any).member_manager_user_id ||
+          "none";
+        if (modId && modId !== "null" && modId !== "none") {
+          setForm((prev) => ({
+            ...prev,
+            moderatorId: String(modId),
+          }));
+        }
+      }
+    }
+  }, [editing, broadcasts]);
 
   const filtered = broadcasts
     .filter(
@@ -611,8 +723,9 @@ export default function BroadcastPage() {
                   {/* Top Row */}
                   <div className="flex items-center justify-between gap-2">
                     <h3
-                      className={`font-bold truncate ${unreadCount > 0 ? "text-primary" : "text-foreground"
-                        }`}
+                      className={`font-bold truncate ${
+                        unreadCount > 0 ? "text-primary" : "text-foreground"
+                      }`}
                     >
                       {wg.name}
                     </h3>
@@ -620,17 +733,18 @@ export default function BroadcastPage() {
                     {(wg.settings?.member_manager_user_id === user?.id ||
                       wg.settings?.manage_member_user_id === user?.id ||
                       (wg as any).manage_member_user_id === user?.id) && (
-                        <Badge className="shrink-0 text-[9px] px-1.5 py-0 bg-secondary-foreground dark:bg-primary/10 text-white border-green-300 dark:text-white dark:border-green-700 font-bold">
-                          Moderator
-                        </Badge>
-                      )}
+                      <Badge className="shrink-0 text-[9px] px-1.5 py-0 bg-secondary-foreground dark:bg-primary/10 text-white border-green-300 dark:text-white dark:border-green-700 font-bold">
+                        Moderator
+                      </Badge>
+                    )}
                   </div>
 
                   {/* Bottom Row */}
                   <div className="flex items-start justify-between gap-2">
                     {unreadCount > 0 && wg.last_message_sender_name ? (
                       <p className="text-xs font-semibold text-primary truncate mb-1 flex items-center">
-                        <MessageSquare className="h-3.5 w-3.5 mr-1" /> {wg.last_message_sender_name}: new message
+                        <MessageSquare className="h-3.5 w-3.5 mr-1" />{" "}
+                        {wg.last_message_sender_name}: new message
                       </p>
                     ) : wg.description ? (
                       <p className="text-xs text-muted-foreground line-clamp-2 mb-1 flex-1">
@@ -720,10 +834,10 @@ export default function BroadcastPage() {
                     {(wg.settings?.member_manager_user_id === user?.id ||
                       wg.settings?.manage_member_user_id === user?.id ||
                       wg.manage_member_user_id === user?.id) && (
-                        <Badge className="h-5 px-1.5 text-[10px] bg-indigo-600 text-white font-bold">
-                          Moderator
-                        </Badge>
-                      )}
+                      <Badge className="h-5 px-1.5 text-[10px] bg-indigo-600 text-white font-bold">
+                        Moderator
+                      </Badge>
+                    )}
                   </div>
 
                   {unreadCount > 0 && wg.last_message_sender_name ? (
@@ -895,17 +1009,86 @@ export default function BroadcastPage() {
               {/* Search + avatar dropdown for moderator */}
               <div className="rounded-md border border-input bg-background overflow-hidden">
                 <div className="flex items-center gap-2 px-3 py-2 border-b border-border">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-muted-foreground shrink-0"><circle cx="11" cy="11" r="8" /><path d="m21 21-4.3-4.3" /></svg>
+                  {form.moderatorId && form.moderatorId !== "none" ? (
+                    (() => {
+                      const selectedMember = orgMembers.find(
+                        (u: any) => String(u.id || u.user_id) === String(form.moderatorId),
+                      );
+                      if (!selectedMember)
+                        return (
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            width="14"
+                            height="14"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            className="text-muted-foreground shrink-0"
+                          >
+                            <circle cx="11" cy="11" r="8" />
+                            <path d="m21 21-4.3-4.3" />
+                          </svg>
+                        );
+                      const initials =
+                        selectedMember.full_name
+                          ?.split(" ")
+                          .map((w: string) => w[0])
+                          .join("")
+                          .toUpperCase()
+                          .slice(0, 2) || "?";
+                      return (
+                        <div className="flex items-center gap-1.5 bg-primary/10 border border-primary/20 pl-1 pr-2 py-0.5 rounded-full shrink-0">
+                          <Avatar className="h-5 w-5 shrink-0">
+                            <AvatarImage
+                              src={getAvatarUrl(selectedMember.avatar_url)}
+                            />
+                            <AvatarFallback className="bg-primary/20 text-primary text-[9px] font-bold">
+                              {initials}
+                            </AvatarFallback>
+                          </Avatar>
+                          <span className="text-xs font-medium text-primary max-w-[120px] truncate">
+                            {selectedMember.full_name || selectedMember.email}
+                          </span>
+                        </div>
+                      );
+                    })()
+                  ) : (
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      width="14"
+                      height="14"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      className="text-muted-foreground shrink-0"
+                    >
+                      <circle cx="11" cy="11" r="8" />
+                      <path d="m21 21-4.3-4.3" />
+                    </svg>
+                  )}
                   <input
-                    className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
-                    placeholder="Search moderator..."
+                    className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground min-w-[60px]"
+                    placeholder={
+                      form.moderatorId && form.moderatorId !== "none"
+                        ? "Search to change..."
+                        : "Search moderator..."
+                    }
                     value={moderatorSearch}
-                    onChange={e => setModeratorSearch(e.target.value)}
+                    onChange={(e) => setModeratorSearch(e.target.value)}
                   />
                   {form.moderatorId && form.moderatorId !== "none" && (
                     <button
                       type="button"
-                      onClick={() => { setForm({ ...form, moderatorId: "none" }); setModeratorSearch(""); }}
+                      onClick={() => {
+                        setForm({ ...form, moderatorId: "none" });
+                        setModeratorSearch("");
+                      }}
                       className="text-muted-foreground hover:text-destructive text-xs shrink-0"
                     >
                       ✕
@@ -916,25 +1099,43 @@ export default function BroadcastPage() {
                   {/* None option */}
                   <button
                     type="button"
-                    onClick={() => { setForm({ ...form, moderatorId: "none" }); setModeratorSearch(""); }}
+                    onClick={() => {
+                      setForm({ ...form, moderatorId: "none" });
+                      setModeratorSearch("");
+                    }}
                     className={`w-full flex items-center gap-2.5 px-3 py-2 text-left hover:bg-muted/50 transition-colors text-sm ${form.moderatorId === "none" || !form.moderatorId ? "bg-primary/5 text-primary font-medium" : ""}`}
                   >
-                    <div className="h-7 w-7 rounded-full bg-muted flex items-center justify-center shrink-0 text-muted-foreground text-xs font-bold">—</div>
+                    <div className="h-7 w-7 rounded-full bg-muted flex items-center justify-center shrink-0 text-muted-foreground text-xs font-bold">
+                      —
+                    </div>
                     None (Owner only)
                   </button>
                   {orgMembers
-                    .filter(u => {
+                    .filter((u) => {
                       const q = moderatorSearch.toLowerCase();
-                      return !q || u.full_name?.toLowerCase().includes(q) || u.email?.toLowerCase().includes(q);
+                      return (
+                        !q ||
+                        u.full_name?.toLowerCase().includes(q) ||
+                        u.email?.toLowerCase().includes(q)
+                      );
                     })
                     .map((u) => {
-                      const initials = u.full_name?.split(" ").map((w: string) => w[0]).join("").toUpperCase().slice(0, 2) || "?";
+                      const initials =
+                        u.full_name
+                          ?.split(" ")
+                          .map((w: string) => w[0])
+                          .join("")
+                          .toUpperCase()
+                          .slice(0, 2) || "?";
                       const isSelected = form.moderatorId === u.id;
                       return (
                         <button
                           key={u.id}
                           type="button"
-                          onClick={() => { setForm({ ...form, moderatorId: u.id }); setModeratorSearch(""); }}
+                          onClick={() => {
+                            setForm({ ...form, moderatorId: u.id });
+                            setModeratorSearch("");
+                          }}
                           className={`w-full flex items-center gap-2.5 px-3 py-2 text-left hover:bg-muted/50 transition-colors ${isSelected ? "bg-primary/5" : ""}`}
                         >
                           <Avatar className="h-7 w-7 shrink-0">
@@ -943,10 +1144,16 @@ export default function BroadcastPage() {
                               {initials}
                             </AvatarFallback>
                           </Avatar>
-                          <span className={`text-sm truncate ${isSelected ? "font-medium text-primary" : "text-foreground"}`}>
+                          <span
+                            className={`text-sm truncate ${isSelected ? "font-medium text-primary" : "text-foreground"}`}
+                          >
                             {u.full_name}
                           </span>
-                          {isSelected && <span className="ml-auto text-primary text-xs">✓</span>}
+                          {isSelected && (
+                            <span className="ml-auto text-primary text-xs">
+                              ✓
+                            </span>
+                          )}
                         </button>
                       );
                     })}
@@ -1005,7 +1212,6 @@ export default function BroadcastPage() {
                       Delete
                     </Label>
                   </div>
-
                 </div>
               </div>
             )}
@@ -1074,7 +1280,13 @@ export default function BroadcastPage() {
                         .includes(employeeSearch.toLowerCase()),
                   )
                   .map((u) => {
-                    const initials = u.full_name?.split(" ").map((w: string) => w[0]).join("").toUpperCase().slice(0, 2) || "?";
+                    const initials =
+                      u.full_name
+                        ?.split(" ")
+                        .map((w: string) => w[0])
+                        .join("")
+                        .toUpperCase()
+                        .slice(0, 2) || "?";
                     return (
                       <div
                         key={u.id}
@@ -1085,7 +1297,9 @@ export default function BroadcastPage() {
                             ...form,
                             selectedUserIds: checked
                               ? [...form.selectedUserIds, u.id]
-                              : form.selectedUserIds.filter((id) => id !== u.id),
+                              : form.selectedUserIds.filter(
+                                  (id) => id !== u.id,
+                                ),
                           });
                         }}
                       >
@@ -1097,7 +1311,9 @@ export default function BroadcastPage() {
                               ...form,
                               selectedUserIds: checked
                                 ? [...form.selectedUserIds, u.id]
-                                : form.selectedUserIds.filter((id) => id !== u.id),
+                                : form.selectedUserIds.filter(
+                                    (id) => id !== u.id,
+                                  ),
                             });
                           }}
                           onClick={(e) => e.stopPropagation()}
@@ -1216,17 +1432,86 @@ export default function BroadcastPage() {
               <Label>Moderator</Label>
               <div className="rounded-md border border-input bg-background overflow-hidden">
                 <div className="flex items-center gap-2 px-3 py-2 border-b border-border">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-muted-foreground shrink-0"><circle cx="11" cy="11" r="8" /><path d="m21 21-4.3-4.3" /></svg>
+                  {form.moderatorId && form.moderatorId !== "none" ? (
+                    (() => {
+                      const selectedMember = orgMembers.find(
+                        (u: any) => String(u.id || u.user_id) === String(form.moderatorId),
+                      );
+                      if (!selectedMember)
+                        return (
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            width="14"
+                            height="14"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            className="text-muted-foreground shrink-0"
+                          >
+                            <circle cx="11" cy="11" r="8" />
+                            <path d="m21 21-4.3-4.3" />
+                          </svg>
+                        );
+                      const initials =
+                        selectedMember.full_name
+                          ?.split(" ")
+                          .map((w: string) => w[0])
+                          .join("")
+                          .toUpperCase()
+                          .slice(0, 2) || "?";
+                      return (
+                        <div className="flex items-center gap-1.5 bg-primary/10 border border-primary/20 pl-1 pr-2 py-0.5 rounded-full shrink-0">
+                          <Avatar className="h-5 w-5 shrink-0">
+                            <AvatarImage
+                              src={getAvatarUrl(selectedMember.avatar_url)}
+                            />
+                            <AvatarFallback className="bg-primary/20 text-primary text-[9px] font-bold">
+                              {initials}
+                            </AvatarFallback>
+                          </Avatar>
+                          <span className="text-xs font-medium text-primary max-w-[120px] truncate">
+                            {selectedMember.full_name || selectedMember.email}
+                          </span>
+                        </div>
+                      );
+                    })()
+                  ) : (
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      width="14"
+                      height="14"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      className="text-muted-foreground shrink-0"
+                    >
+                      <circle cx="11" cy="11" r="8" />
+                      <path d="m21 21-4.3-4.3" />
+                    </svg>
+                  )}
                   <input
-                    className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
-                    placeholder="Search moderator..."
+                    className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground min-w-[60px]"
+                    placeholder={
+                      form.moderatorId && form.moderatorId !== "none"
+                        ? "Search to change..."
+                        : "Search moderator..."
+                    }
                     value={moderatorSearch}
-                    onChange={e => setModeratorSearch(e.target.value)}
+                    onChange={(e) => setModeratorSearch(e.target.value)}
                   />
                   {form.moderatorId && form.moderatorId !== "none" && (
                     <button
                       type="button"
-                      onClick={() => { setForm({ ...form, moderatorId: "none" }); setModeratorSearch(""); }}
+                      onClick={() => {
+                        setForm({ ...form, moderatorId: "none" });
+                        setModeratorSearch("");
+                      }}
                       className="text-muted-foreground hover:text-destructive text-xs shrink-0"
                     >
                       ✕
@@ -1236,25 +1521,43 @@ export default function BroadcastPage() {
                 <div className="max-h-44 overflow-y-auto">
                   <button
                     type="button"
-                    onClick={() => { setForm({ ...form, moderatorId: "none" }); setModeratorSearch(""); }}
+                    onClick={() => {
+                      setForm({ ...form, moderatorId: "none" });
+                      setModeratorSearch("");
+                    }}
                     className={`w-full flex items-center gap-2.5 px-3 py-2 text-left hover:bg-muted/50 transition-colors text-sm ${form.moderatorId === "none" || !form.moderatorId ? "bg-primary/5 text-primary font-medium" : ""}`}
                   >
-                    <div className="h-7 w-7 rounded-full bg-muted flex items-center justify-center shrink-0 text-muted-foreground text-xs font-bold">—</div>
+                    <div className="h-7 w-7 rounded-full bg-muted flex items-center justify-center shrink-0 text-muted-foreground text-xs font-bold">
+                      —
+                    </div>
                     None (Owner only)
                   </button>
                   {orgMembers
-                    .filter(u => {
+                    .filter((u) => {
                       const q = moderatorSearch.toLowerCase();
-                      return !q || u.full_name?.toLowerCase().includes(q) || u.email?.toLowerCase().includes(q);
+                      return (
+                        !q ||
+                        u.full_name?.toLowerCase().includes(q) ||
+                        u.email?.toLowerCase().includes(q)
+                      );
                     })
                     .map((u) => {
-                      const initials = u.full_name?.split(" ").map((w: string) => w[0]).join("").toUpperCase().slice(0, 2) || "?";
+                      const initials =
+                        u.full_name
+                          ?.split(" ")
+                          .map((w: string) => w[0])
+                          .join("")
+                          .toUpperCase()
+                          .slice(0, 2) || "?";
                       const isSelected = form.moderatorId === u.id;
                       return (
                         <button
                           key={u.id}
                           type="button"
-                          onClick={() => { setForm({ ...form, moderatorId: u.id }); setModeratorSearch(""); }}
+                          onClick={() => {
+                            setForm({ ...form, moderatorId: u.id });
+                            setModeratorSearch("");
+                          }}
                           className={`w-full flex items-center gap-2.5 px-3 py-2 text-left hover:bg-muted/50 transition-colors ${isSelected ? "bg-primary/5" : ""}`}
                         >
                           <Avatar className="h-7 w-7 shrink-0">
@@ -1263,10 +1566,16 @@ export default function BroadcastPage() {
                               {initials}
                             </AvatarFallback>
                           </Avatar>
-                          <span className={`text-sm truncate ${isSelected ? "font-medium text-primary" : "text-foreground"}`}>
+                          <span
+                            className={`text-sm truncate ${isSelected ? "font-medium text-primary" : "text-foreground"}`}
+                          >
                             {u.full_name}
                           </span>
-                          {isSelected && <span className="ml-auto text-primary text-xs">✓</span>}
+                          {isSelected && (
+                            <span className="ml-auto text-primary text-xs">
+                              ✓
+                            </span>
+                          )}
                         </button>
                       );
                     })}
@@ -1325,9 +1634,160 @@ export default function BroadcastPage() {
                 </div>
               </div>
             )}
+            {/* Team Members Selection */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <Label>Team Members</Label>
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    id="edit-select-all-employees"
+                    checked={
+                      availableMembers.filter((u) => u.id !== user?.id).length >
+                        0 &&
+                      availableMembers
+                        .filter((u) => u.id !== user?.id)
+                        .every((u) => form.selectedUserIds.includes(u.id))
+                    }
+                    onCheckedChange={(checked) => {
+                      if (checked) {
+                        setForm({
+                          ...form,
+                          selectedUserIds: availableMembers
+                            .filter((u) => u.id !== user?.id)
+                            .map((u) => u.id),
+                        });
+                      } else {
+                        setForm({
+                          ...form,
+                          selectedUserIds: [],
+                        });
+                      }
+                    }}
+                  />
+                  <Label
+                    htmlFor="edit-select-all-employees"
+                    className="text-xs text-muted-foreground cursor-pointer font-normal"
+                  >
+                    Select All
+                  </Label>
+                </div>
+              </div>
+
+              {/* Employee search input */}
+              <div className="relative">
+                <Input
+                  placeholder="Search employees or type @all to select all..."
+                  value={userSearch}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setUserSearch(val);
+                    if (val.trim() === "@all") {
+                      setForm({
+                        ...form,
+                        selectedUserIds: availableMembers
+                          .filter((u) => u.id !== user?.id)
+                          .map((u) => u.id),
+                      });
+                    }
+                  }}
+                  className="h-8 text-xs pr-7"
+                />
+                {userSearch && (
+                  <button
+                    type="button"
+                    onClick={() => setUserSearch("")}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground text-xs"
+                  >
+                    ✕
+                  </button>
+                )}
+              </div>
+
+              <div className="max-h-36 overflow-y-auto space-y-1 rounded-md border border-input p-2">
+                {availableMembers.filter((u) => u.id !== user?.id).length ===
+                0 ? (
+                  <p className="text-xs text-muted-foreground p-3 text-center">
+                    All organization users are already members.
+                  </p>
+                ) : (
+                  availableMembers
+                    .filter((u) => u.id !== user?.id)
+                    .filter((u) => {
+                      const q = userSearch.toLowerCase();
+                      return (
+                        !q ||
+                        q === "@all" ||
+                        u.full_name?.toLowerCase().includes(q) ||
+                        u.email?.toLowerCase().includes(q)
+                      );
+                    })
+                    .map((u) => {
+                      const initials =
+                        u.full_name
+                          ?.split(" ")
+                          .map((w: string) => w[0])
+                          .join("")
+                          .toUpperCase()
+                          .slice(0, 2) || "?";
+                      return (
+                        <div
+                          key={u.id}
+                          className="flex items-center gap-2 p-1 hover:bg-muted rounded transition-colors cursor-pointer"
+                          onClick={() => {
+                            const checked = !form.selectedUserIds.includes(
+                              u.id,
+                            );
+                            setForm({
+                              ...form,
+                              selectedUserIds: checked
+                                ? [...form.selectedUserIds, u.id]
+                                : form.selectedUserIds.filter(
+                                    (id) => id !== u.id,
+                                  ),
+                            });
+                          }}
+                        >
+                          <Checkbox
+                            id={`edit-dialog-user-${u.id}`}
+                            checked={form.selectedUserIds.includes(u.id)}
+                            onCheckedChange={(checked) => {
+                              setForm({
+                                ...form,
+                                selectedUserIds: checked
+                                  ? [...form.selectedUserIds, u.id]
+                                  : form.selectedUserIds.filter(
+                                      (id) => id !== u.id,
+                                    ),
+                              });
+                            }}
+                            onClick={(e) => e.stopPropagation()}
+                          />
+                          <Avatar className="h-6 w-6 shrink-0">
+                            <AvatarImage src={getAvatarUrl(u.avatar_url)} />
+                            <AvatarFallback className="bg-primary/10 text-primary text-[9px] font-bold">
+                              {initials}
+                            </AvatarFallback>
+                          </Avatar>
+                          <Label
+                            htmlFor={`edit-dialog-user-${u.id}`}
+                            className="text-sm font-normal cursor-pointer flex-1"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            {u.full_name}
+                          </Label>
+                        </div>
+                      );
+                    })
+                )}
+              </div>
+            </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setEditing(null)}>
+            <Button
+              variant="outline"
+              onClick={() => setEditing(null)}
+              className="hover:bg-secondary-foreground dark:hover:bg-primary hover:text-white"
+            >
               Cancel
             </Button>
             <Button onClick={handleUpdate} disabled={updateWg.isPending}>

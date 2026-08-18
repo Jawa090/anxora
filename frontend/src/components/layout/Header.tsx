@@ -94,7 +94,7 @@ export function TopBar({
             variant="ghost" 
             size="icon" 
             onClick={() => navigate(-1)}
-            className="text-[#2DD4BF] hover:text-[#14858E] rounded-xl transition-colors hover:bg-muted shrink-0"
+            className="text-primary hover:bg-primary/20 dark:hover:text-white rounded-xl transition-colors shrink-0"
             title="Go Back"
           >
             <ArrowLeft className="h-5 w-5" />

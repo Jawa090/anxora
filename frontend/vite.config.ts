@@ -12,17 +12,17 @@ export default defineConfig(({ mode }) => ({
       overlay: false,
     },
     proxy: {
-      '/api': {
-        target: 'http://localhost:4001',
+      "/api": {
+        target: "http://localhost:4000",
         changeOrigin: true,
         secure: false,
       },
-      '/uploads': {
-        target: 'http://localhost:4001',
+      "/uploads": {
+        target: "http://localhost:4000",
         changeOrigin: true,
         secure: false,
-      }
-    }
+      },
+    },
   },
   plugins: [react()],
   resolve: {

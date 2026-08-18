@@ -285,18 +285,36 @@ export default function TeamChatsPage() {
   };
 
   const openEdit = (wg: Workgroup) => {
+    let parsedSettings: any = wg.settings || {};
+    if (typeof parsedSettings === "string") {
+      try {
+        parsedSettings = JSON.parse(parsedSettings);
+      } catch (e) {
+        parsedSettings = {};
+      }
+    }
+
     const isModerator =
-      wg.settings?.member_manager_user_id === user?.id ||
-      wg.settings?.manage_member_user_id === user?.id ||
-      (wg as any).manage_member_user_id === user?.id;
+      parsedSettings?.member_manager_user_id === user?.id ||
+      parsedSettings?.manage_member_user_id === user?.id ||
+      (wg as any).manage_member_user_id === user?.id ||
+      (wg as any).member_manager_user_id === user?.id;
 
     if (
       wg.user_role !== "owner" &&
       wg.created_by !== user?.id &&
-      !(isModerator && wg.settings?.moderator_permissions?.edit_group)
+      !(isModerator && parsedSettings?.moderator_permissions?.edit_group)
     ) {
       return;
     }
+
+    const modId =
+      parsedSettings?.member_manager_user_id ||
+      parsedSettings?.manage_member_user_id ||
+      (wg as any).manage_member_user_id ||
+      (wg as any).member_manager_user_id ||
+      "none";
+
     setForm({
       name: wg.name,
       description: wg.description || "",
@@ -304,13 +322,11 @@ export default function TeamChatsPage() {
       type: wg.type,
       is_private: wg.is_private,
     });
-    setManageMembersUserId(
-      (wg.settings?.member_manager_user_id as string) || "none",
-    );
-    setIsChatLocked(!!wg.settings?.is_chat_locked);
-    setIsReactionsLocked(!!wg.settings?.is_reactions_locked);
+    setManageMembersUserId(modId && modId !== "null" ? String(modId) : "none");
+    setIsChatLocked(!!parsedSettings?.is_chat_locked);
+    setIsReactionsLocked(!!parsedSettings?.is_reactions_locked);
     setModeratorPermissions(
-      wg.settings?.moderator_permissions || {
+      parsedSettings?.moderator_permissions || {
         edit_group: true,
         delete_group: false,
         lock_chat: true,
@@ -325,6 +341,31 @@ export default function TeamChatsPage() {
     setAvatarFile(null);
     setEditing(wg);
   };
+
+  useEffect(() => {
+    if (editing) {
+      const currentWg = workgroups.find((w) => w.id === editing.id);
+      if (currentWg) {
+        let parsedSettings: any = currentWg.settings || {};
+        if (typeof parsedSettings === "string") {
+          try {
+            parsedSettings = JSON.parse(parsedSettings);
+          } catch (e) {
+            parsedSettings = {};
+          }
+        }
+        const modId =
+          parsedSettings?.member_manager_user_id ||
+          parsedSettings?.manage_member_user_id ||
+          (currentWg as any).manage_member_user_id ||
+          (currentWg as any).member_manager_user_id ||
+          "none";
+        if (modId && modId !== "null" && modId !== "none") {
+          setManageMembersUserId(String(modId));
+        }
+      }
+    }
+  }, [editing, workgroups]);
 
   const handleCreate = () => {
     createWg.mutate(
@@ -697,7 +738,8 @@ export default function TeamChatsPage() {
                       <div className="flex items-start justify-between gap-2">
                         {unreadCount > 0 && wg.last_message_sender_name ? (
                           <p className="text-xs font-semibold text-primary truncate mb-1 flex items-center">
-                            <MessageSquare className="h-3.5 w-3.5 mr-1" /> {wg.last_message_sender_name}: new message
+                            <MessageSquare className="h-3.5 w-3.5 mr-1" />{" "}
+                            {wg.last_message_sender_name}: new message
                           </p>
                         ) : wg.description ? (
                           <p className="text-xs text-muted-foreground line-clamp-2 mb-1 flex-1">
@@ -1020,16 +1062,42 @@ export default function TeamChatsPage() {
                           >
                             {manageMembersUserId === "none"
                               ? "None (Owner/Admin only)"
-                              : orgMembers.find(
-                                    (m: any) => m.id === manageMembersUserId,
-                                  )
-                                ? orgMembers.find(
-                                    (m: any) => m.id === manageMembersUserId,
-                                  )?.full_name ||
-                                  orgMembers.find(
-                                    (m: any) => m.id === manageMembersUserId,
-                                  )?.email
-                                : "Select a moderator"}
+                              : (() => {
+                                  const selectedMember = orgMembers.find(
+                                    (m: any) =>
+                                      String(m.id || m.user_id) ===
+                                      String(manageMembersUserId),
+                                  );
+                                  if (!selectedMember)
+                                    return orgMembers.length === 0
+                                      ? "Loading moderator..."
+                                      : "Moderator assigned";
+                                  const initials =
+                                    selectedMember.full_name
+                                      ?.split(" ")
+                                      .map((w: string) => w[0])
+                                      .join("")
+                                      .toUpperCase()
+                                      .slice(0, 2) || "?";
+                                  return (
+                                    <div className="flex items-center gap-2 truncate">
+                                      <Avatar className="h-6 w-6 shrink-0">
+                                        <AvatarImage
+                                          src={getAvatarUrl(
+                                            selectedMember.avatar_url,
+                                          )}
+                                        />
+                                        <AvatarFallback className="bg-primary/10 text-primary text-[9px] font-bold">
+                                          {initials}
+                                        </AvatarFallback>
+                                      </Avatar>
+                                      <span className="truncate">
+                                        {selectedMember.full_name ||
+                                          selectedMember.email}
+                                      </span>
+                                    </div>
+                                  );
+                                })()}
                             <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                           </Button>
                         </PopoverTrigger>
@@ -1367,6 +1435,7 @@ export default function TeamChatsPage() {
                 setManageMembersUserId("none");
                 resetForm();
               }}
+              className="hover:bg-secondary-foreground dark:hover:bg-primary hover:text-white"
             >
               Cancel
             </Button>
@@ -1375,7 +1444,6 @@ export default function TeamChatsPage() {
               disabled={
                 !form.name.trim() || createWg.isPending || updateWg.isPending
               }
-              className="bg-primary"
             >
               {createWg.isPending || updateWg.isPending ? (
                 <>

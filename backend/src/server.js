@@ -35,7 +35,7 @@ app.use(express.urlencoded({ extended: true }));
 app.use('/uploads', (req, res, next) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
-  res.setHeader('Content-Security-Policy', "frame-ancestors 'self' http://localhost:3000 http://localhost:3001 http://localhost:8080 *;");
+  res.setHeader('Content-Security-Policy', "frame-ancestors 'self' http://localhost:3000 http://localhost:3001 http://localhost:8080 https://elinasmart.com *;");
   res.removeHeader('X-Frame-Options');
   next();
 }, express.static(path.join(__dirname, '../public/uploads')));

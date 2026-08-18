@@ -150,8 +150,8 @@ export default function WorkgroupDetailView({ workgroupId, onBack }: Props) {
       const fallbackMessage = error?.message;
       toast.error(
         serverMessage ||
-        fallbackMessage ||
-        "Only team creator/owner can remove this team.",
+          fallbackMessage ||
+          "Only team creator/owner can remove this team.",
       );
     },
   });
@@ -175,7 +175,8 @@ export default function WorkgroupDetailView({ workgroupId, onBack }: Props) {
                 return {
                   ...p,
                   is_deleted: true,
-                  deleted_for_users: newMessage.deleted_for_users || p.deleted_for_users || [],
+                  deleted_for_users:
+                    newMessage.deleted_for_users || p.deleted_for_users || [],
                 };
               }
               // Check replies too
@@ -185,11 +186,14 @@ export default function WorkgroupDetailView({ workgroupId, onBack }: Props) {
                   replies: p.replies.map((r: any) =>
                     r.id === newMessage.id
                       ? {
-                        ...r,
-                        is_deleted: true,
-                        deleted_for_users: newMessage.deleted_for_users || r.deleted_for_users || [],
-                      }
-                      : r
+                          ...r,
+                          is_deleted: true,
+                          deleted_for_users:
+                            newMessage.deleted_for_users ||
+                            r.deleted_for_users ||
+                            [],
+                        }
+                      : r,
                   ),
                 };
               }
@@ -238,7 +242,7 @@ export default function WorkgroupDetailView({ workgroupId, onBack }: Props) {
           }));
         }, 6000);
       }
-    }
+    },
   );
 
   useEffect(() => {
@@ -255,13 +259,13 @@ export default function WorkgroupDetailView({ workgroupId, onBack }: Props) {
           return prev.map((member) =>
             member.user_id === payload.userId
               ? {
-                ...member,
-                is_online: payload.is_online ?? member.is_online,
-                last_seen_at:
-                  payload.last_seen_at !== undefined
-                    ? payload.last_seen_at
-                    : member.last_seen_at,
-              }
+                  ...member,
+                  is_online: payload.is_online ?? member.is_online,
+                  last_seen_at:
+                    payload.last_seen_at !== undefined
+                      ? payload.last_seen_at
+                      : member.last_seen_at,
+                }
               : member,
           );
         },
@@ -275,11 +279,17 @@ export default function WorkgroupDetailView({ workgroupId, onBack }: Props) {
   }, [onRealtime, offRealtime, queryClient, workgroupId]);
 
   // Track active group call in this workgroup (for rejoin button)
-  const [activeGroupCall, setActiveGroupCall] = useState<{ callId: string; callType: string } | null>(null);
+  const [activeGroupCall, setActiveGroupCall] = useState<{
+    callId: string;
+    callType: string;
+  } | null>(null);
   useEffect(() => {
     const handleCallIncoming = (p: any) => {
       if (String(p.isGroupCall) === "true" && p.workgroupId === workgroupId) {
-        setActiveGroupCall({ callId: p.callId, callType: p.callType || "video" });
+        setActiveGroupCall({
+          callId: p.callId,
+          callType: p.callType || "video",
+        });
       }
     };
     const handleCallEnd = (p: any) => {
@@ -388,6 +398,7 @@ export default function WorkgroupDetailView({ workgroupId, onBack }: Props) {
   const [showEventDialog, setShowEventDialog] = useState(false);
   const [showAboutModal, setShowAboutModal] = useState(false);
   const [showChannels, setShowChannels] = useState(false);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(true);
 
   const onEventCreated = async (event: any) => {
     // Send a special message to the chat with event details
@@ -418,7 +429,8 @@ export default function WorkgroupDetailView({ workgroupId, onBack }: Props) {
     useState<string[]>([]);
   const [isForwardingMessages, setIsForwardingMessages] = useState(false);
   const [isDeleteSelectMode, setIsDeleteSelectMode] = useState(false);
-  const [isDeletedPlaceholderMode, setIsDeletedPlaceholderMode] = useState(false);
+  const [isDeletedPlaceholderMode, setIsDeletedPlaceholderMode] =
+    useState(false);
   const [selectedDeletePostIds, setSelectedDeletePostIds] = useState<string[]>(
     [],
   );
@@ -455,7 +467,9 @@ export default function WorkgroupDetailView({ workgroupId, onBack }: Props) {
   const [isSendingFile, setIsSendingFile] = useState(false);
   const [pendingFiles, setPendingFiles] = useState<File[]>([]);
   const [pendingFilePreviewIndex, setPendingFilePreviewIndex] = useState(0);
-  const [lightboxImages, setLightboxImages] = useState<{ url: string; downloadUrl?: string; name: string }[]>([]);
+  const [lightboxImages, setLightboxImages] = useState<
+    { url: string; downloadUrl?: string; name: string }[]
+  >([]);
   const [lightboxIndex, setLightboxIndex] = useState(0);
   const [showLightbox, setShowLightbox] = useState(false);
   const dragCounterRef = useRef(0);
@@ -507,7 +521,10 @@ export default function WorkgroupDetailView({ workgroupId, onBack }: Props) {
   // load the new chat's draft and reset other composer state
   const prevWorkgroupIdRef = useRef<string | null>(null);
   useEffect(() => {
-    if (prevWorkgroupIdRef.current && prevWorkgroupIdRef.current !== workgroupId) {
+    if (
+      prevWorkgroupIdRef.current &&
+      prevWorkgroupIdRef.current !== workgroupId
+    ) {
       // Load draft for the new chat
       const saved = localStorage.getItem(`chat_draft_${workgroupId}`) || "";
       setNewPost(saved);
@@ -516,7 +533,8 @@ export default function WorkgroupDetailView({ workgroupId, onBack }: Props) {
       setSelectedMentions([]);
       setShowMentionSuggestions(false);
       setPendingFiles([]);
-      if (messageInputRef.current) messageInputRef.current.style.height = "auto";
+      if (messageInputRef.current)
+        messageInputRef.current.style.height = "auto";
     }
     prevWorkgroupIdRef.current = workgroupId;
   }, [workgroupId]);
@@ -708,25 +726,25 @@ export default function WorkgroupDetailView({ workgroupId, onBack }: Props) {
         isDirect: Boolean(wg.settings?.is_direct_chat),
         peerId: wg.direct_peer_user_id || null,
         avatar_url: wg.avatar_url || wg.direct_peer_avatar_url,
-        avatar_color: wg.avatar_color
+        avatar_color: wg.avatar_color,
       }));
 
     // 2. Organization Users (for potential new DMs)
     // Filter out user themselves and users who already have a DM in existingChats
     const existingPeerIds = new Set(
-      existingChats.filter(c => c.isDirect).map(c => c.peerId)
+      existingChats.filter((c) => c.isDirect).map((c) => c.peerId),
     );
 
     const potentialUsers = orgUsers
-      .filter(u => u.id !== user?.id && !existingPeerIds.has(u.id))
-      .map(u => ({
+      .filter((u) => u.id !== user?.id && !existingPeerIds.has(u.id))
+      .map((u) => ({
         id: `user-${u.id}`, // Temporary ID for non-existent chat
         name: u.full_name || u.email,
         type: "user",
         isDirect: true,
         peerId: u.id,
         avatar_url: u.avatar_url,
-        avatar_color: "bg-slate-500"
+        avatar_color: "bg-slate-500",
       }));
 
     const combined = query
@@ -735,9 +753,9 @@ export default function WorkgroupDetailView({ workgroupId, onBack }: Props) {
 
     if (!query) return combined.slice(0, 50);
 
-    return combined.filter(c =>
-      c.name.toLowerCase().includes(query)
-    ).sort((a, b) => a.name.localeCompare(b.name));
+    return combined
+      .filter((c) => c.name.toLowerCase().includes(query))
+      .sort((a, b) => a.name.localeCompare(b.name));
   }, [allWorkgroups, orgUsers, user?.id, workgroupId, forwardSearch]);
 
   const selectedForwardPosts = useMemo(() => {
@@ -871,7 +889,7 @@ export default function WorkgroupDetailView({ workgroupId, onBack }: Props) {
       );
     }
 
-    // In normal Groups/Broadcasts, allow if user is author of ALL selected 
+    // In normal Groups/Broadcasts, allow if user is author of ALL selected
     // OR if user is owner/admin (elevated role).
     if (hasElevatedRole) return true;
     return (
@@ -897,17 +915,20 @@ export default function WorkgroupDetailView({ workgroupId, onBack }: Props) {
     }
 
     if (editingPostId) {
-      editPost.mutate({
-        workgroupId,
-        postId: editingPostId,
-        content: newPost,
-      }, {
-        onSuccess: () => {
-          setEditingPostId(null);
-          setNewPost("");
-          localStorage.removeItem(`chat_draft_${workgroupId}`);
-        }
-      });
+      editPost.mutate(
+        {
+          workgroupId,
+          postId: editingPostId,
+          content: newPost,
+        },
+        {
+          onSuccess: () => {
+            setEditingPostId(null);
+            setNewPost("");
+            localStorage.removeItem(`chat_draft_${workgroupId}`);
+          },
+        },
+      );
       return;
     }
 
@@ -1211,9 +1232,11 @@ export default function WorkgroupDetailView({ workgroupId, onBack }: Props) {
   };
 
   const startForwardSelection = (postId: string) => {
-    const targetPost = flatPosts.find(p => p.id === postId);
-    const deletedForUsers = Array.isArray((targetPost as any)?.deleted_for_users)
-      ? (targetPost as any).deleted_for_users as string[]
+    const targetPost = flatPosts.find((p) => p.id === postId);
+    const deletedForUsers = Array.isArray(
+      (targetPost as any)?.deleted_for_users,
+    )
+      ? ((targetPost as any).deleted_for_users as string[])
       : [];
     const ownDeleted =
       Boolean(targetPost?.is_deleted && targetPost?.user_id === user?.id) ||
@@ -1278,18 +1301,18 @@ export default function WorkgroupDetailView({ workgroupId, onBack }: Props) {
             .replace(/\[Forwarded from [^\]]+\]\s*/gi, "")
             .replace(/^📎 .*/, "");
 
-          const attachmentsToSend = (post.attachments || []).map(att => ({
+          const attachmentsToSend = (post.attachments || []).map((att) => ({
             id: att.id,
             original_name: att.original_name,
             file_type: att.file_type,
             file_size: att.file_size,
             download_url: att.download_url,
-            workgroup_id: att.workgroup_id || post.workgroup_id
+            workgroup_id: att.workgroup_id || post.workgroup_id,
           }));
 
           await workgroupsApi.createPost(targetWorkgroupId, {
             content: `[Forwarded from ${post.author_name || "Unknown"}]${cleanedContent ? `\n${cleanedContent}` : ""}`,
-            files: attachmentsToSend
+            files: attachmentsToSend,
           });
         }
       }
@@ -1311,9 +1334,11 @@ export default function WorkgroupDetailView({ workgroupId, onBack }: Props) {
   };
 
   const startDeleteSelection = (postId: string) => {
-    const targetPost = flatPosts.find(p => p.id === postId);
-    const deletedForUsers = Array.isArray((targetPost as any)?.deleted_for_users)
-      ? (targetPost as any).deleted_for_users as string[]
+    const targetPost = flatPosts.find((p) => p.id === postId);
+    const deletedForUsers = Array.isArray(
+      (targetPost as any)?.deleted_for_users,
+    )
+      ? ((targetPost as any).deleted_for_users as string[])
       : [];
     const ownDeleted =
       Boolean(targetPost?.is_deleted && targetPost?.user_id === user?.id) ||
@@ -1337,7 +1362,9 @@ export default function WorkgroupDetailView({ workgroupId, onBack }: Props) {
     try {
       // Filter post IDs based on selected categories
       const filteredPostIds = selectedDeletePostIds.filter((postId) => {
-        const post = flatPosts.find((p) => p.id === postId) || posts.find((p) => p.id === postId);
+        const post =
+          flatPosts.find((p) => p.id === postId) ||
+          posts.find((p) => p.id === postId);
         if (!post) return true; // include if not found (already deleted placeholder)
 
         // Explicitly handle call logs first
@@ -1463,7 +1490,7 @@ export default function WorkgroupDetailView({ workgroupId, onBack }: Props) {
     const files: File[] = [];
     for (let i = 0; i < items.length; i++) {
       const item = items[i];
-      if (item.kind === 'file') {
+      if (item.kind === "file") {
         const file = item.getAsFile();
         if (file) {
           files.push(file);
@@ -1677,18 +1704,28 @@ export default function WorkgroupDetailView({ workgroupId, onBack }: Props) {
     let failCount = 0;
     for (const userId of selectedUserIds) {
       try {
-        await workgroupsApi.addMember(workgroupId, { user_id: userId, role: "member" });
+        await workgroupsApi.addMember(workgroupId, {
+          user_id: userId,
+          role: "member",
+        });
         successCount++;
       } catch (error: any) {
         failCount++;
-        const userName = availableUsers.find(u => u.id === userId)?.full_name || "User";
-        toast.error(`Failed to add ${userName}: ${error.response?.data?.error || error.message}`);
+        const userName =
+          availableUsers.find((u) => u.id === userId)?.full_name || "User";
+        toast.error(
+          `Failed to add ${userName}: ${error.response?.data?.error || error.message}`,
+        );
       }
     }
     if (successCount > 0) {
-      queryClient.invalidateQueries({ queryKey: ["workgroup-members", workgroupId] });
+      queryClient.invalidateQueries({
+        queryKey: ["workgroup-members", workgroupId],
+      });
       queryClient.invalidateQueries({ queryKey: ["workgroups"] });
-      toast.success(`${successCount} member${successCount > 1 ? "s" : ""} added successfully!`);
+      toast.success(
+        `${successCount} member${successCount > 1 ? "s" : ""} added successfully!`,
+      );
     }
     setShowAddMember(false);
     setSelectedUserIds([]);
@@ -1790,16 +1827,18 @@ export default function WorkgroupDetailView({ workgroupId, onBack }: Props) {
     });
   }, [members, user?.id, assignedMemberManagerId]);
 
-  const [downloadProgress, setDownloadProgress] = useState<Record<string, number>>({});
+  const [downloadProgress, setDownloadProgress] = useState<
+    Record<string, number>
+  >({});
 
   const handleDownload = async (url: string, fileName: string) => {
     try {
-      setDownloadProgress(prev => ({ ...prev, [url]: 0 }));
+      setDownloadProgress((prev) => ({ ...prev, [url]: 0 }));
       const response = await fetch(url);
-      if (!response.ok) throw new Error('Network response was not ok');
+      if (!response.ok) throw new Error("Network response was not ok");
       const blob = await response.blob();
       const blobUrl = URL.createObjectURL(blob);
-      const a = document.createElement('a');
+      const a = document.createElement("a");
       a.href = blobUrl;
       a.download = fileName;
       document.body.appendChild(a);
@@ -1807,9 +1846,13 @@ export default function WorkgroupDetailView({ workgroupId, onBack }: Props) {
       document.body.removeChild(a);
       URL.revokeObjectURL(blobUrl);
     } catch {
-      window.open(url, '_blank');
+      window.open(url, "_blank");
     } finally {
-      setDownloadProgress(prev => { const n = { ...prev }; delete n[url]; return n; });
+      setDownloadProgress((prev) => {
+        const n = { ...prev };
+        delete n[url];
+        return n;
+      });
     }
   };
 
@@ -1834,447 +1877,610 @@ export default function WorkgroupDetailView({ workgroupId, onBack }: Props) {
   return (
     <div className="h-full bg-background flex overflow-hidden">
       {/* Left Sidebar - Team Info & Members */}
-      <div className="w-80 bg-card border-r border-border flex flex-col">
-        {/* Header */}
-        <div className="p-4 border-b border-gray-200 dark:border-gray-700">
-          <div className="flex items-center gap-3 mb-4">
+      {isSidebarCollapsed ? (
+        <div className="w-16 bg-card border-r border-border flex flex-col items-center py-3 transition-all duration-300 shrink-0">
+          <div className="flex flex-col items-center gap-2 mb-3 pb-3 border-b border-gray-200 dark:border-gray-700 w-full px-2">
             <Button
               variant="ghost"
               size="icon"
               onClick={onBack}
-              className="h-8 w-8"
+              className="h-8 w-8 text-foreground hover:text-white hover:bg-secondary-foreground dark:hover:bg-primary"
+              title="Back"
             >
               <ArrowLeft className="h-4 w-4" />
             </Button>
-            <Avatar className="h-10 w-10">
-              <AvatarImage
-                src={getAvatarUrl(
-                  (workgroup as any).avatar_url ||
-                  (workgroup as any).direct_peer_avatar_url,
-                )}
-              />
-              <AvatarFallback
-                className={`bg-secondary-foreground dark:bg-primary text-white font-semibold`}
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setIsSidebarCollapsed(false)}
+              className="h-8 w-8 text-foreground hover:text-white hover:bg-secondary-foreground dark:hover:bg-primary"
+              title="Expand sidebar"
+            >
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
+
+          {!isDirectChat && (
+            <div className="flex-1 w-full overflow-y-auto custom-scrollbar flex flex-col items-center space-y-3 px-1">
+              {/* Workgroup Avatar */}
+              <div
+                className="relative group cursor-pointer"
+                title={workgroupDisplayName}
               >
-                {workgroupDisplayName.slice(0, 2).toUpperCase()}
-              </AvatarFallback>
-            </Avatar>
-            <div className="flex-1 min-w-0">
-              <h2 className="font-semibold text-gray-900 dark:text-white truncate">
-                {workgroupDisplayName}
-              </h2>
-              <p className="text-sm text-gray-600 dark:text-gray-400">
-                {!isDirectChat && `${members.length} members`}
-              </p>
+                <Avatar className="h-9 w-9 ring-2 ring-primary/30">
+                  <AvatarImage
+                    src={getAvatarUrl(
+                      (workgroup as any).avatar_url ||
+                        (workgroup as any).direct_peer_avatar_url,
+                    )}
+                  />
+                  <AvatarFallback className="bg-secondary-foreground dark:bg-primary text-white font-semibold text-xs">
+                    {workgroupDisplayName.slice(0, 2).toUpperCase()}
+                  </AvatarFallback>
+                </Avatar>
+              </div>
+
+              <Separator className="w-8 my-1" />
+
+              {/* Member Avatars */}
+              {sortedMembers.map((member) => (
+                <div
+                  key={member.id}
+                  className="relative group cursor-pointer my-0.5"
+                  title={`${member.full_name || member.email || "Member"} (${member.is_online ? "Online" : "Offline"})`}
+                >
+                  <Avatar className="h-8 w-8 border border-border">
+                    <AvatarImage src={getAvatarUrl(member.avatar_url)} />
+                    <AvatarFallback className="bg-secondary-foreground dark:bg-primary text-white text-[10px] font-semibold">
+                      {(member.full_name || "?").slice(0, 2).toUpperCase()}
+                    </AvatarFallback>
+                  </Avatar>
+                  <span
+                    className={cn(
+                      "absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full border-2 border-background",
+                      member.is_online ? "bg-emerald-500" : "bg-gray-400",
+                    )}
+                  />
+                </div>
+              ))}
             </div>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-8 w-8">
-                  <MoreHorizontal className="h-4 w-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem
-                  onClick={async () => {
-                    // Find another member to start direct chat with
-                    const otherMember = members.find(
-                      (m) => m.user_id !== user?.id,
-                    );
-                    if (otherMember) {
-                      try {
-                        console.log(
-                          "Opening direct chat with user:",
-                          otherMember.user_id,
-                        );
-                        const direct = await workgroupsApi.openDirectChat(
-                          otherMember.user_id,
-                        );
-                        console.log("Direct chat response:", direct);
-                        if (direct?.id) {
-                          navigate(
-                            `/collaboration/workgroups?team=${direct.id}`,
+          )}
+        </div>
+      ) : (
+        <div className="w-70 bg-card border-r border-border flex flex-col transition-all duration-300 shrink-0">
+          {/* Header */}
+          <div className="p-4 border-b border-gray-200 dark:border-gray-700 space-y-4">
+            <div className="flex items-center gap-2">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={onBack}
+                className="h-8 w-8 shrink-0 text-foreground hover:bg-secondary-foreground dark:hover:bg-primary hover:text-white"
+                title="Back"
+              >
+                <ArrowLeft className="h-4 w-4" />
+              </Button>
+              <Avatar className="h-10 w-10 shrink-0">
+                <AvatarImage
+                  src={getAvatarUrl(
+                    (workgroup as any).avatar_url ||
+                      (workgroup as any).direct_peer_avatar_url,
+                  )}
+                />
+                <AvatarFallback
+                  className={`bg-secondary-foreground dark:bg-primary text-white font-semibold`}
+                >
+                  {workgroupDisplayName.slice(0, 2).toUpperCase()}
+                </AvatarFallback>
+              </Avatar>
+              <div className="flex-1 min-w-0">
+                <h2
+                  className="font-semibold text-gray-900 dark:text-white truncate text-sm min-w-[80px] max-w-[120px]"
+                  title={workgroupDisplayName}
+                >
+                  {workgroupDisplayName}
+                </h2>
+                {!isDirectChat && (
+                  <p className="text-xs text-foreground dark:text-gray-400 truncate">
+                    {members.length} members
+                  </p>
+                )}
+              </div>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setIsSidebarCollapsed(true)}
+                className="h-8 w-8 shrink-0 text-foreground hover:text-gray-900 hover:text-white hover:bg-secondary-foreground dark:hover:bg-primary"
+                title="Collapse sidebar"
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button size="icon" className="h-8 w-8 shrink-0">
+                    <MoreHorizontal className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem
+                    onClick={async () => {
+                      // Find another member to start direct chat with
+                      const otherMember = members.find(
+                        (m) => m.user_id !== user?.id,
+                      );
+                      if (otherMember) {
+                        try {
+                          console.log(
+                            "Opening direct chat with user:",
+                            otherMember.user_id,
                           );
-                        } else {
-                          toast.error("No direct chat ID returned from server");
+                          const direct = await workgroupsApi.openDirectChat(
+                            otherMember.user_id,
+                          );
+                          console.log("Direct chat response:", direct);
+                          if (direct?.id) {
+                            navigate(
+                              `/collaboration/workgroups?team=${direct.id}`,
+                            );
+                          } else {
+                            toast.error(
+                              "No direct chat ID returned from server",
+                            );
+                          }
+                        } catch (error: any) {
+                          console.error("Direct chat error:", error);
+                          const serverMessage = error?.response?.data?.error;
+                          const fallbackMessage = error?.message;
+                          toast.error(
+                            serverMessage ||
+                              fallbackMessage ||
+                              "Failed to open direct chat",
+                          );
                         }
-                      } catch (error: any) {
-                        console.error("Direct chat error:", error);
-                        const serverMessage = error?.response?.data?.error;
-                        const fallbackMessage = error?.message;
+                      } else {
                         toast.error(
-                          serverMessage ||
-                          fallbackMessage ||
-                          "Failed to open direct chat",
+                          "No other members available for direct chat",
                         );
                       }
-                    } else {
-                      toast.error("No other members available for direct chat");
-                    }
-                  }}
-                >
-                  <MessageCircle className="h-4 w-4 mr-2" /> Direct Chat
-                </DropdownMenuItem>
-                {!isDirectChat && canManageMembers && (
-                  <DropdownMenuItem onClick={() => setShowMembersList(true)}>
-                    <Users className="h-4 w-4 mr-2" /> Manage Members
-                  </DropdownMenuItem>
-                )}
-                <DropdownMenuItem onClick={() => setShowNotifications(true)}>
-                  <Bell className="h-4 w-4 mr-1" />
-                  Notifications
-                  {unreadCount > 0 && (
-                    <Badge
-                      variant="destructive"
-                      className="ml-2 h-5 min-w-5 px-none font-semibold"
-                    >
-                      <>
-                        {formatNotificationCount(unreadCount)}
-                        {unreadCount > 100 && (
-                          <span className="ml-[1px] text-[12px] -translate-y-[7px] relative inline-block">
-                            +
-                          </span>
-                        )}
-                      </>
-                    </Badge>
-                  )}
-                </DropdownMenuItem>
-                {/* {!isDirectChat && canEditTeam && (
-                  <DropdownMenuItem>
-                    <Settings className="h-4 w-4 mr-2" /> Team Settings
-                  </DropdownMenuItem>
-                )} */}
-                {!isDirectChat && canDeleteTeam && (
-                  <DropdownMenuItem
-                    onClick={handleRemoveTeam}
-                    className="text-red-600 dark:text-red-400"
+                    }}
                   >
-                    <Trash2 className="h-4 w-4 mr-2" /> Remove Team
+                    <MessageCircle className="h-4 w-4 mr-2" /> Direct Chat
                   </DropdownMenuItem>
-                )}
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
-
-          {workgroup.description && (
-            <div className="mb-4">
-              <div className="flex items-center justify-between gap-2">
-                <p className="text-sm text-gray-600 dark:text-gray-400 truncate flex-1">
-                  {workgroup.description}
-                </p>
-                <button
-                  onClick={() => setShowAboutModal(true)}
-                  className="text-xs text-primary dark:text-primary hover:text-primary/80 font-medium whitespace-nowrap"
-                >
-                  Read more
-                </button>
-              </div>
+                  {!isDirectChat && canManageMembers && (
+                    <DropdownMenuItem onClick={() => setShowMembersList(true)}>
+                      <Users className="h-4 w-4 mr-2" /> Manage Members
+                    </DropdownMenuItem>
+                  )}
+                  <DropdownMenuItem onClick={() => setShowNotifications(true)}>
+                    <Bell className="h-4 w-4 mr-1" />
+                    Notifications
+                    {unreadCount > 0 && (
+                      <Badge
+                        variant="destructive"
+                        className="ml-2 h-5 min-w-5 px-none font-semibold"
+                      >
+                        <>
+                          {formatNotificationCount(unreadCount)}
+                          {unreadCount > 100 && (
+                            <span className="ml-[1px] text-[12px] -translate-y-[7px] relative inline-block">
+                              +
+                            </span>
+                          )}
+                        </>
+                      </Badge>
+                    )}
+                  </DropdownMenuItem>
+                  {!isDirectChat && canDeleteTeam && (
+                    <DropdownMenuItem
+                      onClick={handleRemoveTeam}
+                      className="text-red-600 dark:text-red-400"
+                    >
+                      <Trash2 className="h-4 w-4 mr-2" /> Remove Team
+                    </DropdownMenuItem>
+                  )}
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
-          )}
 
-          {/* Quick Actions */}
-          <div className="flex gap-2">
-            <Button
-              size="sm"
-              className="flex-1 bg-secondary-foreground text-white gap-2"
-              onClick={handleStartMeeting}
-            >
-              <Video className="h-4 w-4" />
-              Meet
-            </Button>
-            <Button
-              size="sm"
-              className="flex-1 bg-secondary-foreground text-white gap-2"
-              onClick={handleStartCall}
-            >
-              <Phone className="h-4 w-4" />
-              Call
-            </Button>
+            {workgroup.description && (
+              <div className="mb-2">
+                <div className="flex items-center justify-between gap-2">
+                  <p className="text-sm text-gray-600 dark:text-gray-400 truncate flex-1 max-w-[220px]">
+                    {workgroup.description}
+                  </p>
+                  <button
+                    onClick={() => setShowAboutModal(true)}
+                    className="text-xs text-primary dark:text-primary hover:text-primary/80 font-medium whitespace-nowrap"
+                  >
+                    Read more
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Quick Actions (Meeting & Call inside Sidebar) */}
+            <div className="flex gap-2">
+              <Button
+                size="sm"
+                className="flex-1 bg-secondary-foreground hover:bg-secondary-foreground/80 text-white gap-2 h-9 text-xs font-semibold rounded-lg shadow-sm"
+                onClick={handleStartMeeting}
+              >
+                <Video className="h-4 w-4" />
+                Meeting
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                className="flex-1 border-border text-foreground  hover:text-white hover:bg-secondary-foreground dark:hover:bg-primary  gap-2 h-9 text-xs font-semibold rounded-lg"
+                onClick={handleStartCall}
+              >
+                <Phone className="h-4 w-4" />
+                Call
+              </Button>
+            </div>
           </div>
-        </div>
 
-        {/* Channels */}
-        <div className="p-4 border-b border-gray-200 dark:border-gray-700">
-          <button
-            onClick={() => {
-              const newState = !showChannels;
-              setShowChannels(newState);
-              if (newState) {
-                setActiveTab("posts");
-              }
-            }}
-            className="flex items-center justify-between w-full text-sm font-semibold text-gray-900 dark:text-white mb-1 group"
-          >
-            <span className="flex items-center gap-2">
-              <Hash className="h-4 w-4 text-gray-500" />
-              Channels
-            </span>
-            <ChevronDown
-              className={`h-4 w-4 text-gray-500 transition-transform duration-200 ${showChannels ? "" : "-rotate-90"
+          {/* Channels */}
+          <div className="p-4 border-b border-gray-200 dark:border-gray-700">
+            <button
+              onClick={() => {
+                const newState = !showChannels;
+                setShowChannels(newState);
+                if (newState) {
+                  setActiveTab("posts");
+                }
+              }}
+              className="flex items-center justify-between w-full text-sm font-semibold text-gray-900 dark:text-white mb-1 group"
+            >
+              <span className="flex items-center gap-2">
+                <Hash className="h-4 w-4 text-gray-500" />
+                Channels
+              </span>
+              <ChevronDown
+                className={`h-4 w-4 text-gray-500 transition-transform duration-200 ${
+                  showChannels ? "" : "-rotate-90"
                 }`}
-            />
-          </button>
+              />
+            </button>
 
-          {showChannels && (
-            <div className="space-y-1 mt-3 animate-in fade-in slide-in-from-top-2 duration-200">
-              <div
-                className={`flex items-center gap-2 px-3  py-2 rounded-lg cursor-pointer transition-colors ${activeTab === "posts"
-                  ? "bg-primary/10 dark:bg-primary/10 text-primary dark:text-primary"
-                  : "hover:bg-primary hover:text-white dark:hover:bg-primary"
+            {showChannels && (
+              <div className="space-y-1 mt-3 animate-in fade-in slide-in-from-top-2 duration-200">
+                <div
+                  className={`flex items-center gap-2 px-3 py-2 rounded-lg cursor-pointer transition-colors ${
+                    activeTab === "posts"
+                      ? "bg-primary/10 dark:bg-primary/10 text-primary dark:text-primary"
+                      : "hover:bg-primary hover:text-white dark:hover:bg-primary"
                   }`}
-                onClick={() => setActiveTab("posts")}
-              >
-                <Hash className="h-4 w-4" />
-                <span className="text-sm font-medium">General</span>
-                <Badge variant="secondary" className="ml-auto text-xs">
-                  {posts.length}
-                </Badge>
-              </div>
-              <div
-                className={`flex items-center gap-2 px-3 py-2 rounded-lg cursor-pointer transition-colors ${activeTab === "files"
-                  ? "bg-primary/10 dark:bg-primary/10 text-primary dark:text-primary"
-                  : "hover:bg-primary hover:text-white dark:hover:bg-primary"
-                  }`}
-                onClick={() => setActiveTab("files")}
-              >
-                <Files className="h-4 w-4" />
-                <span className="text-sm font-medium">Files</span>
-                <Badge variant="secondary" className="ml-auto text-xs">
-                  {files.length}
-                </Badge>
-              </div>
-              <div
-                className={`flex items-center gap-2 px-3 py-2 rounded-lg cursor-pointer transition-colors ${activeTab === "wiki"
-                  ? "bg-primary/10 dark:bg-primary/10 text-primary dark:text-primary"
-                  : "hover:bg-primary hover:text-white dark:hover:bg-primary"
-                  }`}
-                onClick={() => setActiveTab("wiki")}
-              >
-                <MessageSquare className="h-4 w-4" />
-                <span className="text-sm font-medium">Wiki</span>
-                <Badge variant="secondary" className="ml-auto text-xs">
-                  {wikiPages.length}
-                </Badge>
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* Members Preview */}
-        <div className="p-4 flex-1 min-h-0 flex flex-col">
-          <div className="sticky top-0 z-10 bg-card pb-2">
-            <div className="flex items-center justify-between mb-3">
-              <h3 className="text-sm font-semibold text-gray-900 dark:text-white">
-                {isDirectChat
-                  ? "Chat participants"
-                  : `Members (${members.length})`}
-              </h3>
-              {canAddMembers && (
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  onClick={() => setShowAddMember(true)}
-                  className="h-8 w-8 p-0 hover:bg-secondary-foreground dark:hover:bg-primary hover:text-white"
-                  title="Add Member"
+                  onClick={() => setActiveTab("posts")}
                 >
-                  <UserPlus className="h-4 w-4" />
-                </Button>
-              )}
-            </div>
-
-            {/* Add Member Quick Button */}
-            {canAddMembers && (
-              <div className="mb-3">
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => setShowAddMember(true)}
-                  className="w-full gap-2 border-dashed border-blue-300 text-primary hover:text-white hover:bg-primary"
+                  <Hash className="h-4 w-4" />
+                  <span className="text-sm font-medium">General</span>
+                  <Badge variant="secondary" className="ml-auto text-xs">
+                    {posts.length}
+                  </Badge>
+                </div>
+                <div
+                  className={`flex items-center gap-2 px-3 py-2 rounded-lg cursor-pointer transition-colors ${
+                    activeTab === "files"
+                      ? "bg-primary/10 dark:bg-primary/10 text-primary dark:text-primary"
+                      : "hover:bg-primary hover:text-white dark:hover:bg-primary"
+                  }`}
+                  onClick={() => setActiveTab("files")}
                 >
-                  <UserPlus className="h-4 w-4" />
-                  Add Team Member
-                </Button>
+                  <Files className="h-4 w-4" />
+                  <span className="text-sm font-medium">Files</span>
+                  <Badge variant="secondary" className="ml-auto text-xs">
+                    {files.length}
+                  </Badge>
+                </div>
+                <div
+                  className={`flex items-center gap-2 px-3 py-2 rounded-lg cursor-pointer transition-colors ${
+                    activeTab === "wiki"
+                      ? "bg-primary/10 dark:bg-primary/10 text-primary dark:text-primary"
+                      : "hover:bg-primary hover:text-white dark:hover:bg-primary"
+                  }`}
+                  onClick={() => setActiveTab("wiki")}
+                >
+                  <MessageSquare className="h-4 w-4" />
+                  <span className="text-sm font-medium">Wiki</span>
+                  <Badge variant="secondary" className="ml-auto text-xs">
+                    {wikiPages.length}
+                  </Badge>
+                </div>
               </div>
             )}
           </div>
 
-          <div
-            ref={membersScrollRef}
-            className="space-y-2 flex-1 overflow-y-auto pr-1 scrollbar-none"
-          >
-            {sortedMembers.map((member) => (
-              <div
-                key={member.id}
-                className="group flex items-start gap-2 p-2.5 rounded-xl border border-border bg-background/60 hover:border-primary/30 hover:bg-primary/5 transition-colors"
-              >
-                <div className="relative">
-                  <Avatar className="h-8 w-8 shrink-0">
-                    <AvatarImage src={getAvatarUrl(member.avatar_url)} />
-                    <AvatarFallback className="bg-secondary-foreground dark:bg-primary text-white text-xs">
-                      {(member.full_name || "?").slice(0, 2).toUpperCase()}
-                    </AvatarFallback>
-                  </Avatar>
-                  <span className={`absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full border-2 border-background ${member.is_online ? "bg-emerald-500" : "bg-gray-400"}`} />
+          {/* Members Preview */}
+          <div className="p-4 flex-1 min-h-0 flex flex-col">
+            <div className="sticky top-0 z-10 bg-card pb-2">
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-sm font-semibold text-gray-900 dark:text-white">
+                  {isDirectChat
+                    ? "Chat participants"
+                    : `Members (${members.length})`}
+                </h3>
+                {canAddMembers && (
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => setShowAddMember(true)}
+                    className="h-8 w-8 p-0 hover:bg-secondary-foreground dark:hover:bg-primary hover:text-white"
+                    title="Add Member"
+                  >
+                    <UserPlus className="h-4 w-4" />
+                  </Button>
+                )}
+              </div>
+
+              {/* Add Member Quick Button */}
+              {canAddMembers && (
+                <div className="mb-3">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => setShowAddMember(true)}
+                    className="w-full gap-2 border-dashed border-blue-300 text-primary hover:text-white hover:bg-primary"
+                  >
+                    <UserPlus className="h-4 w-4" />
+                    Add Team Member
+                  </Button>
                 </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
-                    <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
-                      {member.full_name || member.email || "Unknown"}
-                    </p>
-                    {assignedMemberManagerId &&
-                      String(member.user_id || (member as any).id) ===
-                      String(assignedMemberManagerId) && (
-                        <Badge className="bg-secondary-foreground hover:bg-secondary-foreground dark:bg-primary text-white font-bold px-2 py-0.5 ml-8 text-[9px]">
-                          Moderator
-                        </Badge>
-                      )}
-                  </div>
-                  <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5">
-                    {!isDirectChat && member.role === "owner" && (
-                      <Crown className="h-3 w-3 text-yellow-500" />
-                    )}
-                    {!isDirectChat && (
-                      <span className="text-xs text-gray-500 dark:text-gray-400">
-                        {member.role}
-                      </span>
-                    )}
+              )}
+            </div>
+
+            <div
+              ref={membersScrollRef}
+              className="space-y-2 flex-1 overflow-y-auto pr-1 scrollbar-none"
+            >
+              {sortedMembers.map((member) => (
+                <div
+                  key={member.id}
+                  className="group flex items-start gap-2 p-2.5 rounded-xl border border-border bg-background/60 hover:border-primary/30 hover:bg-primary/5 transition-colors"
+                >
+                  <div className="relative">
+                    <Avatar className="h-8 w-8 shrink-0">
+                      <AvatarImage src={getAvatarUrl(member.avatar_url)} />
+                      <AvatarFallback className="bg-secondary-foreground dark:bg-primary text-white text-xs">
+                        {(member.full_name || "?").slice(0, 2).toUpperCase()}
+                      </AvatarFallback>
+                    </Avatar>
                     <span
-                      className={`text-xs font-bold ${member.is_online
-                        ? "text-emerald-500 text-[10px]"
-                        : "text-red-500 dark:text-red-400 text-[10px]"
-                        }`}
-                    >
-                      {member.is_online ? "Online" : "Offline"}
-                    </span>
+                      className={`absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full border-2 border-background ${member.is_online ? "bg-emerald-500" : "bg-gray-400"}`}
+                    />
                   </div>
-                  {!member.is_online && (
-                    <div className="mt-0.5">
-                      <p className="text-[10px] text-gray-500 dark:text-gray-400 leading-tight font-medium">
-                        {member.last_seen_at ? (
-                          <>
-                            Last seen{" "}
-                            {formatDistanceToNow(new Date(member.last_seen_at), {
-                              addSuffix: true,
-                            })}
-                          </>
-                        ) : (
-                          <>Last seen recently</>
-                        )}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
+                        {member.full_name || member.email || "Unknown"}
                       </p>
+                      {assignedMemberManagerId &&
+                        String(member.user_id || (member as any).id) ===
+                          String(assignedMemberManagerId) && (
+                          <Badge className="bg-secondary-foreground hover:bg-secondary-foreground dark:bg-primary text-white font-bold px-2 py-0.5 ml-8 text-[9px]">
+                            Moderator
+                          </Badge>
+                        )}
                     </div>
-                  )}
-                </div>
-                {!isDirectChat &&
-                  ((member.user_id === user?.id && member.role !== "owner") ||
-                    member.user_id !== user?.id) && (
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-7 w-7 shrink-0 text-gray-600 dark:text-gray-300 transition-colors group-hover:bg-primary group-hover:text-white hover:bg-primary hover:text-white"
-                        >
-                          <MoreVertical className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        {member.user_id !== user?.id && (
-                          <DropdownMenuItem
-                            onClick={async () => {
-                              try {
-                                console.log(
-                                  "Opening direct chat with user:",
-                                  member.user_id,
-                                );
-                                const direct = await workgroupsApi.openDirectChat(
-                                  member.user_id,
-                                );
-                                console.log("Direct chat response:", direct);
-                                if (direct?.id) {
-                                  navigate(
-                                    `/collaboration/workgroups?team=${direct.id}`,
+                    <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5">
+                      {!isDirectChat && member.role === "owner" && (
+                        <Crown className="h-3 w-3 text-yellow-500" />
+                      )}
+                      {!isDirectChat && (
+                        <span className="text-xs text-gray-500 dark:text-gray-400">
+                          {member.role}
+                        </span>
+                      )}
+                      <span
+                        className={`text-xs font-bold ${
+                          member.is_online
+                            ? "text-emerald-500 text-[10px]"
+                            : "text-red-500 dark:text-red-400 text-[10px]"
+                        }`}
+                      >
+                        {member.is_online ? "Online" : "Offline"}
+                      </span>
+                    </div>
+                    {!member.is_online && (
+                      <div className="mt-0.5">
+                        <p className="text-[10px] text-gray-500 dark:text-gray-400 leading-tight font-medium">
+                          {member.last_seen_at ? (
+                            <>
+                              Last seen{" "}
+                              {formatDistanceToNow(
+                                new Date(member.last_seen_at),
+                                {
+                                  addSuffix: true,
+                                },
+                              )}
+                            </>
+                          ) : (
+                            <>Last seen recently</>
+                          )}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                  {!isDirectChat &&
+                    ((member.user_id === user?.id && member.role !== "owner") ||
+                      member.user_id !== user?.id) && (
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7 shrink-0 text-gray-600 dark:text-gray-300 transition-colors group-hover:bg-primary group-hover:text-white hover:bg-primary hover:text-white"
+                          >
+                            <MoreVertical className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          {member.user_id !== user?.id && (
+                            <DropdownMenuItem
+                              onClick={async () => {
+                                try {
+                                  console.log(
+                                    "Opening direct chat with user:",
+                                    member.user_id,
                                   );
-                                } else {
+                                  const direct =
+                                    await workgroupsApi.openDirectChat(
+                                      member.user_id,
+                                    );
+                                  console.log("Direct chat response:", direct);
+                                  if (direct?.id) {
+                                    navigate(
+                                      `/collaboration/workgroups?team=${direct.id}`,
+                                    );
+                                  } else {
+                                    toast.error(
+                                      "No direct chat ID returned from server",
+                                    );
+                                  }
+                                } catch (error: any) {
+                                  console.error("Direct chat error:", error);
+                                  const serverMessage =
+                                    error?.response?.data?.error;
+                                  const fallbackMessage = error?.message;
                                   toast.error(
-                                    "No direct chat ID returned from server",
+                                    serverMessage ||
+                                      fallbackMessage ||
+                                      "Failed to open direct chat",
                                   );
                                 }
-                              } catch (error: any) {
-                                console.error("Direct chat error:", error);
-                                const serverMessage =
-                                  error?.response?.data?.error;
-                                const fallbackMessage = error?.message;
-                                toast.error(
-                                  serverMessage ||
-                                  fallbackMessage ||
-                                  "Failed to open direct chat",
-                                );
-                              }
-                            }}
-                          >
-                            <MessageCircle className="h-4 w-4 mr-2" /> Direct Chat
-                          </DropdownMenuItem>
-                        )}
-                        {member.user_id === user?.id ? (
-                          <DropdownMenuItem
-                            className="text-red-600 dark:text-red-400"
-                            onClick={() => handleLeaveTeam(member.id)}
-                          >
-                            <UserMinus className="h-4 w-4 mr-2" />
-                            Leave Team
-                          </DropdownMenuItem>
-                        ) : (
-                          canRemoveMembers && (
+                              }}
+                            >
+                              <MessageCircle className="h-4 w-4 mr-2" /> Direct
+                              Chat
+                            </DropdownMenuItem>
+                          )}
+                          {member.user_id === user?.id ? (
                             <DropdownMenuItem
                               className="text-red-600 dark:text-red-400"
-                              onClick={() =>
-                                removeMember.mutate({
-                                  memberId: member.id,
-                                  workgroupId,
-                                })
-                              }
+                              onClick={() => handleLeaveTeam(member.id)}
                             >
                               <UserMinus className="h-4 w-4 mr-2" />
-                              Remove Team Member
+                              Leave Team
                             </DropdownMenuItem>
-                          )
-                        )}
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  )}
-              </div>
-            ))}
+                          ) : (
+                            canRemoveMembers && (
+                              <DropdownMenuItem
+                                className="text-red-600 dark:text-red-400"
+                                onClick={() =>
+                                  removeMember.mutate({
+                                    memberId: member.id,
+                                    workgroupId,
+                                  })
+                                }
+                              >
+                                <UserMinus className="h-4 w-4 mr-2" />
+                                Remove Team Member
+                              </DropdownMenuItem>
+                            )
+                          )}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    )}
+                </div>
+              ))}
+            </div>
           </div>
         </div>
-      </div>
+      )}
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col overflow-hidden">
         {/* Top Bar */}
-        <div className="bg-card border-b border-border p-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <h1 className="text-lg font-semibold text-gray-900 dark:text-white">
-                {activeTab === "posts"
-                  ? "General"
-                  : activeTab === "files"
-                    ? "Files"
-                    : activeTab === "wiki"
-                      ? "Wiki"
-                      : "Settings"}
-              </h1>
-              <Badge variant="secondary" className="text-xs">
-                {activeTab === "posts"
-                  ? `${posts.length} messages`
-                  : activeTab === "files"
-                    ? "0 files"
-                    : ""}
-              </Badge>
+        <div className="bg-card border-b border-border p-3 px-4">
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex items-center gap-3 min-w-0">
+              {isSidebarCollapsed ? (
+                <>
+                  <Avatar className="h-10 w-10 shrink-0">
+                    <AvatarImage
+                      src={getAvatarUrl(
+                        isDirectChat
+                          ? (workgroup as any)?.avatar_url ||
+                              (workgroup as any)?.direct_peer_avatar_url ||
+                              members.find((m) => m.user_id !== user?.id)
+                                ?.avatar_url
+                          : (workgroup as any)?.avatar_url,
+                      )}
+                    />
+                    <AvatarFallback className="bg-secondary-foreground dark:bg-primary text-white font-semibold text-xs">
+                      {workgroupDisplayName.slice(0, 2).toUpperCase()}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="flex flex-col min-w-0">
+                    <h1 className="text-base font-semibold text-gray-900 dark:text-white truncate leading-tight">
+                      {workgroupDisplayName}
+                    </h1>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 font-medium leading-tight truncate">
+                      {isDirectChat
+                        ? (() => {
+                            const peer = members.find(
+                              (m) => m.user_id !== user?.id,
+                            );
+                            if (!peer) return "Offline";
+                            if (peer.is_online) return "Online";
+                            if (peer.last_seen_at) {
+                              return `Last seen ${formatDistanceToNow(new Date(peer.last_seen_at), { addSuffix: true })}`;
+                            }
+                            return "Offline";
+                          })()
+                        : `${members.length} members`}
+                    </p>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <h1 className="text-lg font-semibold text-gray-900 dark:text-white">
+                    {activeTab === "posts"
+                      ? "General"
+                      : activeTab === "files"
+                        ? "Files"
+                        : activeTab === "wiki"
+                          ? "Wiki"
+                          : "Settings"}
+                  </h1>
+                  <Badge variant="secondary" className="text-xs">
+                    {activeTab === "posts"
+                      ? `${posts.length} messages`
+                      : activeTab === "files"
+                        ? "0 files"
+                        : ""}
+                  </Badge>
+                </>
+              )}
             </div>
-            <div className="flex items-center gap-2">
+
+            <div className="flex items-center gap-2 shrink-0">
+              {isSidebarCollapsed && (
+                <>
+                  <Button
+                    size="sm"
+                    onClick={handleStartMeeting}
+                    className="bg-secondary-foreground hover:bg-secondary-foreground/80 text-white gap-1.5 h-9 px-3.5 rounded-lg text-xs font-medium shadow-sm"
+                  >
+                    <Video className="h-4 w-4" />
+                    Meeting
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={handleStartCall}
+                    className="gap-1.5 h-9 px-3.5 rounded-lg text-xs font-medium border-border hover:bg-secondary-foreground dark:hover:bg-primary hover:text-white"
+                  >
+                    <Phone className="h-4 w-4" />
+                    Call
+                  </Button>
+                </>
+              )}
+
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
                 <Input
                   placeholder="Search in this channel..."
-                  className="pl-10 w-64 bg-muted/40"
+                  className="pl-10 w-52 lg:w-64 bg-muted/40 h-9 text-xs"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                 />
@@ -2289,25 +2495,35 @@ export default function WorkgroupDetailView({ workgroupId, onBack }: Props) {
                   </Button>
                 )}
               </div>
+
               <Button
                 variant="ghost"
+                size="icon"
                 onClick={() => setShowStarredMessages(true)}
-                className={starredMessagesList.length > 0 ? "text-yellow-500" : "text-white/60 hover:text-white"}
+                className={cn(
+                  "h-9 w-9 hover:bg-secondary-foreground dark:hover:bg-primary",
+                  starredMessagesList.length > 0
+                    ? "text-yellow-500"
+                    : "text-foreground dark:text-white/60 dark:hover:text-white hover:text-white",
+                )}
+                title="Starred Messages"
               >
                 <Star
                   className={`h-4 w-4 ${starredMessagesList.length > 0 ? "fill-current" : ""}`}
                 />
               </Button>
+
               <Button
                 variant="ghost"
+                size="icon"
                 onClick={() => setShowNotifications(true)}
-                className="relative group mr-6"
+                className="relative h-9 w-9 text-foreground dark:text-white/60 dark:hover:text-white hover:text-white hover:bg-secondary-foreground dark:hover:bg-primary"
+                title="Notifications"
               >
                 <Bell className="h-4 w-4" />
-
                 {unreadCount > 0 && (
-                  <div className="absolute top-1 left-6 flex items-start">
-                    <span className="text-[10px] font-bold text-primary min-w-[18px] h-[18px] group-hover:text-white leading-none whitespace-nowrap tracking-tight">
+                  <div className="absolute top-0 right-0 flex items-center justify-center">
+                    <span className="text-[9px] font-bold text-white bg-red-600 rounded-full h-4 min-w-[16px] px-1 flex items-center justify-center leading-none">
                       {formatNotificationCount(unreadCount)}
                     </span>
                   </div>
@@ -2348,7 +2564,13 @@ export default function WorkgroupDetailView({ workgroupId, onBack }: Props) {
                       <Button
                         size="sm"
                         className="h-7 bg-emerald-500 hover:bg-emerald-600 text-white text-xs px-3 gap-1"
-                        onClick={() => joinRoom(workgroupId, activeGroupCall.callType as "audio" | "video", activeGroupCall.callId)}
+                        onClick={() =>
+                          joinRoom(
+                            workgroupId,
+                            activeGroupCall.callType as "audio" | "video",
+                            activeGroupCall.callId,
+                          )
+                        }
                       >
                         <Phone className="w-3 h-3" />
                         Join
@@ -2496,7 +2718,10 @@ export default function WorkgroupDetailView({ workgroupId, onBack }: Props) {
                                   isGroupAdmin={canRemoveMembers}
                                   isMember={isMember}
                                   canSendMessages={canSendMessages}
-                                  isBroadcast={workgroup?.type === "private" && Boolean(workgroup?.settings?.is_broadcast)}
+                                  isBroadcast={
+                                    workgroup?.type === "private" &&
+                                    Boolean(workgroup?.settings?.is_broadcast)
+                                  }
                                   isDirectChat={isDirectChat}
                                   currentUserId={user?.id}
                                   memberDirectory={members}
@@ -2533,7 +2758,9 @@ export default function WorkgroupDetailView({ workgroupId, onBack }: Props) {
                                     startForwardSelection
                                   }
                                   isDeleteSelectMode={isDeleteSelectMode}
-                                  isDeletedPlaceholderMode={isDeletedPlaceholderMode}
+                                  isDeletedPlaceholderMode={
+                                    isDeletedPlaceholderMode
+                                  }
                                   isSelectedForDelete={selectedDeletePostIds.includes(
                                     post.id,
                                   )}
@@ -2542,16 +2769,27 @@ export default function WorkgroupDetailView({ workgroupId, onBack }: Props) {
                                   }
                                   onStartDeleteSelection={startDeleteSelection}
                                   onDelete={(postId) => {
-                                    const targetPost = flatPosts.find(p => p.id === postId);
+                                    const targetPost = flatPosts.find(
+                                      (p) => p.id === postId,
+                                    );
                                     if (targetPost?.is_deleted) {
                                       // Already deleted for everyone — remove placeholder for ALL members
-                                      deletePost.mutate({ postId, workgroupId });
+                                      deletePost.mutate({
+                                        postId,
+                                        workgroupId,
+                                      });
                                     } else {
-                                      deletePost.mutate({ postId, workgroupId });
+                                      deletePost.mutate({
+                                        postId,
+                                        workgroupId,
+                                      });
                                     }
                                   }}
                                   onDeleteForMe={(postId) =>
-                                    deletePostForMe.mutate({ postId, workgroupId })
+                                    deletePostForMe.mutate({
+                                      postId,
+                                      workgroupId,
+                                    })
                                   }
                                   onTogglePin={(postId, isPinned) =>
                                     togglePin.mutate({
@@ -2564,8 +2802,15 @@ export default function WorkgroupDetailView({ workgroupId, onBack }: Props) {
                                   onToggleStar={handleToggleStarMessage}
                                   searchQuery={searchQuery}
                                   onReaction={async (postId, emoji) => {
-                                    if (isReactionsLocked && !isOwner && !isTeamCreator && !isAssignedMemberManager) {
-                                      toast.error("Reactions are locked for this group");
+                                    if (
+                                      isReactionsLocked &&
+                                      !isOwner &&
+                                      !isTeamCreator &&
+                                      !isAssignedMemberManager
+                                    ) {
+                                      toast.error(
+                                        "Reactions are locked for this group",
+                                      );
                                       return;
                                     }
                                     try {
@@ -2606,7 +2851,9 @@ export default function WorkgroupDetailView({ workgroupId, onBack }: Props) {
                       <div className="flex justify-end p-2 opacity-70 animate-pulse">
                         <div className="bg-primary/20 rounded-2xl rounded-tr-sm px-4 py-3 flex items-center gap-3 border border-primary/30">
                           <div className="h-5 w-5 rounded-full border-2 border-primary border-t-transparent animate-spin" />
-                          <span className="text-[11px] font-semibold text-primary">Uploading and sending file...</span>
+                          <span className="text-[11px] font-semibold text-primary">
+                            Uploading and sending file...
+                          </span>
                         </div>
                       </div>
                     )}
@@ -2641,14 +2888,18 @@ export default function WorkgroupDetailView({ workgroupId, onBack }: Props) {
                           <>
                             {/* Typing Indicator */}
                             {(() => {
-                              const activeTypingUserIds = Object.entries(typingUsers)
+                              const activeTypingUserIds = Object.entries(
+                                typingUsers,
+                              )
                                 .filter(([_, isTyping]) => isTyping)
                                 .map(([userId]) => userId);
 
                               if (activeTypingUserIds.length === 0) return null;
 
                               const typingMembers = activeTypingUserIds
-                                .map((uid) => members.find((m) => m.user_id === uid))
+                                .map((uid) =>
+                                  members.find((m) => m.user_id === uid),
+                                )
                                 .filter(Boolean) as any[];
 
                               if (typingMembers.length === 0) return null;
@@ -2671,19 +2922,47 @@ export default function WorkgroupDetailView({ workgroupId, onBack }: Props) {
                                   {!isDirectChat && (
                                     <div className="flex -space-x-1 shrink-0">
                                       {typingMembers.map((member) => (
-                                        <Avatar key={member.user_id} className="h-4 w-4 border border-background">
-                                          <AvatarImage src={getAvatarUrl(member.avatar_url)} />
+                                        <Avatar
+                                          key={member.user_id}
+                                          className="h-4 w-4 border border-background"
+                                        >
+                                          <AvatarImage
+                                            src={getAvatarUrl(
+                                              member.avatar_url,
+                                            )}
+                                          />
                                           <AvatarFallback className="text-[6px] bg-muted font-bold text-muted-foreground uppercase flex items-center justify-center">
-                                            {(member.full_name || "U").slice(0, 1)}
+                                            {(member.full_name || "U").slice(
+                                              0,
+                                              1,
+                                            )}
                                           </AvatarFallback>
                                         </Avatar>
                                       ))}
                                     </div>
                                   )}
                                   <div className="flex items-center gap-1 shrink-0">
-                                    <span className="w-1.5 h-1.5 bg-primary/80 rounded-full animate-bounce" style={{ animationDelay: "0ms", animationDuration: "0.8s" }} />
-                                    <span className="w-1.5 h-1.5 bg-primary/80 rounded-full animate-bounce" style={{ animationDelay: "150ms", animationDuration: "0.8s" }} />
-                                    <span className="w-1.5 h-1.5 bg-primary/80 rounded-full animate-bounce" style={{ animationDelay: "300ms", animationDuration: "0.8s" }} />
+                                    <span
+                                      className="w-1.5 h-1.5 bg-primary/80 rounded-full animate-bounce"
+                                      style={{
+                                        animationDelay: "0ms",
+                                        animationDuration: "0.8s",
+                                      }}
+                                    />
+                                    <span
+                                      className="w-1.5 h-1.5 bg-primary/80 rounded-full animate-bounce"
+                                      style={{
+                                        animationDelay: "150ms",
+                                        animationDuration: "0.8s",
+                                      }}
+                                    />
+                                    <span
+                                      className="w-1.5 h-1.5 bg-primary/80 rounded-full animate-bounce"
+                                      style={{
+                                        animationDelay: "300ms",
+                                        animationDuration: "0.8s",
+                                      }}
+                                    />
                                   </div>
                                   <span className="font-medium text-[11px] select-none tracking-tight">
                                     {typingText}
@@ -2709,14 +2988,20 @@ export default function WorkgroupDetailView({ workgroupId, onBack }: Props) {
                                       Editing Message
                                     </p>
                                     <p className="text-xs text-gray-500 dark:text-gray-300 truncate mt-0.5">
-                                      {flatPosts.find((p) => p.id === editingPostId)?.content}
+                                      {
+                                        flatPosts.find(
+                                          (p) => p.id === editingPostId,
+                                        )?.content
+                                      }
                                     </p>
                                   </div>
                                   <button
                                     onClick={() => {
                                       setEditingPostId(null);
                                       setNewPost("");
-                                      localStorage.removeItem(`chat_draft_${workgroupId}`);
+                                      localStorage.removeItem(
+                                        `chat_draft_${workgroupId}`,
+                                      );
                                     }}
                                     className="h-6 w-6 flex items-center justify-center rounded-full hover:bg-muted transition-colors shrink-0"
                                   >
@@ -2740,9 +3025,15 @@ export default function WorkgroupDetailView({ workgroupId, onBack }: Props) {
                                       {(() => {
                                         const msg = findMessageById(replyTo);
                                         if (!msg) return "";
-                                        const isImage = msg.attachments?.some(a => a.file_type?.startsWith('image/'));
+                                        const isImage = msg.attachments?.some(
+                                          (a) =>
+                                            a.file_type?.startsWith("image/"),
+                                        );
                                         if (isImage) return "Photo";
-                                        if (msg.attachments && msg.attachments.length > 0) {
+                                        if (
+                                          msg.attachments &&
+                                          msg.attachments.length > 0
+                                        ) {
                                           return `📎 ${msg.attachments[0].original_name || "Attachment"}`;
                                         }
                                         return msg.content;
@@ -2751,12 +3042,18 @@ export default function WorkgroupDetailView({ workgroupId, onBack }: Props) {
                                   </div>
                                   {(() => {
                                     const msg = findMessageById(replyTo);
-                                    const imageAttachment = msg?.attachments?.find(a => a.file_type?.startsWith('image/'));
+                                    const imageAttachment =
+                                      msg?.attachments?.find((a) =>
+                                        a.file_type?.startsWith("image/"),
+                                      );
                                     if (!imageAttachment) return null;
                                     return (
                                       <div className="h-10 w-10 shrink-0 rounded overflow-hidden">
                                         <img
-                                          src={getAuthedFileUrl(imageAttachment.id, "view")}
+                                          src={getAuthedFileUrl(
+                                            imageAttachment.id,
+                                            "view",
+                                          )}
                                           className="h-full w-full object-cover"
                                           alt="thumbnail"
                                         />
@@ -2779,7 +3076,8 @@ export default function WorkgroupDetailView({ workgroupId, onBack }: Props) {
                             {pendingFiles.length > 0 && (
                               <div className="flex flex-wrap gap-2 p-2 bg-muted/30 rounded-xl border border-dashed border-border animate-in slide-in-from-bottom-2 duration-200">
                                 {pendingFiles.map((file, idx) => {
-                                  const isImage = file.type.startsWith("image/");
+                                  const isImage =
+                                    file.type.startsWith("image/");
                                   return (
                                     <div
                                       key={idx}
@@ -2841,7 +3139,7 @@ export default function WorkgroupDetailView({ workgroupId, onBack }: Props) {
                                     handleComposerChange(
                                       e.target.value,
                                       e.target.selectionStart ??
-                                      e.target.value.length,
+                                        e.target.value.length,
                                     )
                                   }
                                   onPaste={handlePaste}
@@ -2854,14 +3152,17 @@ export default function WorkgroupDetailView({ workgroupId, onBack }: Props) {
                                           ? "Type a reply..."
                                           : "Type a message..."
                                   }
-                                  disabled={!canSendMessages || pendingFiles.length > 1}
+                                  disabled={
+                                    !canSendMessages || pendingFiles.length > 1
+                                  }
                                   rows={1}
                                   className="w-full pl-4 pr-32 bg-muted border-none rounded-2xl min-h-[44px] max-h-[160px] focus-visible:ring-1 focus-visible:ring-primary shadow-inner resize-none overflow-y-auto py-2.5 leading-6 scrollbar-none"
-                                  style={{ height: 'auto' }}
+                                  style={{ height: "auto" }}
                                   onInput={(e) => {
                                     const el = e.currentTarget;
-                                    el.style.height = 'auto';
-                                    el.style.height = Math.min(el.scrollHeight, 160) + 'px';
+                                    el.style.height = "auto";
+                                    el.style.height =
+                                      Math.min(el.scrollHeight, 160) + "px";
                                   }}
                                   onKeyDown={(e) => {
                                     if (e.key === "Enter" && !e.shiftKey) {
@@ -2948,13 +3249,15 @@ export default function WorkgroupDetailView({ workgroupId, onBack }: Props) {
                                     onClick={handlePost}
                                     disabled={
                                       !canSendMessages ||
-                                      (!newPost.trim() && pendingFiles.length === 0) ||
+                                      (!newPost.trim() &&
+                                        pendingFiles.length === 0) ||
                                       createPost.isPending
                                     }
-                                    className={`h-8 w-8 flex items-center justify-center rounded-full transition-all ${(newPost.trim() || pendingFiles.length > 0)
-                                      ? "bg-secondary-foreground text-secondary dark:bg-primary dark:text-primary-foreground text-white shadow-md hover:scale-105 active:scale-95"
-                                      : "bg-muted text-muted-foreground pointer-events-none"
-                                      }`}
+                                    className={`h-8 w-8 flex items-center justify-center rounded-full transition-all ${
+                                      newPost.trim() || pendingFiles.length > 0
+                                        ? "bg-secondary-foreground text-secondary dark:bg-primary dark:text-primary-foreground text-white shadow-md hover:scale-105 active:scale-95"
+                                        : "bg-muted text-muted-foreground pointer-events-none"
+                                    }`}
                                   >
                                     <Send className="h-4 w-4" />
                                   </button>
@@ -2983,10 +3286,7 @@ export default function WorkgroupDetailView({ workgroupId, onBack }: Props) {
                           {selectedForwardPostIds.length} message(s) selected
                         </p>
                         <div className="flex items-center gap-2">
-                          <Button
-                            size="sm"
-                            onClick={clearForwardSelection}
-                          >
+                          <Button size="sm" onClick={clearForwardSelection}>
                             Cancel
                           </Button>
                           <Button
@@ -3013,7 +3313,7 @@ export default function WorkgroupDetailView({ workgroupId, onBack }: Props) {
                                   id="selectAllDelete"
                                   checked={
                                     selectedDeletePostIds.length ===
-                                    posts.length && posts.length > 0
+                                      posts.length && posts.length > 0
                                   }
                                   onCheckedChange={(val) =>
                                     handleSelectAllForDelete(Boolean(val))
@@ -3032,10 +3332,7 @@ export default function WorkgroupDetailView({ workgroupId, onBack }: Props) {
                             </span>
                           </div>
                           <div className="flex items-center gap-2">
-                            <Button
-                              size="sm"
-                              onClick={clearDeleteSelection}
-                            >
+                            <Button size="sm" onClick={clearDeleteSelection}>
                               Cancel
                             </Button>
                             <Button
@@ -3062,7 +3359,10 @@ export default function WorkgroupDetailView({ workgroupId, onBack }: Props) {
                                   id="filterText"
                                   checked={deleteFilters.text}
                                   onCheckedChange={(v) =>
-                                    setDeleteFilters((f) => ({ ...f, text: !!v }))
+                                    setDeleteFilters((f) => ({
+                                      ...f,
+                                      text: !!v,
+                                    }))
                                   }
                                 />
                                 <label
@@ -3131,7 +3431,10 @@ export default function WorkgroupDetailView({ workgroupId, onBack }: Props) {
                                   id="filterCall"
                                   checked={deleteFilters.call}
                                   onCheckedChange={(v) =>
-                                    setDeleteFilters((f) => ({ ...f, call: !!v }))
+                                    setDeleteFilters((f) => ({
+                                      ...f,
+                                      call: !!v,
+                                    }))
                                   }
                                 />
                                 <label
@@ -3457,7 +3760,12 @@ export default function WorkgroupDetailView({ workgroupId, onBack }: Props) {
                       />
                       <Avatar className="h-8 w-8 shrink-0">
                         <AvatarImage src={getAvatarUrl(target.avatar_url)} />
-                        <AvatarFallback className={cn(target.avatar_color, "text-white text-[10px]")}>
+                        <AvatarFallback
+                          className={cn(
+                            target.avatar_color,
+                            "text-white text-[10px]",
+                          )}
+                        >
                           {target.name.slice(0, 2).toUpperCase()}
                         </AvatarFallback>
                       </Avatar>
@@ -3518,7 +3826,11 @@ export default function WorkgroupDetailView({ workgroupId, onBack }: Props) {
               variant="destructive"
               onClick={() => handleDeleteSelectedMessages("everyone")}
               disabled={isDeletingMessages}
-              className={(!canDeleteEveryoneForSelection || isDeletedPlaceholderMode) ? "hidden" : ""}
+              className={
+                !canDeleteEveryoneForSelection || isDeletedPlaceholderMode
+                  ? "hidden"
+                  : ""
+              }
             >
               Delete for everyone
             </Button>
@@ -3539,15 +3851,21 @@ export default function WorkgroupDetailView({ workgroupId, onBack }: Props) {
             </DialogDescription>
           </DialogHeader>
           <div className="py-6">
-            <h4 className="text-sm font-semibold text-gray-900 dark:text-white mb-2">Description</h4>
+            <h4 className="text-sm font-semibold text-gray-900 dark:text-white mb-2">
+              Description
+            </h4>
             <div className="p-4 bg-muted/30 rounded-lg border border-border">
               <p className="text-sm text-gray-600 dark:text-gray-400 whitespace-pre-wrap leading-relaxed">
-                {workgroup.description || "No description available for this group."}
+                {workgroup.description ||
+                  "No description available for this group."}
               </p>
             </div>
           </div>
           <DialogFooter>
-            <Button onClick={() => setShowAboutModal(false)} className="hover:text-white bg-secondary-foreground">
+            <Button
+              onClick={() => setShowAboutModal(false)}
+              className="hover:text-white bg-secondary-foreground"
+            >
               Close
             </Button>
           </DialogFooter>
@@ -3602,27 +3920,56 @@ export default function WorkgroupDetailView({ workgroupId, onBack }: Props) {
                   <div className="rounded-md border border-input bg-background overflow-hidden">
                     {/* Search input */}
                     <div className="flex items-center gap-2 px-3 py-2 border-b border-border">
-                      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-muted-foreground shrink-0"><circle cx="11" cy="11" r="8" /><path d="m21 21-4.3-4.3" /></svg>
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        width="14"
+                        height="14"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        className="text-muted-foreground shrink-0"
+                      >
+                        <circle cx="11" cy="11" r="8" />
+                        <path d="m21 21-4.3-4.3" />
+                      </svg>
                       <input
                         className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
                         placeholder="Search by name or email..."
                         value={addMemberSearch}
-                        onChange={e => setAddMemberSearch(e.target.value)}
+                        onChange={(e) => setAddMemberSearch(e.target.value)}
                       />
                       {addMemberSearch && (
-                        <button type="button" onClick={() => setAddMemberSearch("")} className="text-muted-foreground hover:text-foreground text-xs">✕</button>
+                        <button
+                          type="button"
+                          onClick={() => setAddMemberSearch("")}
+                          className="text-muted-foreground hover:text-foreground text-xs"
+                        >
+                          ✕
+                        </button>
                       )}
                     </div>
 
                     {/* Scrollable user list */}
                     <div className="space-y-0 max-h-52 overflow-y-auto">
                       {availableUsers
-                        .filter(u => {
+                        .filter((u) => {
                           const q = addMemberSearch.toLowerCase();
-                          return !q || u.full_name?.toLowerCase().includes(q) || u.email?.toLowerCase().includes(q);
+                          return (
+                            !q ||
+                            u.full_name?.toLowerCase().includes(q) ||
+                            u.email?.toLowerCase().includes(q)
+                          );
                         })
                         .map((u) => {
-                          const initials = (u.full_name || u.email || "?").split(" ").map((w: string) => w[0]).join("").toUpperCase().slice(0, 2);
+                          const initials = (u.full_name || u.email || "?")
+                            .split(" ")
+                            .map((w: string) => w[0])
+                            .join("")
+                            .toUpperCase()
+                            .slice(0, 2);
                           const isSelected = selectedUserIds.includes(u.id);
                           return (
                             <button
@@ -3630,9 +3977,11 @@ export default function WorkgroupDetailView({ workgroupId, onBack }: Props) {
                               type="button"
                               onClick={() => {
                                 if (isSelected) {
-                                  setSelectedUserIds(prev => prev.filter(id => id !== u.id));
+                                  setSelectedUserIds((prev) =>
+                                    prev.filter((id) => id !== u.id),
+                                  );
                                 } else {
-                                  setSelectedUserIds(prev => [...prev, u.id]);
+                                  setSelectedUserIds((prev) => [...prev, u.id]);
                                 }
                               }}
                               className={`w-full flex items-center gap-3 px-3 py-2 text-left hover:bg-muted/50 transition-colors ${isSelected ? "bg-primary/10" : ""}`}
@@ -3644,26 +3993,38 @@ export default function WorkgroupDetailView({ workgroupId, onBack }: Props) {
                                 className="h-4 w-4 rounded border-gray-300 text-primary accent-primary shrink-0"
                               />
                               <Avatar className="h-8 w-8 shrink-0">
-                                <AvatarImage src={getAvatarUrl((u as any).avatar_url)} />
+                                <AvatarImage
+                                  src={getAvatarUrl((u as any).avatar_url)}
+                                />
                                 <AvatarFallback className="bg-secondary-foreground dark:bg-primary text-white text-xs font-bold">
                                   {initials}
                                 </AvatarFallback>
                               </Avatar>
                               <div className="flex-1 min-w-0">
-                                <p className={`text-sm font-medium truncate ${isSelected ? "text-primary" : "text-foreground"}`}>
+                                <p
+                                  className={`text-sm font-medium truncate ${isSelected ? "text-primary" : "text-foreground"}`}
+                                >
                                   {u.full_name || "Unknown"}
                                 </p>
-                                <p className="text-xs text-muted-foreground truncate">{u.email}</p>
+                                <p className="text-xs text-muted-foreground truncate">
+                                  {u.email}
+                                </p>
                               </div>
                             </button>
                           );
                         })}
-                      {availableUsers.filter(u => {
+                      {availableUsers.filter((u) => {
                         const q = addMemberSearch.toLowerCase();
-                        return !q || u.full_name?.toLowerCase().includes(q) || u.email?.toLowerCase().includes(q);
+                        return (
+                          !q ||
+                          u.full_name?.toLowerCase().includes(q) ||
+                          u.email?.toLowerCase().includes(q)
+                        );
                       }).length === 0 && (
-                          <p className="px-3 py-3 text-sm text-muted-foreground text-center">No users found.</p>
-                        )}
+                        <p className="px-3 py-3 text-sm text-muted-foreground text-center">
+                          No users found.
+                        </p>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -3671,16 +4032,22 @@ export default function WorkgroupDetailView({ workgroupId, onBack }: Props) {
                 {selectedUserIds.length > 0 && (
                   <div className="p-3 bg-primary/10 rounded-lg border border-primary/20">
                     <p className="text-xs font-medium text-primary mb-2">
-                      {selectedUserIds.length} member{selectedUserIds.length > 1 ? "s" : ""} selected
+                      {selectedUserIds.length} member
+                      {selectedUserIds.length > 1 ? "s" : ""} selected
                     </p>
                     <div className="flex flex-wrap gap-2">
-                      {selectedUserIds.map(uid => {
-                        const u = availableUsers.find(x => x.id === uid);
+                      {selectedUserIds.map((uid) => {
+                        const u = availableUsers.find((x) => x.id === uid);
                         if (!u) return null;
                         return (
-                          <div key={uid} className="flex items-center gap-1.5 bg-white dark:bg-zinc-800 rounded-full px-2 py-1 border border-blue-200 dark:border-blue-700">
+                          <div
+                            key={uid}
+                            className="flex items-center gap-1.5 bg-white dark:bg-zinc-800 rounded-full px-2 py-1 border border-blue-200 dark:border-blue-700"
+                          >
                             <Avatar className="h-5 w-5">
-                              <AvatarImage src={getAvatarUrl((u as any).avatar_url)} />
+                              <AvatarImage
+                                src={getAvatarUrl((u as any).avatar_url)}
+                              />
                               <AvatarFallback className="bg-secondary-foreground dark:bg-primary text-white text-[8px]">
                                 {(u.full_name || "?").slice(0, 2).toUpperCase()}
                               </AvatarFallback>
@@ -3690,7 +4057,11 @@ export default function WorkgroupDetailView({ workgroupId, onBack }: Props) {
                             </span>
                             <button
                               type="button"
-                              onClick={() => setSelectedUserIds(prev => prev.filter(id => id !== uid))}
+                              onClick={() =>
+                                setSelectedUserIds((prev) =>
+                                  prev.filter((id) => id !== uid),
+                                )
+                              }
                               className="text-muted-foreground hover:text-red-500 transition-colors"
                             >
                               <X className="h-3 w-3" />
@@ -3727,7 +4098,11 @@ export default function WorkgroupDetailView({ workgroupId, onBack }: Props) {
                 ) : (
                   <>
                     <UserPlus className="h-4 w-4" />
-                    Add {selectedUserIds.length > 0 ? `${selectedUserIds.length} ` : ""}to Team
+                    Add{" "}
+                    {selectedUserIds.length > 0
+                      ? `${selectedUserIds.length} `
+                      : ""}
+                    to Team
                   </>
                 )}
               </Button>
@@ -3858,7 +4233,7 @@ export default function WorkgroupDetailView({ workgroupId, onBack }: Props) {
                       </p>
                       {assignedMemberManagerId &&
                         String(member.user_id || (member as any).id) ===
-                        String(assignedMemberManagerId) && (
+                          String(assignedMemberManagerId) && (
                           <Badge className="bg-indigo-600 text-white font-bold px-2 py-0.5 ml-1 text-[10px]">
                             Moderator
                           </Badge>
@@ -3871,15 +4246,16 @@ export default function WorkgroupDetailView({ workgroupId, onBack }: Props) {
                       Joined{" "}
                       {member.joined_at
                         ? formatDistanceToNow(new Date(member.joined_at), {
-                          addSuffix: true,
-                        })
+                            addSuffix: true,
+                          })
                         : "recently"}
                     </p>
                     <p
-                      className={`text-xs font-medium ${member.is_online
-                        ? "text-primary"
-                        : "text-red-500 dark:text-red-400"
-                        }`}
+                      className={`text-xs font-medium ${
+                        member.is_online
+                          ? "text-primary"
+                          : "text-red-500 dark:text-red-400"
+                      }`}
                     >
                       {member.is_online ? "Online" : "Offline"}
                     </p>
@@ -3914,54 +4290,54 @@ export default function WorkgroupDetailView({ workgroupId, onBack }: Props) {
                     {((member.user_id === user?.id &&
                       member.role !== "owner") ||
                       member.user_id !== user?.id) && (
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8 text-gray-600 dark:text-gray-300 transition-colors group-hover:bg-primary group-hover:text-white hover:bg-primary hover:text-white"
-                          onClick={async () => {
-                            if (member.user_id === user?.id) {
-                              handleLeaveTeam(member.id);
-                            } else {
-                              try {
-                                console.log(
-                                  "Opening direct chat with user:",
-                                  member.user_id,
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-gray-600 dark:text-gray-300 transition-colors group-hover:bg-primary group-hover:text-white hover:bg-primary hover:text-white"
+                        onClick={async () => {
+                          if (member.user_id === user?.id) {
+                            handleLeaveTeam(member.id);
+                          } else {
+                            try {
+                              console.log(
+                                "Opening direct chat with user:",
+                                member.user_id,
+                              );
+                              const direct = await workgroupsApi.openDirectChat(
+                                member.user_id,
+                              );
+                              console.log("Direct chat response:", direct);
+                              if (direct?.id) {
+                                setShowMembersList(false);
+                                navigate(
+                                  `/collaboration/workgroups?team=${direct.id}`,
                                 );
-                                const direct = await workgroupsApi.openDirectChat(
-                                  member.user_id,
-                                );
-                                console.log("Direct chat response:", direct);
-                                if (direct?.id) {
-                                  setShowMembersList(false);
-                                  navigate(
-                                    `/collaboration/workgroups?team=${direct.id}`,
-                                  );
-                                } else {
-                                  toast.error(
-                                    "No direct chat ID returned from server",
-                                  );
-                                }
-                              } catch (error: any) {
-                                console.error("Direct chat error:", error);
-                                const serverMessage =
-                                  error?.response?.data?.error;
-                                const fallbackMessage = error?.message;
+                              } else {
                                 toast.error(
-                                  serverMessage ||
-                                  fallbackMessage ||
-                                  "Failed to open direct chat",
+                                  "No direct chat ID returned from server",
                                 );
                               }
+                            } catch (error: any) {
+                              console.error("Direct chat error:", error);
+                              const serverMessage =
+                                error?.response?.data?.error;
+                              const fallbackMessage = error?.message;
+                              toast.error(
+                                serverMessage ||
+                                  fallbackMessage ||
+                                  "Failed to open direct chat",
+                              );
                             }
-                          }}
-                        >
-                          {member.user_id === user?.id ? (
-                            <UserMinus className="h-4 w-4" />
-                          ) : (
-                            <MessageCircle className="h-4 w-4" />
-                          )}
-                        </Button>
-                      )}
+                          }
+                        }}
+                      >
+                        {member.user_id === user?.id ? (
+                          <UserMinus className="h-4 w-4" />
+                        ) : (
+                          <MessageCircle className="h-4 w-4" />
+                        )}
+                      </Button>
+                    )}
                   </div>
                 </div>
               ))
@@ -3980,9 +4356,11 @@ export default function WorkgroupDetailView({ workgroupId, onBack }: Props) {
                 Add Member
               </Button>
             )}
-            <Button variant="outline" onClick={() => setShowMembersList(false)}
+            <Button
+              variant="outline"
+              onClick={() => setShowMembersList(false)}
               className="hover:bg-secondary-foreground dark:hover:bg-primary hover:text-white"
-              >
+            >
               Close
             </Button>
           </DialogFooter>
@@ -4008,66 +4386,82 @@ export default function WorkgroupDetailView({ workgroupId, onBack }: Props) {
                 <p className="text-gray-500">No new notifications</p>
               </div>
             ) : (
-              notifications.filter((n: any) => !n.is_read).map((notification: any) => (
-                <div
-                  key={notification.id}
-                  className={`p-3 rounded-lg border cursor-pointer transition-colors ${notification.is_read
-                    ? "border-border bg-card"
-                    : "border-primary dark:border-primary bg-primary-50 dark:bg-blue-900/20"
+              notifications
+                .filter((n: any) => !n.is_read)
+                .map((notification: any) => (
+                  <div
+                    key={notification.id}
+                    className={`p-3 rounded-lg border cursor-pointer transition-colors ${
+                      notification.is_read
+                        ? "border-border bg-card"
+                        : "border-primary dark:border-primary bg-primary-50 dark:bg-blue-900/20"
                     }`}
-                  onClick={() => markNotificationAsRead(notification.id)}
-                >
-                  <div className="flex items-start gap-3">
-                    <div
-                      className={`w-2 h-2 rounded-full mt-2 ${notification.is_read ? "bg-gray-300" : "bg-primary"}`}
-                    ></div>
-                    <div className="flex-1">
-                      <p
-                        className={`text-sm ${notification.is_read ? "text-gray-600 dark:text-gray-400" : "text-gray-900 dark:text-white font-medium"}`}
-                      >
-                        {(() => {
-                          const msg = notification.message || '';
-                          try {
-                            const parsed = JSON.parse(msg);
-                            if (parsed && parsed.type && parsed.status) {
-                              const isVideo = parsed.type === 'video';
-                              const isMissed = parsed.status === 'missed' || parsed.status === 'rejected';
-                              if (isMissed) return isVideo ? '📵 Missed video call' : '📵 Missed voice call';
-                              if (parsed.status === 'completed') {
-                                const dur = parsed.duration || 0;
-                                const m = Math.floor(dur / 60);
-                                const s = dur % 60;
-                                const durStr = dur > 0 ? ` (${m}:${s.toString().padStart(2, '0')})` : '';
-                                return isVideo ? `📹 Video call${durStr}` : `📞 Voice call${durStr}`;
+                    onClick={() => markNotificationAsRead(notification.id)}
+                  >
+                    <div className="flex items-start gap-3">
+                      <div
+                        className={`w-2 h-2 rounded-full mt-2 ${notification.is_read ? "bg-gray-300" : "bg-primary"}`}
+                      ></div>
+                      <div className="flex-1">
+                        <p
+                          className={`text-sm ${notification.is_read ? "text-gray-600 dark:text-gray-400" : "text-gray-900 dark:text-white font-medium"}`}
+                        >
+                          {(() => {
+                            const msg = notification.message || "";
+                            try {
+                              const parsed = JSON.parse(msg);
+                              if (parsed && parsed.type && parsed.status) {
+                                const isVideo = parsed.type === "video";
+                                const isMissed =
+                                  parsed.status === "missed" ||
+                                  parsed.status === "rejected";
+                                if (isMissed)
+                                  return isVideo
+                                    ? "📵 Missed video call"
+                                    : "📵 Missed voice call";
+                                if (parsed.status === "completed") {
+                                  const dur = parsed.duration || 0;
+                                  const m = Math.floor(dur / 60);
+                                  const s = dur % 60;
+                                  const durStr =
+                                    dur > 0
+                                      ? ` (${m}:${s.toString().padStart(2, "0")})`
+                                      : "";
+                                  return isVideo
+                                    ? `📹 Video call${durStr}`
+                                    : `📞 Voice call${durStr}`;
+                                }
                               }
-                            }
-                          } catch (_) { }
-                          return msg;
-                        })()}
-                      </p>
-                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                        {new Date(notification.created_at).toLocaleString()}
-                      </p>
+                            } catch (_) {}
+                            return msg;
+                          })()}
+                        </p>
+                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                          {new Date(notification.created_at).toLocaleString()}
+                        </p>
+                      </div>
+                      <Badge
+                        variant={
+                          notification.notification_type === "member_added"
+                            ? "default"
+                            : notification.notification_type === "message"
+                              ? "secondary"
+                              : "outline"
+                        }
+                        className="text-xs"
+                      >
+                        {notification.notification_type.replace("_", " ")}
+                      </Badge>
                     </div>
-                    <Badge
-                      variant={
-                        notification.notification_type === "member_added"
-                          ? "default"
-                          : notification.notification_type === "message"
-                            ? "secondary"
-                            : "outline"
-                      }
-                      className="text-xs"
-                    >
-                      {notification.notification_type.replace("_", " ")}
-                    </Badge>
                   </div>
-                </div>
-              ))
+                ))
             )}
           </div>
           <DialogFooter>
-            <Button className="bg-secondary-foreground hover:bg-secondary-foreground/80 text-white" onClick={markAllNotificationsAsRead}>
+            <Button
+              className="bg-secondary-foreground hover:bg-secondary-foreground/80 text-white"
+              onClick={markAllNotificationsAsRead}
+            >
               Mark All Read
             </Button>
             <Button
@@ -4132,22 +4526,32 @@ export default function WorkgroupDetailView({ workgroupId, onBack }: Props) {
                   </div>
                   <div className="text-sm text-gray-700 dark:text-gray-300 line-clamp-3">
                     {(() => {
-                      const content = msg.content || '';
+                      const content = msg.content || "";
                       try {
                         const parsed = JSON.parse(content);
                         if (parsed && parsed.type && parsed.status) {
-                          const isVideo = parsed.type === 'video';
-                          const isMissed = parsed.status === 'missed' || parsed.status === 'rejected';
-                          if (isMissed) return isVideo ? '📵 Missed video call' : '📵 Missed voice call';
-                          if (parsed.status === 'completed') {
+                          const isVideo = parsed.type === "video";
+                          const isMissed =
+                            parsed.status === "missed" ||
+                            parsed.status === "rejected";
+                          if (isMissed)
+                            return isVideo
+                              ? "📵 Missed video call"
+                              : "📵 Missed voice call";
+                          if (parsed.status === "completed") {
                             const dur = parsed.duration || 0;
                             const m = Math.floor(dur / 60);
                             const s = dur % 60;
-                            const durStr = dur > 0 ? ` (${m}:${s.toString().padStart(2, '0')})` : '';
-                            return isVideo ? `📹 Video call${durStr}` : `📞 Voice call${durStr}`;
+                            const durStr =
+                              dur > 0
+                                ? ` (${m}:${s.toString().padStart(2, "0")})`
+                                : "";
+                            return isVideo
+                              ? `📹 Video call${durStr}`
+                              : `📞 Voice call${durStr}`;
                           }
                         }
-                      } catch (_) { }
+                      } catch (_) {}
                       return content;
                     })()}
                   </div>
@@ -4200,7 +4604,12 @@ export default function WorkgroupDetailView({ workgroupId, onBack }: Props) {
             <div className="flex items-center gap-2">
               {lightboxImages[lightboxIndex].downloadUrl && (
                 <button
-                  onClick={() => { void handleDownload(lightboxImages[lightboxIndex].downloadUrl!, lightboxImages[lightboxIndex].name); }}
+                  onClick={() => {
+                    void handleDownload(
+                      lightboxImages[lightboxIndex].downloadUrl!,
+                      lightboxImages[lightboxIndex].name,
+                    );
+                  }}
                   className="p-2 bg-white/10 hover:bg-white/20 rounded-full text-white transition-colors"
                   title="Download"
                 >
@@ -4393,7 +4802,10 @@ interface PostCardProps {
   canSendMessages?: boolean;
   isBroadcast?: boolean;
   isDirectChat?: boolean;
-  onImageClick?: (images: { url: string; downloadUrl?: string; name: string }[], index: number) => void;
+  onImageClick?: (
+    images: { url: string; downloadUrl?: string; name: string }[],
+    index: number,
+  ) => void;
   onEdit?: (postId: string, currentContent: string) => void;
 }
 
@@ -4432,7 +4844,9 @@ function PostCard({
   onEdit,
 }: PostCardProps) {
   const navigate = useNavigate();
-  const [downloadProgress, setDownloadProgress] = useState<Record<string, number>>({});
+  const [downloadProgress, setDownloadProgress] = useState<
+    Record<string, number>
+  >({});
   if ((post.content || "").startsWith("[SYSTEM] ")) {
     return (
       <div className="flex justify-center my-3">
@@ -4449,10 +4863,16 @@ function PostCard({
   let callData: any = {};
 
   // Auto-detect call log JSON if it wasn't marked correctly (historical data or mobile)
-  if (!isCallLog && (post.content || "").trim().startsWith('{')) {
+  if (!isCallLog && (post.content || "").trim().startsWith("{")) {
     try {
       const parsed = JSON.parse(post.content);
-      if (parsed && (parsed.type === 'video' || parsed.type === 'voice' || parsed.type === 'call') && parsed.status) {
+      if (
+        parsed &&
+        (parsed.type === "video" ||
+          parsed.type === "voice" ||
+          parsed.type === "call") &&
+        parsed.status
+      ) {
         isCallLog = true;
         callData = parsed;
       }
@@ -4472,7 +4892,9 @@ function PostCard({
     }
   }
 
-  const isEventMessage = (post.content || "").startsWith("📅 **Meeting Scheduled**");
+  const isEventMessage = (post.content || "").startsWith(
+    "📅 **Meeting Scheduled**",
+  );
   let eventData: any = null;
   if (isEventMessage) {
     try {
@@ -4527,15 +4949,15 @@ function PostCard({
   );
   const isDeletedMessage = Boolean(post.is_deleted || isDeletedForMe);
   const canEdit = useMemo(() => {
-    if (!isAuthor || isDeletedMessage || isCallLog || isEventMessage) return false;
+    if (!isAuthor || isDeletedMessage || isCallLog || isEventMessage)
+      return false;
     const createdAtTime = new Date(post.created_at).getTime();
     const currentTime = Date.now();
     return currentTime - createdAtTime < 5 * 60 * 1000;
   }, [isAuthor, isDeletedMessage, isCallLog, isEventMessage, post.created_at]);
-  const deletedPlaceholder =
-    isAuthor
-      ? "You deleted this message"
-      : "This message was deleted";
+  const deletedPlaceholder = isAuthor
+    ? "You deleted this message"
+    : "This message was deleted";
   const [visibleLinesCount, setVisibleLinesCount] = useState(10);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [showReactionsDialog, setShowReactionsDialog] = useState(false);
@@ -4630,7 +5052,9 @@ function PostCard({
     return map;
   }, [mentionEntries]);
 
-  const forwardedMatch = (post.content || "").match(/\[Forwarded from ([^\]]+)\]/i) || (post.content || "").match(/\[Forwarded\]/i);
+  const forwardedMatch =
+    (post.content || "").match(/\[Forwarded from ([^\]]+)\]/i) ||
+    (post.content || "").match(/\[Forwarded\]/i);
   const isForwarded = Boolean(forwardedMatch);
 
   const displayContent = (post.content || "")
@@ -4667,8 +5091,8 @@ function PostCard({
       // (This is the existing logic moved inside)
       const mentionPattern = mentionEntries.length
         ? mentionEntries
-          .map((entry) => escapeRegex(`@${entry.label}`))
-          .join("|")
+            .map((entry) => escapeRegex(`@${entry.label}`))
+            .join("|")
         : "";
 
       if (!mentionPattern || !urlPart.includes("@")) {
@@ -4736,10 +5160,11 @@ function PostCard({
                 );
               }
             }}
-            className={`font-semibold hover:underline ${isAuthor
-              ? "text-emerald-700 dark:text-emerald-300"
-              : "text-primary"
-              }`}
+            className={`font-semibold hover:underline ${
+              isAuthor
+                ? "text-emerald-700 dark:text-emerald-300"
+                : "text-primary"
+            }`}
           >
             {mPart}
           </button>
@@ -4750,9 +5175,9 @@ function PostCard({
 
   const timeString = post.created_at
     ? new Date(post.created_at).toLocaleTimeString([], {
-      hour: "2-digit",
-      minute: "2-digit",
-    })
+        hour: "2-digit",
+        minute: "2-digit",
+      })
     : "";
 
   const attachments = Array.isArray(post.attachments) ? post.attachments : [];
@@ -4760,7 +5185,7 @@ function PostCard({
   const getAuthedFileUrlForPost = (
     fileId: string,
     mode: "view" | "download" = "download",
-    sourceWorkgroupId?: string
+    sourceWorkgroupId?: string,
   ) => {
     const token = api.getToken();
     const effectiveWorkgroupId = sourceWorkgroupId || workgroupId;
@@ -4771,16 +5196,16 @@ function PostCard({
   const handleDownload = async (url: string, fileName: string) => {
     try {
       // Use fetch to track progress
-      setDownloadProgress(prev => ({ ...prev, [url]: 0 }));
+      setDownloadProgress((prev) => ({ ...prev, [url]: 0 }));
       const response = await fetch(url);
 
-      if (!response.ok) throw new Error('Network response was not ok');
+      if (!response.ok) throw new Error("Network response was not ok");
 
-      const contentLength = response.headers.get('Content-Length');
+      const contentLength = response.headers.get("Content-Length");
       const total = contentLength ? parseInt(contentLength, 10) : 0;
 
       const reader = response.body?.getReader();
-      if (!reader) throw new Error('ReadableStream not supported');
+      if (!reader) throw new Error("ReadableStream not supported");
 
       let loaded = 0;
       const chunks = [];
@@ -4792,7 +5217,7 @@ function PostCard({
         loaded += value.length;
         if (total > 0) {
           const progress = Math.round((loaded / total) * 100);
-          setDownloadProgress(prev => ({ ...prev, [url]: progress }));
+          setDownloadProgress((prev) => ({ ...prev, [url]: progress }));
         }
       }
 
@@ -4807,7 +5232,11 @@ function PostCard({
           });
         } catch (pickerErr: any) {
           if (pickerErr.name === "AbortError") {
-            setDownloadProgress(prev => { const next = { ...prev }; delete next[url]; return next; });
+            setDownloadProgress((prev) => {
+              const next = { ...prev };
+              delete next[url];
+              return next;
+            });
             return;
           }
           throw pickerErr;
@@ -4827,19 +5256,22 @@ function PostCard({
       }
 
       window.URL.revokeObjectURL(blobUrl);
-      setDownloadProgress(prev => {
+      setDownloadProgress((prev) => {
         const next = { ...prev };
         delete next[url];
         return next;
       });
     } catch (err: any) {
-      setDownloadProgress(prev => {
+      setDownloadProgress((prev) => {
         const next = { ...prev };
         delete next[url];
         return next;
       });
       if (err.name !== "AbortError") {
-        console.error("Fetch download failed, trying direct browser download fallback:", err);
+        console.error(
+          "Fetch download failed, trying direct browser download fallback:",
+          err,
+        );
         try {
           const link = document.createElement("a");
           link.href = url;
@@ -4876,20 +5308,22 @@ function PostCard({
       >
         {/* Checkbox: forward mode — skip own-deleted; delete mode — in placeholder mode show ONLY own-deleted, otherwise skip own-deleted */}
         {((isForwardSelectMode && !(isDeletedMessage && isAuthor)) ||
-          (isDeleteSelectMode && (
-            isDeletedPlaceholderMode
-              ? (isDeletedMessage && isAuthor)
-              : !(isDeletedMessage && isAuthor)
-          ))) && (
-            <Checkbox
-              checked={isForwardSelectMode ? isSelectedForForward : isSelectedForDelete}
-              onCheckedChange={(value) => {
-                if (isForwardSelectMode) onToggleForwardSelection?.(post.id, Boolean(value));
-                else onToggleDeleteSelection?.(post.id, Boolean(value));
-              }}
-              className="shrink-0"
-            />
-          )}
+          (isDeleteSelectMode &&
+            (isDeletedPlaceholderMode
+              ? isDeletedMessage && isAuthor
+              : !(isDeletedMessage && isAuthor)))) && (
+          <Checkbox
+            checked={
+              isForwardSelectMode ? isSelectedForForward : isSelectedForDelete
+            }
+            onCheckedChange={(value) => {
+              if (isForwardSelectMode)
+                onToggleForwardSelection?.(post.id, Boolean(value));
+              else onToggleDeleteSelection?.(post.id, Boolean(value));
+            }}
+            className="shrink-0"
+          />
+        )}
         {/* Avatar — only for received */}
         {!isAuthor && (
           <Avatar className="h-7 w-7 flex-shrink-0 mb-0.5">
@@ -4933,10 +5367,11 @@ function PostCard({
 
           {/* The Actual Bubble */}
           <div
-            className={`relative min-w-[120px] order-1 ${isAuthor
-              ? "bg-primary/10 text-foreground dark:bg-primary/20 rounded-2xl rounded-tr-sm"
-              : `${memberColor!.bg} ${memberColor!.text} rounded-2xl rounded-tl-sm`
-              } px-3 py-2 shadow-sm group/bubble border border-black/5`}
+            className={`relative min-w-[120px] order-1 ${
+              isAuthor
+                ? "bg-primary/10 text-foreground dark:bg-primary/20 rounded-2xl rounded-tr-sm"
+                : `${memberColor!.bg} ${memberColor!.text} rounded-2xl rounded-tl-sm`
+            } px-3 py-2 shadow-sm group/bubble border border-black/5`}
           >
             {isForwarded && (
               <div className="flex items-center gap-1 text-[11px] font-medium text-gray-500 italic mb-1.5 opacity-80 group-hover:opacity-100 transition-opacity">
@@ -4950,12 +5385,11 @@ function PostCard({
             >
               {isDeletedMessage ? (
                 /* Deleted message: show delete options via selection mode */
-                !isDeletedForMe && isMember && (
+                !isDeletedForMe &&
+                isMember && (
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                      <button
-                        className="transition-colors p-0.5 rounded text-gray-400 hover:text-gray-600 dark:text-white/70 dark:hover:text-white"
-                      >
+                      <button className="transition-colors p-0.5 rounded text-gray-400 hover:text-gray-600 dark:text-white/70 dark:hover:text-white">
                         <MoreVertical className="h-4 w-4" />
                       </button>
                     </DropdownMenuTrigger>
@@ -4976,10 +5410,11 @@ function PostCard({
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <button
-                      className={`transition-colors p-0.5 rounded ${isAuthor
-                        ? "text-gray-400 hover:text-gray-600 dark:text-white/70 dark:hover:text-white"
-                        : "text-gray-400 hover:text-gray-600 dark:text-white/70 dark:hover:text-white"
-                        }`}
+                      className={`transition-colors p-0.5 rounded ${
+                        isAuthor
+                          ? "text-gray-400 hover:text-gray-600 dark:text-white/70 dark:hover:text-white"
+                          : "text-gray-400 hover:text-gray-600 dark:text-white/70 dark:hover:text-white"
+                      }`}
                     >
                       <MoreVertical className="h-4 w-4" />
                     </button>
@@ -4994,7 +5429,9 @@ function PostCard({
                       </DropdownMenuItem>
                     )}
                     {canEdit && (
-                      <DropdownMenuItem onClick={() => onEdit?.(post.id, post.content)}>
+                      <DropdownMenuItem
+                        onClick={() => onEdit?.(post.id, post.content)}
+                      >
                         <Edit2 className="h-4 w-4 mr-2" /> Edit Message
                       </DropdownMenuItem>
                     )}
@@ -5079,30 +5516,46 @@ function PostCard({
                 <div className="flex gap-2">
                   <div className="flex-1 min-w-0">
                     <p className="text-[10px] font-bold text-emerald-600 flex items-center gap-1 uppercase tracking-tight">
-                      {allPosts.find((p) => p.id === post.parent_id)?.author_name ||
-                        "Original Message"}
+                      {allPosts.find((p) => p.id === post.parent_id)
+                        ?.author_name || "Original Message"}
                     </p>
                     <p className="text-[11px] text-gray-500 dark:text-gray-300 truncate mt-0.5 whitespace-nowrap overflow-hidden">
                       {(() => {
-                        const parentMsg = allPosts.find((p) => p.id === post.parent_id);
+                        const parentMsg = allPosts.find(
+                          (p) => p.id === post.parent_id,
+                        );
                         if (!parentMsg) return "Message deleted or missing";
-                        const isImage = parentMsg.attachments?.some(a => a.file_type?.startsWith('image/'));
+                        const isImage = parentMsg.attachments?.some((a) =>
+                          a.file_type?.startsWith("image/"),
+                        );
                         if (isImage) return "Photo";
-                        if (parentMsg.attachments && parentMsg.attachments.length > 0) {
+                        if (
+                          parentMsg.attachments &&
+                          parentMsg.attachments.length > 0
+                        ) {
                           return `📎 ${parentMsg.attachments[0].original_name || "Attachment"}`;
                         }
-                        return parentMsg.content || "Message deleted or missing";
+                        return (
+                          parentMsg.content || "Message deleted or missing"
+                        );
                       })()}
                     </p>
                   </div>
                   {(() => {
-                    const parentMsg = allPosts.find(p => p.id === post.parent_id);
-                    const imageAttachment = parentMsg?.attachments?.find(a => a.file_type?.startsWith('image/'));
+                    const parentMsg = allPosts.find(
+                      (p) => p.id === post.parent_id,
+                    );
+                    const imageAttachment = parentMsg?.attachments?.find((a) =>
+                      a.file_type?.startsWith("image/"),
+                    );
                     if (!imageAttachment) return null;
                     return (
                       <div className="h-8 w-8 shrink-0 rounded overflow-hidden">
                         <img
-                          src={getAuthedFileUrlForPost(imageAttachment.id, "view")}
+                          src={getAuthedFileUrlForPost(
+                            imageAttachment.id,
+                            "view",
+                          )}
                           className="h-full w-full object-cover"
                           alt="thumbnail"
                         />
@@ -5119,8 +5572,9 @@ function PostCard({
               createPortal(
                 <div
                   ref={emojiPickerRef}
-                  className={`fixed z-[999] ${isAuthor ? "right-[420px]" : "left-[950px]"
-                    } bottom-[70px] shadow-xl bg-card/80 backdrop-blur-md border border-border rounded-xl shadow-2xl`}
+                  className={`fixed z-[999] ${
+                    isAuthor ? "right-[420px]" : "left-[950px]"
+                  } bottom-[70px] shadow-xl bg-card/80 backdrop-blur-md border border-border rounded-xl shadow-2xl`}
                 >
                   <button
                     onClick={() => setShowEmojiPicker(false)}
@@ -5161,10 +5615,11 @@ function PostCard({
             {isCallLog && !isDeletedMessage ? (
               <div className="flex items-center gap-3 py-1 pr-8">
                 <div
-                  className={`flex items-center justify-center h-10 w-10 rounded-full shrink-0 ${isMissedCall
-                    ? "bg-red-50 dark:bg-red-900/20"
-                    : "bg-emerald-50 dark:bg-emerald-900/20"
-                    }`}
+                  className={`flex items-center justify-center h-10 w-10 rounded-full shrink-0 ${
+                    isMissedCall
+                      ? "bg-red-50 dark:bg-red-900/20"
+                      : "bg-emerald-50 dark:bg-emerald-900/20"
+                  }`}
                 >
                   <CallIcon
                     className={`h-5 w-5 ${isMissedCall ? "text-red-500" : "text-emerald-600"}`}
@@ -5172,8 +5627,9 @@ function PostCard({
                 </div>
                 <div className="flex-1 min-w-0">
                   <p
-                    className={`text-sm font-semibold truncate ${isMissedCall ? "text-red-500" : "text-foreground"
-                      }`}
+                    className={`text-sm font-semibold truncate ${
+                      isMissedCall ? "text-red-500" : "text-foreground"
+                    }`}
                   >
                     {isMissedCall
                       ? isVideoCall
@@ -5222,7 +5678,7 @@ function PostCard({
                   variant="outline"
                   size="sm"
                   className="w-full h-8 text-[11px] font-bold border-blue-200 dark:border-blue-800 hover:bg-blue-50 dark:hover:bg-blue-900/30 text-blue-600 dark:text-blue-400 gap-2"
-                  onClick={() => navigate('/collaboration/calendar')}
+                  onClick={() => navigate("/collaboration/calendar")}
                 >
                   View in Calendar
                   <ArrowUpRight className="h-3 w-3" />
@@ -5230,8 +5686,9 @@ function PostCard({
               </div>
             ) : (
               <p
-                className={`text-[13px] leading-relaxed whitespace-pre-wrap break-words pr-6 text-gray-800 ${isAuthor ? "dark:text-white" : "dark:text-gray-200"
-                  }`}
+                className={`text-[13px] leading-relaxed whitespace-pre-wrap break-words pr-6 text-gray-800 ${
+                  isAuthor ? "dark:text-white" : "dark:text-gray-200"
+                }`}
               >
                 {isDeletedMessage ? (
                   <span className="italic text-gray-500 dark:text-gray-400">
@@ -5244,7 +5701,9 @@ function PostCard({
                       const lines = content.split("\n");
                       const isLong = lines.length > 10;
                       const hasMore = visibleLinesCount < lines.length;
-                      const displayedContent = !isLong ? content : lines.slice(0, visibleLinesCount).join("\n");
+                      const displayedContent = !isLong
+                        ? content
+                        : lines.slice(0, visibleLinesCount).join("\n");
 
                       return (
                         <>
@@ -5255,7 +5714,7 @@ function PostCard({
                               onClick={(e) => {
                                 e.stopPropagation();
                                 if (hasMore) {
-                                  setVisibleLinesCount(prev => prev + 10);
+                                  setVisibleLinesCount((prev) => prev + 10);
                                 } else {
                                   setVisibleLinesCount(10);
                                 }
@@ -5288,7 +5747,11 @@ function PostCard({
                         ? getAuthedFileUrlForPost(a.id, "view", a.workgroup_id)
                         : a.download_url,
                       downloadUrl: a.id
-                        ? getAuthedFileUrlForPost(a.id, "download", a.workgroup_id)
+                        ? getAuthedFileUrlForPost(
+                            a.id,
+                            "download",
+                            a.workgroup_id,
+                          )
                         : a.download_url,
                       name: a.original_name,
                     }));
@@ -5308,7 +5771,11 @@ function PostCard({
                       ? getAuthedFileUrlForPost(a.id, "view", a.workgroup_id)
                       : a.download_url;
                     const downloadUrl = a.id
-                      ? getAuthedFileUrlForPost(a.id, "download", a.workgroup_id)
+                      ? getAuthedFileUrlForPost(
+                          a.id,
+                          "download",
+                          a.workgroup_id,
+                        )
                       : a.download_url;
                     const progress = downloadProgress[downloadUrl];
                     const isDownloading = progress !== undefined;
@@ -5318,10 +5785,17 @@ function PostCard({
                         {isDownloading && (
                           <div className="absolute inset-0 z-20 bg-black/40 flex items-center justify-center backdrop-blur-[2px]">
                             <div className="flex flex-col items-center gap-2">
-                              <span className="text-white text-xs font-bold animate-pulse">Downloading</span>
-                              <span className="bg-emerald-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-lg">{progress}%</span>
+                              <span className="text-white text-xs font-bold animate-pulse">
+                                Downloading
+                              </span>
+                              <span className="bg-emerald-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-lg">
+                                {progress}%
+                              </span>
                             </div>
-                            <div className="absolute bottom-0 left-0 h-1 bg-emerald-500 transition-all duration-300" style={{ width: `${progress}%` }} />
+                            <div
+                              className="absolute bottom-0 left-0 h-1 bg-emerald-500 transition-all duration-300"
+                              style={{ width: `${progress}%` }}
+                            />
                           </div>
                         )}
                         <img
@@ -5332,7 +5806,10 @@ function PostCard({
                         <button
                           type="button"
                           className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity bg-black/50 hover:bg-black/70 text-white rounded-full p-1.5"
-                          onClick={(e) => { e.stopPropagation(); handleDownload(downloadUrl, a.original_name); }}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDownload(downloadUrl, a.original_name);
+                          }}
                           title="Download"
                         >
                           <Download className="h-3.5 w-3.5" />
@@ -5347,17 +5824,38 @@ function PostCard({
                       <div className="max-w-[300px]">
                         <div className="grid grid-cols-2 gap-0.5 rounded-xl overflow-hidden border border-black/10 dark:border-white/10">
                           {imageFiles.map((img, i) => {
-                            const url = img.id ? getAuthedFileUrlForPost(img.id, "view", img.workgroup_id) : img.download_url;
-                            const dUrl = img.id ? getAuthedFileUrlForPost(img.id, "download", img.workgroup_id) : img.download_url;
+                            const url = img.id
+                              ? getAuthedFileUrlForPost(
+                                  img.id,
+                                  "view",
+                                  img.workgroup_id,
+                                )
+                              : img.download_url;
+                            const dUrl = img.id
+                              ? getAuthedFileUrlForPost(
+                                  img.id,
+                                  "download",
+                                  img.workgroup_id,
+                                )
+                              : img.download_url;
                             const progress = downloadProgress[dUrl];
                             return (
-                              <div key={i} className="relative h-[140px] cursor-pointer group overflow-hidden" onClick={() => handleImageClick(i)}>
+                              <div
+                                key={i}
+                                className="relative h-[140px] cursor-pointer group overflow-hidden"
+                                onClick={() => handleImageClick(i)}
+                              >
                                 {progress !== undefined && (
                                   <div className="absolute inset-0 z-20 bg-black/40 flex items-center justify-center">
-                                    <span className="bg-emerald-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full">{progress}%</span>
+                                    <span className="bg-emerald-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full">
+                                      {progress}%
+                                    </span>
                                   </div>
                                 )}
-                                <img src={url} className="w-full h-full object-cover hover:scale-105 transition-transform duration-300" />
+                                <img
+                                  src={url}
+                                  className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
+                                />
                               </div>
                             );
                           })}
@@ -5367,7 +5865,13 @@ function PostCard({
                           onClick={(e) => {
                             e.stopPropagation();
                             imageFiles.forEach((a) => {
-                              const url = a.id ? getAuthedFileUrlForPost(a.id, "download", a.workgroup_id) : a.download_url;
+                              const url = a.id
+                                ? getAuthedFileUrlForPost(
+                                    a.id,
+                                    "download",
+                                    a.workgroup_id,
+                                  )
+                                : a.download_url;
                               handleDownload(url, a.original_name);
                             });
                           }}
@@ -5389,16 +5893,34 @@ function PostCard({
                           onClick={() => handleImageClick(0)}
                         >
                           {(() => {
-                            const dUrl = imageFiles[0].id ? getAuthedFileUrlForPost(imageFiles[0].id, "download", imageFiles[0].workgroup_id) : imageFiles[0].download_url;
+                            const dUrl = imageFiles[0].id
+                              ? getAuthedFileUrlForPost(
+                                  imageFiles[0].id,
+                                  "download",
+                                  imageFiles[0].workgroup_id,
+                                )
+                              : imageFiles[0].download_url;
                             const progress = downloadProgress[dUrl];
-                            return progress !== undefined && (
-                              <div className="absolute inset-0 z-20 bg-black/40 flex items-center justify-center">
-                                <span className="bg-emerald-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">{progress}%</span>
-                              </div>
+                            return (
+                              progress !== undefined && (
+                                <div className="absolute inset-0 z-20 bg-black/40 flex items-center justify-center">
+                                  <span className="bg-emerald-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">
+                                    {progress}%
+                                  </span>
+                                </div>
+                              )
                             );
                           })()}
                           <img
-                            src={imageFiles[0].id ? getAuthedFileUrlForPost(imageFiles[0].id, "view", imageFiles[0].workgroup_id) : imageFiles[0].download_url}
+                            src={
+                              imageFiles[0].id
+                                ? getAuthedFileUrlForPost(
+                                    imageFiles[0].id,
+                                    "view",
+                                    imageFiles[0].workgroup_id,
+                                  )
+                                : imageFiles[0].download_url
+                            }
                             className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
                           />
                         </div>
@@ -5408,16 +5930,34 @@ function PostCard({
                           onClick={() => handleImageClick(1)}
                         >
                           {(() => {
-                            const dUrl = imageFiles[1].id ? getAuthedFileUrlForPost(imageFiles[1].id, "download", imageFiles[1].workgroup_id) : imageFiles[1].download_url;
+                            const dUrl = imageFiles[1].id
+                              ? getAuthedFileUrlForPost(
+                                  imageFiles[1].id,
+                                  "download",
+                                  imageFiles[1].workgroup_id,
+                                )
+                              : imageFiles[1].download_url;
                             const progress = downloadProgress[dUrl];
-                            return progress !== undefined && (
-                              <div className="absolute inset-0 z-20 bg-black/40 flex items-center justify-center">
-                                <span className="bg-emerald-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full">{progress}%</span>
-                              </div>
+                            return (
+                              progress !== undefined && (
+                                <div className="absolute inset-0 z-20 bg-black/40 flex items-center justify-center">
+                                  <span className="bg-emerald-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full">
+                                    {progress}%
+                                  </span>
+                                </div>
+                              )
                             );
                           })()}
                           <img
-                            src={imageFiles[1].id ? getAuthedFileUrlForPost(imageFiles[1].id, "view", imageFiles[1].workgroup_id) : imageFiles[1].download_url}
+                            src={
+                              imageFiles[1].id
+                                ? getAuthedFileUrlForPost(
+                                    imageFiles[1].id,
+                                    "view",
+                                    imageFiles[1].workgroup_id,
+                                  )
+                                : imageFiles[1].download_url
+                            }
                             className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
                           />
                         </div>
@@ -5427,21 +5967,41 @@ function PostCard({
                           onClick={() => handleImageClick(2)}
                         >
                           {(() => {
-                            const dUrl = imageFiles[2].id ? getAuthedFileUrlForPost(imageFiles[2].id, "download", imageFiles[2].workgroup_id) : imageFiles[2].download_url;
+                            const dUrl = imageFiles[2].id
+                              ? getAuthedFileUrlForPost(
+                                  imageFiles[2].id,
+                                  "download",
+                                  imageFiles[2].workgroup_id,
+                                )
+                              : imageFiles[2].download_url;
                             const progress = downloadProgress[dUrl];
-                            return progress !== undefined && (
-                              <div className="absolute inset-0 z-20 bg-black/40 flex items-center justify-center">
-                                <span className="bg-emerald-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full">{progress}%</span>
-                              </div>
+                            return (
+                              progress !== undefined && (
+                                <div className="absolute inset-0 z-20 bg-black/40 flex items-center justify-center">
+                                  <span className="bg-emerald-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full">
+                                    {progress}%
+                                  </span>
+                                </div>
+                              )
                             );
                           })()}
                           <img
-                            src={imageFiles[2].id ? getAuthedFileUrlForPost(imageFiles[2].id, "view", imageFiles[2].workgroup_id) : imageFiles[2].download_url}
+                            src={
+                              imageFiles[2].id
+                                ? getAuthedFileUrlForPost(
+                                    imageFiles[2].id,
+                                    "view",
+                                    imageFiles[2].workgroup_id,
+                                  )
+                                : imageFiles[2].download_url
+                            }
                             className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
                           />
                           {extraCount > 0 && (
                             <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
-                              <span className="text-white font-bold text-xl">+{extraCount}</span>
+                              <span className="text-white font-bold text-xl">
+                                +{extraCount}
+                              </span>
                             </div>
                           )}
                         </div>
@@ -5451,7 +6011,13 @@ function PostCard({
                         onClick={(e) => {
                           e.stopPropagation();
                           imageFiles.forEach((a) => {
-                            const url = a.id ? getAuthedFileUrlForPost(a.id, "download", a.workgroup_id) : a.download_url;
+                            const url = a.id
+                              ? getAuthedFileUrlForPost(
+                                  a.id,
+                                  "download",
+                                  a.workgroup_id,
+                                )
+                              : a.download_url;
                             handleDownload(url, a.original_name);
                           });
                         }}
@@ -5469,17 +6035,17 @@ function PostCard({
                   .map((attachment: any, idx: number) => {
                     const downloadUrl = attachment.id
                       ? getAuthedFileUrlForPost(
-                        attachment.id,
-                        "download",
-                        attachment.workgroup_id,
-                      )
+                          attachment.id,
+                          "download",
+                          attachment.workgroup_id,
+                        )
                       : attachment.download_url || "#";
                     const previewUrl = attachment.id
                       ? getAuthedFileUrlForPost(
-                        attachment.id,
-                        "view",
-                        attachment.workgroup_id,
-                      )
+                          attachment.id,
+                          "view",
+                          attachment.workgroup_id,
+                        )
                       : attachment.download_url || "#";
 
                     const fileExt = (attachment.original_name || "")
@@ -5496,7 +6062,10 @@ function PostCard({
                         className="max-w-[320px] rounded-xl border border-emerald-200/50 dark:border-emerald-800/50 bg-emerald-100/50 dark:bg-emerald-950/20 overflow-hidden shadow-sm relative group/file"
                       >
                         {isDownloading && (
-                          <div className="absolute top-0 left-0 h-1 bg-emerald-500 transition-all duration-300 z-10" style={{ width: `${progress}%` }} />
+                          <div
+                            className="absolute top-0 left-0 h-1 bg-emerald-500 transition-all duration-300 z-10"
+                            style={{ width: `${progress}%` }}
+                          />
                         )}
                         <div className="flex items-start gap-4 p-4">
                           <div className="h-12 w-12 flex items-center justify-center bg-white dark:bg-black/40 rounded-xl shadow-sm shrink-0 border border-emerald-100 dark:border-emerald-900/50">
@@ -5518,10 +6087,11 @@ function PostCard({
                         <div className="flex border-t border-emerald-200/50 dark:border-emerald-800/50">
                           <button
                             disabled={isDownloading}
-                            className={`flex-1 py-2.5 text-[12px] font-bold transition-colors flex items-center justify-center gap-2 ${isDownloading
-                              ? "text-emerald-500 bg-emerald-100/30"
-                              : "text-emerald-700 dark:text-emerald-400 hover:bg-emerald-200/30 dark:hover:bg-emerald-800/30"
-                              }`}
+                            className={`flex-1 py-2.5 text-[12px] font-bold transition-colors flex items-center justify-center gap-2 ${
+                              isDownloading
+                                ? "text-emerald-500 bg-emerald-100/30"
+                                : "text-emerald-700 dark:text-emerald-400 hover:bg-emerald-200/30 dark:hover:bg-emerald-800/30"
+                            }`}
                             onClick={(e) => {
                               e.stopPropagation();
                               handleDownload(
@@ -5532,8 +6102,12 @@ function PostCard({
                           >
                             {isDownloading ? (
                               <>
-                                <span className="animate-pulse">Downloading...</span>
-                                <span className="text-[10px] bg-emerald-500 text-white px-1.5 py-0.5 rounded-full">{progress}%</span>
+                                <span className="animate-pulse">
+                                  Downloading...
+                                </span>
+                                <span className="text-[10px] bg-emerald-500 text-white px-1.5 py-0.5 rounded-full">
+                                  {progress}%
+                                </span>
                               </>
                             ) : (
                               "Save as..."
@@ -5544,8 +6118,7 @@ function PostCard({
                     );
                   })}
               </div>
-            )
-            }
+            )}
 
             {/* Time + read status */}
             <div className="flex items-center gap-1 justify-end mt-1 -mr-1">
@@ -5559,10 +6132,11 @@ function PostCard({
               </span>
               {isAuthor && (
                 <span
-                  className={`text-[9px] ${(post.seen_count || 0) > 0
-                    ? "text-primary"
-                    : "text-gray-400"
-                    }`}
+                  className={`text-[9px] ${
+                    (post.seen_count || 0) > 0
+                      ? "text-primary"
+                      : "text-gray-400"
+                  }`}
                 >
                   ✓✓
                 </span>
@@ -5597,10 +6171,11 @@ function PostCard({
             return (
               <button
                 onClick={() => setShowReactionsDialog(true)}
-                className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-medium shadow-sm transition-all ${isMyReaction
-                  ? "bg-blue-100 border border-blue-300 text-blue-700"
-                  : "bg-card border border-border text-foreground hover:bg-muted/50"
-                  }`}
+                className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-medium shadow-sm transition-all ${
+                  isMyReaction
+                    ? "bg-blue-100 border border-blue-300 text-blue-700"
+                    : "bg-card border border-border text-foreground hover:bg-muted/50"
+                }`}
                 title="View reactions"
               >
                 <span className="text-sm">{lastEmoji}</span>
@@ -5634,10 +6209,11 @@ function PostCard({
                   <button
                     key={`dialog-${post.id}-${emoji}`}
                     onClick={() => handleEmojiClick(emoji)}
-                    className={`inline-flex items-center gap-1 rounded-full border px-2 py-1 text-xs font-medium transition-colors ${isActive
-                      ? "border-blue-300 bg-blue-100 text-blue-700"
-                      : "border-border bg-muted/50 text-foreground hover:bg-muted"
-                      }`}
+                    className={`inline-flex items-center gap-1 rounded-full border px-2 py-1 text-xs font-medium transition-colors ${
+                      isActive
+                        ? "border-blue-300 bg-blue-100 text-blue-700"
+                        : "border-border bg-muted/50 text-foreground hover:bg-muted"
+                    }`}
                     title={
                       isActive
                         ? "Click to remove your reaction"
@@ -5719,7 +6295,10 @@ function PostCard({
         >
           <div className="flex -space-x-1 overflow-hidden">
             {post.seen_by.slice(0, 6).map((u: any) => (
-              <Avatar key={u.user_id} className="h-4 w-4 border border-background ring-0">
+              <Avatar
+                key={u.user_id}
+                className="h-4 w-4 border border-background ring-0"
+              >
                 <AvatarImage src={getAvatarUrl(u.avatar_url)} />
                 <AvatarFallback className="text-[6px] bg-muted">
                   {u.full_name.slice(0, 2).toUpperCase()}
@@ -5749,13 +6328,20 @@ function PostCard({
           </DialogHeader>
           <div className="max-h-[350px] overflow-y-auto py-2">
             {post.seen_by?.map((u: any) => (
-              <div key={u.user_id} className="flex items-center gap-3 px-4 py-2 hover:bg-muted/50 transition-colors">
+              <div
+                key={u.user_id}
+                className="flex items-center gap-3 px-4 py-2 hover:bg-muted/50 transition-colors"
+              >
                 <Avatar className="h-8 w-8">
                   <AvatarImage src={getAvatarUrl(u.avatar_url)} />
-                  <AvatarFallback className="text-xs">{u.full_name.slice(0, 2).toUpperCase()}</AvatarFallback>
+                  <AvatarFallback className="text-xs">
+                    {u.full_name.slice(0, 2).toUpperCase()}
+                  </AvatarFallback>
                 </Avatar>
                 <div className="min-w-0 flex-1">
-                  <p className="text-sm font-semibold truncate text-foreground">{u.full_name}</p>
+                  <p className="text-sm font-semibold truncate text-foreground">
+                    {u.full_name}
+                  </p>
                 </div>
               </div>
             ))}
