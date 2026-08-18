@@ -53,6 +53,7 @@ jobs:
 
             echo "4. Updating permissions..."
             chown -R elina6042:elina6042 "$SITE_DIR/"
+            chmod 755 "$SITE_DIR"
             chmod -R 755 "$SITE_DIR/public_html"
 
             echo "5. Restarting OpenLiteSpeed web server..."
