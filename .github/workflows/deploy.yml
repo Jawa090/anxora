@@ -46,7 +46,20 @@ jobs:
               cd $SITE_DIR/frontend
               npm install
               npm run build
+              rm -rf $SITE_DIR/public_html/assets
               cp -r dist/* $SITE_DIR/public_html/
+
+              # Create .htaccess for Single Page App (React Router) redirection on CyberPanel / OpenLiteSpeed
+              cat << 'EOF' > $SITE_DIR/public_html/.htaccess
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  RewriteBase /
+  RewriteRule ^index\.html$ - [L]
+  RewriteCond %{REQUEST_FILENAME} !-f
+  RewriteCond %{REQUEST_FILENAME} !-d
+  RewriteRule . /index.html [L]
+</IfModule>
+EOF
 
               echo "4️⃣ Setting CyberPanel User Permissions..."
               chown -R elina6042:elina6042 $SITE_DIR/
