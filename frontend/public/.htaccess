@@ -1,15 +1,29 @@
-# Force no-cache for index.html to bust cache on new deployments
-<FilesMatch "index\.html$">
-  <IfModule mod_headers.c>
+<IfModule mod_mime.c>
+  AddType application/javascript .js .mjs
+  AddType text/css .css
+</IfModule>
+
+# Force no-cache for index.html so users always get the latest bundle
+<IfModule mod_headers.c>
+  <FilesMatch "\.(html|htm)$">
     Header set Cache-Control "no-cache, no-store, must-revalidate"
     Header set Pragma "no-cache"
     Header set Expires 0
-  </IfModule>
-</FilesMatch>
+  </FilesMatch>
+  # Long-term cache for hashed static assets
+  <FilesMatch "\.(js|css|png|jpg|jpeg|gif|ico|svg|woff|woff2)$">
+    Header set Cache-Control "public, max-age=31536000, immutable"
+  </FilesMatch>
+</IfModule>
 
-# Allow caching for hashed assets (Vite output folder e.g., assets/)
-<FilesMatch "\.(css|js|woff|woff2|png|jpg|jpeg|gif|svg|ico)$">
-  <IfModule mod_headers.c>
-    Header set Cache-Control "max-age=31536000, public, immutable"
-  </IfModule>
-</FilesMatch>
+# SPA rewrite rules
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  RewriteBase /
+  RewriteRule ^assets/ - [L]
+  RewriteRule ^index\.html$ - [L]
+  RewriteCond %{REQUEST_FILENAME} !-f
+  RewriteCond %{REQUEST_FILENAME} !-d
+  RewriteRule . /index.html [L]
+</IfModule>
+
