@@ -39,23 +39,23 @@ jobs:
             git fetch --all
             git reset --hard origin/main
 
-            echo "2. Updating backend..."
-            cd "$SITE_DIR/backend"
-            npm install --production
-            pm2 restart elina-backend || pm2 start server.js --name elina-backend
-
-            echo "3. Building frontend..."
+            echo "2. Building frontend..."
             cd "$SITE_DIR/frontend"
             npm install
             npm run build
             rm -rf "$SITE_DIR/public_html/assets"
             cp -a dist/. "$SITE_DIR/public_html/"
 
-            echo "5. Updating permissions..."
+            echo "3. Updating backend..."
+            cd "$SITE_DIR/backend"
+            npm install --production
+            pm2 restart elina-backend || pm2 start src/server.js --name elina-backend
+
+            echo "4. Updating permissions..."
             chown -R elina6042:elina6042 "$SITE_DIR/"
             chmod -R 755 "$SITE_DIR/public_html"
 
-            echo "6. Restarting OpenLiteSpeed web server..."
+            echo "5. Restarting OpenLiteSpeed web server..."
             systemctl restart lsws 2>/dev/null || /usr/local/lsws/bin/lswsctrl restart 2>/dev/null || true
 
             echo "Deployment finished successfully!"

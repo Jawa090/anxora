@@ -46,11 +46,33 @@ app.use(appRoutes);
 const fs = require('fs');
 const frontendDistPath = path.join(__dirname, '../../frontend/dist');
 if (fs.existsSync(frontendDistPath)) {
-  app.use(express.static(frontendDistPath));
+  // Static assets with immutable caching
+  app.use(express.static(frontendDistPath, {
+    maxAge: '1y',
+    immutable: true,
+    setHeaders: (res, filePath) => {
+      if (filePath.endsWith('.html')) {
+        res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+        res.setHeader('Pragma', 'no-cache');
+        res.setHeader('Expires', '0');
+      }
+    }
+  }));
+
+  // SPA fallback - only for page routes (not missing static assets/api)
   app.get('*', (req, res, next) => {
-    if (req.path.startsWith('/api') || req.path.startsWith('/uploads') || req.path.startsWith('/ws')) {
+    if (
+      req.path.startsWith('/api') ||
+      req.path.startsWith('/uploads') ||
+      req.path.startsWith('/ws') ||
+      req.path.startsWith('/assets') ||
+      req.path.includes('.')
+    ) {
       return next();
     }
+    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
     res.sendFile(path.join(frontendDistPath, 'index.html'));
   });
 }
