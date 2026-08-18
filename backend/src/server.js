@@ -42,10 +42,21 @@ app.use('/uploads', (req, res, next) => {
 
 app.use(appRoutes);
 
-// Serve built frontend assets if frontend/dist exists
+// Serve built frontend assets
 const fs = require('fs');
-const frontendDistPath = path.join(__dirname, '../../frontend/dist');
-if (fs.existsSync(frontendDistPath)) {
+const candidatePaths = [
+  path.resolve(__dirname, '../../frontend/dist'),
+  path.resolve(__dirname, '../../../public_html'),
+  path.resolve(__dirname, '../../public_html'),
+  '/home/elinasmart.com/frontend/dist',
+  '/home/elinasmart.com/public_html',
+];
+
+let frontendDistPath = candidatePaths.find(p => fs.existsSync(p) && fs.existsSync(path.join(p, 'index.html')));
+
+if (frontendDistPath) {
+  console.log(`[server] Serving static frontend from: ${frontendDistPath}`);
+  
   // Static assets with immutable caching
   app.use(express.static(frontendDistPath, {
     maxAge: '1y',
@@ -75,6 +86,8 @@ if (fs.existsSync(frontendDistPath)) {
     res.setHeader('Expires', '0');
     res.sendFile(path.join(frontendDistPath, 'index.html'));
   });
+} else {
+  console.warn('[server] Warning: No frontend dist directory found in candidates');
 }
 
 const db = require('./config/database');
