@@ -52,28 +52,13 @@ jobs:
             cp -r dist/* "$SITE_DIR/public_html/"
 
             echo "4. Creating production .htaccess for CyberPanel / OpenLiteSpeed..."
-            cat << "HTACCESS_EOF" > "$SITE_DIR/public_html/.htaccess"
-<IfModule mod_mime.c>
-  AddType application/javascript .js .mjs
-  AddType text/css .css
-</IfModule>
-
-<IfModule mod_rewrite.c>
-  RewriteEngine On
-  RewriteBase /
-  RewriteRule ^assets/ - [L]
-  RewriteRule ^index\.html$ - [L]
-  RewriteCond %{REQUEST_FILENAME} !-f
-  RewriteCond %{REQUEST_FILENAME} !-d
-  RewriteRule . /index.html [L]
-</IfModule>
-HTACCESS_EOF
+            echo -e "<IfModule mod_mime.c>\n  AddType application/javascript .js .mjs\n  AddType text/css .css\n</IfModule>\n<IfModule mod_rewrite.c>\n  RewriteEngine On\n  RewriteBase /\n  RewriteRule ^assets/ - [L]\n  RewriteRule ^index\.html$ - [L]\n  RewriteCond %{REQUEST_FILENAME} !-f\n  RewriteCond %{REQUEST_FILENAME} !-d\n  RewriteRule . /index.html [L]\n</IfModule>" > "$SITE_DIR/public_html/.htaccess"
 
             echo "5. Updating permissions..."
             chown -R elina6042:elina6042 "$SITE_DIR/"
             chmod -R 755 "$SITE_DIR/public_html"
 
-            echo "6. Restarting OpenLiteSpeed to apply .htaccess and MIME rules..."
+            echo "6. Restarting OpenLiteSpeed web server..."
             systemctl restart lsws 2>/dev/null || /usr/local/lsws/bin/lswsctrl restart 2>/dev/null || true
 
             echo "Deployment finished successfully!"
