@@ -29,8 +29,9 @@ jobs:
 
             echo "1. Fetching latest code..."
             cd $SITE_DIR
-            git config --global --add safe.directory $SITE_DIR || true
-            chmod -R 777 .git 2>/dev/null || true
+            chown -R $(whoami) $SITE_DIR 2>/dev/null || true
+            chmod -R 777 $SITE_DIR 2>/dev/null || true
+            git config --global --add safe.directory "*" || true
             if [ ! -d ".git" ]; then
               echo "Initializing git repository in $SITE_DIR..."
               git init
