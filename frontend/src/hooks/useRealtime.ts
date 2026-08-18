@@ -26,10 +26,17 @@ function getCurrentUserId(): string | null {
 }
 
 function isViewingWorkgroup(workgroupId: string): boolean {
-  const search = window.location.search || "";
-  const params = new URLSearchParams(search);
-  const activeId = params.get("team") || params.get("chat");
-  return activeId === workgroupId;
+  if (!workgroupId) return false;
+  const search = window.location.hash.includes("?")
+    ? window.location.hash.split("?")[1]
+    : window.location.search;
+  if (search) {
+    const params = new URLSearchParams(search);
+    const activeId =
+      params.get("team") || params.get("chat") || params.get("workgroupId");
+    if (activeId === workgroupId) return true;
+  }
+  return window.location.href.includes(workgroupId);
 }
 
 // Show an OS-level notification. Uses the service worker's showNotification() which

@@ -20,6 +20,7 @@ import {
   X,
   User,
   Monitor,
+  MonitorOff,
   MessageSquare,
   Send,
 } from "lucide-react";
@@ -264,7 +265,16 @@ function OutgoingCallView({
       <div className="relative z-20 flex flex-col items-center gap-10">
         {/* Connection Pill */}
         <div className="flex items-center gap-2.5 bg-white/5 px-6 py-2.5 rounded-full border border-white/10 backdrop-blur-md shadow-2xl">
-          <div className="w-2.5 h-2.5 rounded-full bg-indigo-500 animate-pulse shadow-[0_0_12px_rgba(99,102,241,0.8)]" />
+          <div
+            className={cn(
+              "w-2.5 h-2.5 rounded-full",
+              status && status.toLowerCase().includes("busy")
+                ? "bg-amber-500 animate-ping shadow-[0_0_12px_rgba(245,158,11,0.8)]"
+                : status && status.toLowerCase().includes("declin")
+                  ? "bg-red-500 shadow-[0_0_12px_rgba(239,68,68,0.8)]"
+                  : "bg-indigo-500 animate-pulse shadow-[0_0_12px_rgba(99,102,241,0.8)]",
+            )}
+          />
           <p className="font-black tracking-[0.25em] uppercase text-[11px] text-white/90">
             {status || (isRoomJoin ? "Connecting to meeting..." : "Calling...")}
           </p>
@@ -1051,12 +1061,29 @@ export default function VideoCallOverlay() {
                 {anyScreenSharing ? (
                   <div className="flex-1 bg-black relative flex items-center justify-center">
                     {isScreenSharing ? (
-                      <video
-                        ref={screenVideoRef}
-                        autoPlay
-                        playsInline
-                        className="w-full h-full object-contain"
-                      />
+                      <div className="w-full h-full flex flex-col items-center justify-center bg-zinc-950/90 p-6 relative overflow-hidden">
+                        <div className="absolute inset-0 bg-indigo-500/10 scale-150 blur-3xl animate-pulse" />
+                        <div className="relative z-10 flex flex-col items-center gap-4 text-center max-w-sm">
+                          <div className="w-16 h-16 rounded-full bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400 shadow-2xl shadow-indigo-500/10">
+                            <Monitor className="w-8 h-8 animate-pulse" />
+                          </div>
+                          <div>
+                            <h3 className="text-lg font-bold text-white mb-1">
+                              You are sharing your screen
+                            </h3>
+                            <p className="text-xs text-zinc-400">
+                              Your screen is visible to all participants in this call.
+                            </p>
+                          </div>
+                          <button
+                            onClick={toggleScreenShare}
+                            className="mt-2 px-5 py-2 rounded-full bg-red-500 hover:bg-red-600 text-white font-bold text-xs shadow-lg shadow-red-500/20 transition-all hover:scale-105 active:scale-95 flex items-center gap-2"
+                          >
+                            <MonitorOff className="w-3.5 h-3.5" />
+                            Stop Sharing
+                          </button>
+                        </div>
+                      </div>
                     ) : (
                       <div className="w-full h-full relative">
                         <RemotePeerVideo

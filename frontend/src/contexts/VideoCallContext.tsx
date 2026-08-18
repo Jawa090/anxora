@@ -1123,9 +1123,9 @@ export function VideoCallProvider({ children }: { children: React.ReactNode }) {
         });
       }
 
-      // Show OS notification when tab is not focused (tab-switch; VAPID handles closed-tab)
+      // Show OS notification ONLY when tab is hidden / background (not visible)
       if (
-        (document.hidden || !document.hasFocus()) &&
+        document.visibilityState !== "visible" &&
         Notification.permission === "granted"
       ) {
         try {
@@ -1312,7 +1312,8 @@ export function VideoCallProvider({ children }: { children: React.ReactNode }) {
       if (p.callId !== s.callId) return;
       stopRingtoneRef.current();
 
-      const reason = p.reason === "busy" ? "Busy" : "Declined";
+      const isBusy = p.reason === "busy";
+      const statusText = isBusy ? "User is busy on another call" : "Declined";
 
       if (s.isGroupCall) {
         // Track invited members; only reset when ALL have rejected AND no active peers
@@ -1321,27 +1322,38 @@ export function VideoCallProvider({ children }: { children: React.ReactNode }) {
         const newPeers = { ...s.peers };
         if (rejectorId) delete newPeers[rejectorId];
         const stillWaiting = newInvited.length > 0 || Object.keys(newPeers).length > 0;
+        const rejectorName = s.peers[rejectorId]?.name || "A member";
 
         if (!stillWaiting) {
           if (s.isOutgoing && s.workgroupId) {
             logCallRef.current(s.workgroupId, s.callType, "missed", 0, userIdRef.current || "");
           }
-          toast.error("Call declined");
-          resetCallStateRef.current();
+          toast.error(isBusy ? `${rejectorName} is busy on another call` : "Call declined");
+          setState((prev) => ({ ...prev, callStatus: statusText }));
+          setTimeout(() => {
+            resetCallStateRef.current();
+          }, 1500);
         } else {
-          const rejectorName = s.peers[rejectorId]?.name || "A member";
-          toast.info(`${rejectorName} declined the call`);
+          toast.info(isBusy ? `${rejectorName} is busy on another call` : `${rejectorName} declined the call`);
           setState((prev) => ({ ...prev, peers: newPeers, invitedMemberIds: newInvited }));
         }
         return;
       }
 
-      // 1-on-1: reset immediately
-      if (s.isOutgoing && s.workgroupId) {
-        logCallRef.current(s.workgroupId, s.callType, "missed", 0, userIdRef.current || "");
-      }
-      toast.error(`Call ${reason.toLowerCase()}`);
-      resetCallStateRef.current();
+      // 1-on-1: show busy status vs declined status
+      const firstPeer = Object.values(s.peers)[0];
+      const peerName = firstPeer?.name || "User";
+      const toastMessage = isBusy ? `${peerName} is busy on another call` : "Call declined";
+
+      toast.error(toastMessage);
+      setState((prev) => ({ ...prev, callStatus: statusText }));
+
+      setTimeout(() => {
+        if (s.isOutgoing && s.workgroupId) {
+          logCallRef.current(s.workgroupId, s.callType, "missed", 0, userIdRef.current || "");
+        }
+        resetCallStateRef.current();
+      }, 1500);
     };
 
     const attach = () => {

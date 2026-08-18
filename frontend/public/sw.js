@@ -184,34 +184,25 @@ self.addEventListener('push', (event) => {
   event.waitUntil(
     (async () => {
       try {
-        // Check if ANY client window is currently focused
-        let anyFocused = false;
+        // Check client window state
+        let isVisible = false;
         try {
-          const clients = await self.clients.matchAll({ type: 'window' });
-          anyFocused = clients.some(c => c.focused);
-          console.log('[sw] Clients focused:', anyFocused);
+          const clients = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+          isVisible = clients.some(c => c.visibilityState === 'visible' || c.focused);
+          console.log('[sw] isTabVisible:', isVisible);
         } catch (e) {
           console.log('[sw] clients.matchAll failed');
         }
-        
-        // For incoming calls: suppress ONLY if tab focused
-        if (data.type === 'incoming_call') {
-          if (anyFocused) {
-            console.log('[sw] BLOCKING incoming_call - tab focused, ring UI will show');
-            return;
-          } else {
-            console.log('[sw] SHOWING incoming_call - tab not focused');
-            return self.registration.showNotification(title, options);
-          }
-        }
-        
-        // For other notifications: suppress if focused, show if not focused
-        if (anyFocused) {
-          console.log('[sw] BLOCKING notification - tab focused');
+
+        // If tab is currently open and visible, suppress OS push notification.
+        // The in-app Call Overlay UI (Accept/Decline ring screen) or Toast handles it.
+        if (isVisible) {
+          console.log('[sw] BLOCKING OS push notification - tab is active in browser');
           return;
         }
-        
-        console.log('[sw] SHOWING notification - tab not focused');
+
+        // If tab is hidden, minimized, or closed, show OS push notification
+        console.log('[sw] SHOWING OS push notification - tab is not active');
         return self.registration.showNotification(title, options);
       } catch (err) {
         console.error('[sw] Error in push handler:', err);
