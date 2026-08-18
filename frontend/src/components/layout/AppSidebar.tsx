@@ -155,7 +155,11 @@ const navigation: NavItem[] = [
     children: [
       { title: "Overview", href: "/projects", icon: LayoutDashboard },
       { title: "Active Tasks", href: "/projects?tab=tasks", icon: CheckSquare },
-      { title: "Milestones", href: "/projects?tab=milestones", icon: Milestone },
+      {
+        title: "Milestones",
+        href: "/projects?tab=milestones",
+        icon: Milestone,
+      },
       { title: "After Due Date", href: "/projects?tab=overdue", icon: Clock },
     ],
   },
@@ -165,9 +169,8 @@ const navigation: NavItem[] = [
     icon: CheckSquare,
     children: [
       { title: "Overview", href: "/tasks", icon: LayoutDashboard },
-      {title:"Kanban",href:"/tasks?tab=kanban",icon:KanbanIcon},  
-      {title:"Gantt",href:"/tasks?tab=gantt",icon:GanttChartIcon},
-
+      { title: "Kanban", href: "/tasks?tab=kanban", icon: KanbanIcon },
+      { title: "Gantt", href: "/tasks?tab=gantt", icon: GanttChartIcon },
     ],
   },
   {
@@ -210,28 +213,28 @@ const navigation: NavItem[] = [
   //     { title: "Communications", href: "/crm/communications", icon: Phone },
   //   ],
   // },
-  // {
-  //   title: "HRMS",
-  //   icon: Briefcase,
-  //   children: [
-  //     { title: "Dashboard", href: "/hrms", icon: BarChart3 },
-  //     { title: "Attendance", href: "/hrms/attendance", icon: ClipboardList },
-  //     {
-  //       title: "Employees",
-  //       href: "/hrms/employees",
-  //       icon: UserCheck,
-  //       roles: ["super_admin", "admin", "manager"],
-  //     },
-  //     { title: "Leave Management", href: "/hrms/leave", icon: Calendar },
-  //     {
-  //       title: "Payroll",
-  //       href: "/hrms/payroll",
-  //       icon: DollarSign,
-  //       roles: ["super_admin", "admin", "manager"],
-  //     },
-  //     { title: "Notifications", href: "/hrms/notifications", icon: Bell },
-  //   ],
-  // },
+  {
+    title: "HRMS",
+    icon: Briefcase,
+    children: [
+      { title: "Dashboard", href: "/hrms", icon: BarChart3 },
+      { title: "Attendance", href: "/hrms/attendance", icon: ClipboardList },
+      {
+        title: "Employees",
+        href: "/hrms/employees",
+        icon: UserCheck,
+        roles: ["super_admin", "admin", "manager"],
+      },
+      { title: "Leave Management", href: "/hrms/leave", icon: Calendar },
+      {
+        title: "Payroll",
+        href: "/hrms/payroll",
+        icon: DollarSign,
+        roles: ["super_admin", "admin", "manager"],
+      },
+      { title: "Notifications", href: "/hrms/notifications", icon: Bell },
+    ],
+  },
   // {
   //   title: "Recruitment",
   //   icon: UserCog,
@@ -337,8 +340,6 @@ const navigation: NavItem[] = [
   //   ],
   // },
 
-
-  
   // {
   //   title: "Admin Portal",
   //   icon: Shield,
@@ -409,14 +410,17 @@ export function AppSidebar({
   };
 
   const [focusedModule, setFocusedModule] = useState<string | null>(() =>
-    getModuleFromPath(location.pathname)
+    getModuleFromPath(location.pathname),
   );
 
   useEffect(() => {
     const matched = getModuleFromPath(location.pathname);
     if (matched) {
       setFocusedModule(matched);
-    } else if (location.pathname === "/" || location.pathname === "/dashboard") {
+    } else if (
+      location.pathname === "/" ||
+      location.pathname === "/dashboard"
+    ) {
       setFocusedModule(null);
     }
   }, [location.pathname]);
@@ -743,10 +747,7 @@ export function AppSidebar({
     const [path, search] = href.split("?");
     if (search) {
       // For URLs with query params, check both path and exact search match
-      return (
-        location.pathname === path &&
-        location.search === `?${search}`
-      );
+      return location.pathname === path && location.search === `?${search}`;
     }
     // For URLs without query params, only match if no search params in location
     return location.pathname === path && !location.search;
@@ -900,12 +901,14 @@ export function AppSidebar({
             )}
           >
             {child.icon && (
-              <div className={cn(
-                "grid size-6 place-items-center rounded-md transition-all duration-200 shrink-0",
-                isActive(child.href)
-                  ? "bg-sidebar-primary text-sidebar-primary-foreground"
-                  : "bg-sidebar-accent/40 text-sidebar-primary group-hover:bg-sidebar-primary/30"
-              )}>
+              <div
+                className={cn(
+                  "grid size-6 place-items-center rounded-md transition-all duration-200 shrink-0",
+                  isActive(child.href)
+                    ? "bg-sidebar-primary text-sidebar-primary-foreground"
+                    : "bg-sidebar-accent/40 text-sidebar-primary group-hover:bg-sidebar-primary/30",
+                )}
+              >
                 <child.icon className="h-3.5 w-3.5" />
               </div>
             )}
@@ -913,11 +916,13 @@ export function AppSidebar({
               {child.title}
               {totalWorkgroupUnread + totalBroadcastUnread + totalDMUnread >
                 0 && (
-                  <span className="inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-red-600 px-1 text-[8px] font-bold text-white ml-auto flex-shrink-0">
-                    {totalWorkgroupUnread + totalBroadcastUnread + totalDMUnread}
-                  </span>
-                )}
-              {isActive(child.href) && <ChevronRight className="ml-auto h-3.5 w-3.5 text-sidebar-primary flex-shrink-0" />}
+                <span className="inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-red-600 px-1 text-[8px] font-bold text-white ml-auto flex-shrink-0">
+                  {totalWorkgroupUnread + totalBroadcastUnread + totalDMUnread}
+                </span>
+              )}
+              {isActive(child.href) && (
+                <ChevronRight className="ml-auto h-3.5 w-3.5 text-sidebar-primary flex-shrink-0" />
+              )}
             </span>
           </NavLink>
 
@@ -928,12 +933,14 @@ export function AppSidebar({
               className="flex w-full items-center justify-between px-9 mb-2.5 group/header focus:outline-none"
             >
               <div className="flex items-center gap-2">
-                <span className={cn(
-                  "text-[11px] font-semibold uppercase tracking-wide transition-colors duration-200",
-                  isDMOpen
-                    ? "text-primary"
-                    : "text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
-                )}>
+                <span
+                  className={cn(
+                    "text-[11px] font-semibold uppercase tracking-wide transition-colors duration-200",
+                    isDMOpen
+                      ? "text-primary"
+                      : "text-slate-500 hover:text-slate-700 dark:hover:text-slate-300",
+                  )}
+                >
                   Direct Chats
                 </span>
                 {totalDMUnread > 0 && (
@@ -945,7 +952,9 @@ export function AppSidebar({
               <ChevronDown
                 className={cn(
                   "h-3 w-3 transition-transform duration-200",
-                  isDMOpen ? "text-primary" : "text-slate-500 dark:text-slate-600 group-hover/header:text-slate-800 dark:group-hover/header:text-slate-400",
+                  isDMOpen
+                    ? "text-primary"
+                    : "text-slate-500 dark:text-slate-600 group-hover/header:text-slate-800 dark:group-hover/header:text-slate-400",
                   !isDMOpen && "-rotate-90",
                 )}
               />
@@ -980,14 +989,12 @@ export function AppSidebar({
                               src={
                                 getAvatarUrl(
                                   dm.avatar_url ||
-                                  dm.direct_peer_avatar_url ||
-                                  dm.avatar,
+                                    dm.direct_peer_avatar_url ||
+                                    dm.avatar,
                                 ) || undefined
                               }
                             />
-                            <AvatarFallback
-                              className="bg-primary text-primary-foreground font-bold text-[10px]"
-                            >
+                            <AvatarFallback className="bg-primary text-primary-foreground font-bold text-[10px]">
                               {(dm.display_name || dm.name || "DM")
                                 .slice(0, 2)
                                 .toUpperCase()}
@@ -1070,12 +1077,14 @@ export function AppSidebar({
               className="flex w-full items-center justify-between px-9 mb-2.5 group/header focus:outline-none"
             >
               <div className="flex items-center gap-2">
-                <span className={cn(
-                  "text-[11px] font-semibold uppercase tracking-wide transition-colors duration-200",
-                  isTeamOpen
-                    ? "text-primary"
-                    : "text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
-                )}>
+                <span
+                  className={cn(
+                    "text-[11px] font-semibold uppercase tracking-wide transition-colors duration-200",
+                    isTeamOpen
+                      ? "text-primary"
+                      : "text-slate-500 hover:text-slate-700 dark:hover:text-slate-300",
+                  )}
+                >
                   Team Groups
                 </span>
                 {totalWorkgroupUnread > 0 && (
@@ -1087,7 +1096,9 @@ export function AppSidebar({
               <ChevronDown
                 className={cn(
                   "h-3 w-3 transition-transform duration-200",
-                  isTeamOpen ? "text-primary" : "text-slate-500 dark:text-slate-600 group-hover/header:text-slate-800 dark:group-hover/header:text-slate-400",
+                  isTeamOpen
+                    ? "text-primary"
+                    : "text-slate-500 dark:text-slate-600 group-hover/header:text-slate-800 dark:group-hover/header:text-slate-400",
                   !isTeamOpen && "-rotate-90",
                 )}
               />
@@ -1120,9 +1131,7 @@ export function AppSidebar({
                             <AvatarImage
                               src={getAvatarUrl(wg.avatar_url) || undefined}
                             />
-                            <AvatarFallback
-                              className="bg-primary text-primary-foreground font-bold text-[10px]"
-                            >
+                            <AvatarFallback className="bg-primary text-primary-foreground font-bold text-[10px]">
                               {(wg.display_name || wg.name)
                                 .slice(0, 2)
                                 .toUpperCase()}
@@ -1193,12 +1202,14 @@ export function AppSidebar({
               className="flex w-full items-center justify-between px-9 mb-2.5 group/header focus:outline-none"
             >
               <div className="flex items-center gap-2">
-                <span className={cn(
-                  "text-[11px] font-semibold uppercase tracking-wide transition-colors duration-200",
-                  isBroadcastOpen
-                    ? "text-primary"
-                    : "text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
-                )}>
+                <span
+                  className={cn(
+                    "text-[11px] font-semibold uppercase tracking-wide transition-colors duration-200",
+                    isBroadcastOpen
+                      ? "text-primary"
+                      : "text-slate-500 hover:text-slate-700 dark:hover:text-slate-300",
+                  )}
+                >
                   Broadcasts
                 </span>
                 {totalBroadcastUnread > 0 && (
@@ -1210,7 +1221,9 @@ export function AppSidebar({
               <ChevronDown
                 className={cn(
                   "h-3 w-3 transition-transform duration-200",
-                  isBroadcastOpen ? "text-primary" : "text-slate-500 dark:text-slate-600 group-hover/header:text-slate-800 dark:group-hover/header:text-slate-400",
+                  isBroadcastOpen
+                    ? "text-primary"
+                    : "text-slate-500 dark:text-slate-600 group-hover/header:text-slate-800 dark:group-hover/header:text-slate-400",
                   !isBroadcastOpen && "-rotate-90",
                 )}
               />
@@ -1242,9 +1255,7 @@ export function AppSidebar({
                             <AvatarImage
                               src={getAvatarUrl(bc.avatar_url) || undefined}
                             />
-                            <AvatarFallback
-                              className="bg-primary text-primary-foreground font-bold text-[10px]"
-                            >
+                            <AvatarFallback className="bg-primary text-primary-foreground font-bold text-[10px]">
                               {(bc.display_name || bc.name)
                                 .slice(0, 2)
                                 .toUpperCase()}
@@ -1496,12 +1507,14 @@ export function AppSidebar({
         )}
       >
         {child.icon && (
-          <div className={cn(
-            "grid size-6 place-items-center rounded-md transition-all duration-200 shrink-0",
-            isActive(child.href)
-              ? "bg-sidebar-primary text-sidebar-primary-foreground"
-              : "bg-sidebar-accent/40 text-sidebar-primary group-hover:bg-sidebar-primary/30"
-          )}>
+          <div
+            className={cn(
+              "grid size-6 place-items-center rounded-md transition-all duration-200 shrink-0",
+              isActive(child.href)
+                ? "bg-sidebar-primary text-sidebar-primary-foreground"
+                : "bg-sidebar-accent/40 text-sidebar-primary group-hover:bg-sidebar-primary/30",
+            )}
+          >
             <child.icon className="h-3.5 w-3.5" />
           </div>
         )}
@@ -1512,7 +1525,9 @@ export function AppSidebar({
               {totalWorkgroupUnread}
             </span>
           )}
-          {isActive(child.href) && <ChevronRight className="ml-auto h-3.5 w-3.5 text-sidebar-primary flex-shrink-0" />}
+          {isActive(child.href) && (
+            <ChevronRight className="ml-auto h-3.5 w-3.5 text-sidebar-primary flex-shrink-0" />
+          )}
         </span>
       </NavLink>
     );
@@ -1534,7 +1549,13 @@ export function AppSidebar({
       style={{ width: `${width}px` }}
     >
       {/* Brand Header */}
-      <div className={cn("p-4 border-b border-sidebar-primary/20", isCollapsed && "px-2 py-3 flex flex-col items-center justify-center ml-5")}>
+      <div
+        className={cn(
+          "p-4 border-b border-sidebar-primary/20",
+          isCollapsed &&
+            "px-2 py-3 flex flex-col items-center justify-center ml-5",
+        )}
+      >
         <div className="flex items-center justify-between w-full">
           <div className="flex items-center gap-3 focus-outline-none">
             <Logo className="h-9 w-9 text-sidebar-primary shrink-0 bg-transparent" />
@@ -1554,7 +1575,7 @@ export function AppSidebar({
               onClick={() => onWidthChange?.(isCollapsed ? 256 : 80)}
               className={cn(
                 "flex h-7 w-7 items-center justify-center rounded-full border border-slate-200 dark:border-white/10 bg-white dark:bg-[#0c111d] text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white shadow-md active:scale-95 transition-all",
-                isCollapsed && "mt-3"
+                isCollapsed && "mt-3",
               )}
             >
               {isCollapsed ? (
@@ -1565,16 +1586,16 @@ export function AppSidebar({
             </button>
           )}
         </div>
-          {isMobile && (
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={onClose}
-              className="text-sidebar-foreground/70 hover:text-white"
-            >
-              <X className="h-5 w-5" />
-            </Button>
-          )}
+        {isMobile && (
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={onClose}
+            className="text-sidebar-foreground/70 hover:text-white"
+          >
+            <X className="h-5 w-5" />
+          </Button>
+        )}
 
         {!isCollapsed && (
           <div className="h-px w-full bg-gradient-to-r from-sidebar-primary/20 to-transparent mt-4" />
@@ -1588,7 +1609,8 @@ export function AppSidebar({
           <Button
             className={cn(
               "w-full justify-start gap-2 mb-2  bg-transparent border-2 border-sidebar-primary text-white hover:bg-sidebar-accent/30 hover:border-sidebar-primary rounded-full px-3 py-2",
-              isCollapsed && "w-10 h-10 ml-5 p-0 justify-center rounded-lg mb-1 border-sidebar-primary bg-transparent"
+              isCollapsed &&
+                "w-10 h-10 ml-5 p-0 justify-center rounded-lg mb-1 border-sidebar-primary bg-transparent",
             )}
             onClick={() => {
               navigate("/");
@@ -1596,11 +1618,11 @@ export function AppSidebar({
             }}
             title="Back to Dashboard"
           >
-            <ArrowLeft className={cn("shrink-0", isCollapsed ? "h-5 w-5" : "h-4 w-4")} />
+            <ArrowLeft
+              className={cn("shrink-0", isCollapsed ? "h-5 w-5" : "h-4 w-4")}
+            />
             {!isCollapsed && (
-              <span className="text-[12px] font-bold ">
-                Back to Dashboard
-              </span>
+              <span className="text-[12px] font-bold ">Back to Dashboard</span>
             )}
           </Button>
         )}
@@ -1643,11 +1665,19 @@ export function AppSidebar({
                     return (
                       <div key={item.title} className="space-y-1">
                         {/* Module Header - with border and rounded styling - FRONTEND-ELINA STYLE */}
-                        <div className={cn(
-                          "flex items-center justify-between rounded-full border-2 border-sidebar-primary px-3 py-2 bg-sidebar-primary text-sidebar-primary-foreground shadow-md light:border-[#2DD4BF]",
-                          isCollapsed && "px-2 py-1.5 justify-center rounded-lg"
-                        )}>
-                          <div className={cn("flex items-center gap-2 min-w-0", isCollapsed && "flex-col gap-1")}>
+                        <div
+                          className={cn(
+                            "flex items-center justify-between rounded-full border-2 border-sidebar-primary px-3 py-2 bg-sidebar-primary text-sidebar-primary-foreground shadow-md light:border-[#2DD4BF]",
+                            isCollapsed &&
+                              "px-2 py-1.5 justify-center rounded-lg",
+                          )}
+                        >
+                          <div
+                            className={cn(
+                              "flex items-center gap-2 min-w-0",
+                              isCollapsed && "flex-col gap-1",
+                            )}
+                          >
                             <div className="grid size-5 place-items-center rounded-md text-sidebar-primary-foreground shrink-0">
                               <item.icon className="size-3.5" />
                             </div>
@@ -1772,7 +1802,9 @@ export function AppSidebar({
                     }}
                     className={cn(
                       "flex h-10 w-10 items-center justify-center rounded-xl mx-auto transition-all duration-200",
-                      sectionActive ? "bg-primary/10 text-white" : "text-slate-400 hover:text-white hover:bg-white/[0.03]",
+                      sectionActive
+                        ? "bg-primary/10 text-white"
+                        : "text-slate-400 hover:text-white hover:bg-white/[0.03]",
                     )}
                     title={item.title}
                   >
@@ -1827,7 +1859,9 @@ export function AppSidebar({
                     <item.icon
                       className={cn(
                         "h-4 w-4 transition-colors duration-200",
-                        sectionActive ? "text-primary" : "text-slate-500 group-hover:text-primary dark:group-hover:text-slate-300",
+                        sectionActive
+                          ? "text-primary"
+                          : "text-slate-500 group-hover:text-primary dark:group-hover:text-slate-300",
                       )}
                     />
                     <span>{item.title}</span>
@@ -1852,7 +1886,9 @@ export function AppSidebar({
                   <item.icon
                     className={cn(
                       "h-4 w-4 transition-colors duration-200",
-                      isActive(item.href!) ? "text-primary" : "text-slate-500 group-hover:text-primary dark:group-hover:text-slate-300",
+                      isActive(item.href!)
+                        ? "text-primary"
+                        : "text-slate-500 group-hover:text-primary dark:group-hover:text-slate-300",
                     )}
                   />
                   <span>{item.title}</span>
@@ -2032,12 +2068,14 @@ function SortableNavItem({
           >
             <div className="flex flex-1 items-center justify-between mr-2">
               <div className="flex items-center gap-3">
-                <div className={cn(
-                  "grid h-6 w-6 place-items-center rounded-lg transition-all duration-200",
-                  sectionActive
-                    ? "bg-sidebar-primary/80 text-sidebar-primary-foreground"
-                    : "bg-sidebar-accent/40 text-sidebar-primary group-hover:bg-sidebar-primary/30"
-                )}>
+                <div
+                  className={cn(
+                    "grid h-6 w-6 place-items-center rounded-lg transition-all duration-200",
+                    sectionActive
+                      ? "bg-sidebar-primary/80 text-sidebar-primary-foreground"
+                      : "bg-sidebar-accent/40 text-sidebar-primary group-hover:bg-sidebar-primary/30",
+                  )}
+                >
                   <item.icon className="h-3.5 w-3.5" />
                 </div>
                 <span>{item.title}</span>
@@ -2083,7 +2121,9 @@ function SortableNavItem({
             <item.icon
               className={cn(
                 "h-4 w-4 transition-colors duration-200",
-                isActive(item.href!) ? "text-primary" : "text-slate-500 group-hover:text-primary dark:group-hover:text-slate-300",
+                isActive(item.href!)
+                  ? "text-primary"
+                  : "text-slate-500 group-hover:text-primary dark:group-hover:text-slate-300",
               )}
             />
             <span>{item.title}</span>
