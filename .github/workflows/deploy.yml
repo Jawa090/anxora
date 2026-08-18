@@ -1,4 +1,4 @@
-name: Production CI/CD Pipeline (ElinaSmart)
+name: Deploy ElinaSmart to VPS
 
 on:
   push:
@@ -7,39 +7,15 @@ on:
   workflow_dispatch:
 
 jobs:
-  build-and-test:
-    name: Build and Verify Code
+  deploy:
+    name: Deploy to VPS
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Setup Node.js Environment
-        uses: actions/setup-node@v4
-        with:
-          node-version: 20
-
-      - name: Verify Backend Dependencies
-        run: |
-          echo "Checking backend dependencies..."
-          cd backend
-          npm ci || npm install
-
-      - name: Build Frontend App
-        run: |
-          echo "Building frontend application..."
-          cd frontend
-          npm ci || npm install
-          npm run build
-
-  deploy:
-    name: Deploy to CyberPanel VPS
-    needs: build-and-test
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Deploying via SSH to VPS
+      - name: Deploy via SSH
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.VPS_HOST }}
@@ -48,56 +24,31 @@ jobs:
           port: ${{ secrets.VPS_PORT }}
           script: |
             set -e
-            echo "========================================="
-            echo "   Starting Deployment (ElinaSmart)   "
-            echo "========================================="
+            echo "Starting deployment on VPS..."
             SITE_DIR="/home/elinasmart.com"
 
-            echo "1. Pulling latest code from GitHub..."
+            echo "1. Fetching latest code..."
             cd $SITE_DIR
             git fetch --all
             git reset --hard origin/main
 
-            echo "2. Updating Backend & Restarting PM2..."
+            echo "2. Updating backend..."
             cd $SITE_DIR/backend
             npm install --production
             pm2 restart elina-backend || pm2 start server.js --name elina-backend
 
-            echo "3. Building & Deploying Frontend..."
+            echo "3. Building frontend..."
             cd $SITE_DIR/frontend
             npm install
             npm run build
             rm -rf $SITE_DIR/public_html/assets
             cp -r dist/* $SITE_DIR/public_html/
 
-            echo "4. Generating Production .htaccess for OpenLiteSpeed..."
-            cat << 'EOF' > $SITE_DIR/public_html/.htaccess
-# Force correct MIME types for JS & CSS
-<IfModule mod_mime.c>
-  AddType application/javascript .js .mjs
-  AddType text/css .css
-</IfModule>
+            echo "4. Creating .htaccess for CyberPanel..."
+            printf "<IfModule mod_mime.c>\n  AddType application/javascript .js .mjs\n  AddType text/css .css\n</IfModule>\n<IfModule mod_rewrite.c>\n  RewriteEngine On\n  RewriteBase /\n  RewriteCond %%{REQUEST_URI} ^/assets/ [NC]\n  RewriteRule ^ - [L]\n  RewriteRule ^index\.html$ - [L]\n  RewriteCond %%{REQUEST_FILENAME} !-f\n  RewriteCond %%{REQUEST_FILENAME} !-d\n  RewriteRule . /index.html [L]\n</IfModule>\n" > $SITE_DIR/public_html/.htaccess
 
-# SPA Routing for OpenLiteSpeed / CyberPanel
-<IfModule mod_rewrite.c>
-  RewriteEngine On
-  RewriteBase /
-
-  # Do not rewrite static asset files
-  RewriteCond %{REQUEST_URI} ^/assets/ [NC]
-  RewriteRule ^ - [L]
-
-  RewriteRule ^index\.html$ - [L]
-  RewriteCond %{REQUEST_FILENAME} !-f
-  RewriteCond %{REQUEST_FILENAME} !-d
-  RewriteRule . /index.html [L]
-</IfModule>
-EOF
-
-            echo "5. Fixing CyberPanel User Permissions..."
+            echo "5. Updating permissions..."
             chown -R elina6042:elina6042 $SITE_DIR/
             chmod -R 755 $SITE_DIR/public_html
 
-            echo "========================================="
-            echo "   Deployment Completed Successfully!   "
-            echo "========================================="
+            echo "Deployment finished successfully!"
