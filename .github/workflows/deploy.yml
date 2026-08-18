@@ -23,14 +23,13 @@ jobs:
           key: ${{ secrets.VPS_SSH_KEY }}
           port: ${{ secrets.VPS_PORT }}
           script: |
+            sudo bash -c '
             set -e
-            echo "Starting deployment on VPS..."
+            echo "Starting deployment on VPS as root ($(whoami))..."
             SITE_DIR="/home/elinasmart.com"
 
             echo "1. Fetching latest code..."
-            cd $SITE_DIR
-            chown -R $(whoami) $SITE_DIR 2>/dev/null || true
-            chmod -R 777 $SITE_DIR 2>/dev/null || true
+            cd "$SITE_DIR"
             git config --global --add safe.directory "*" || true
             if [ ! -d ".git" ]; then
               echo "Initializing git repository in $SITE_DIR..."
@@ -41,22 +40,23 @@ jobs:
             git reset --hard origin/main
 
             echo "2. Updating backend..."
-            cd $SITE_DIR/backend
+            cd "$SITE_DIR/backend"
             npm install --production
             pm2 restart elina-backend || pm2 start server.js --name elina-backend
 
             echo "3. Building frontend..."
-            cd $SITE_DIR/frontend
+            cd "$SITE_DIR/frontend"
             npm install
             npm run build
-            rm -rf $SITE_DIR/public_html/assets
-            cp -r dist/* $SITE_DIR/public_html/
+            rm -rf "$SITE_DIR/public_html/assets"
+            cp -r dist/* "$SITE_DIR/public_html/"
 
             echo "4. Creating .htaccess for CyberPanel..."
-            printf "<IfModule mod_mime.c>\n  AddType application/javascript .js .mjs\n  AddType text/css .css\n</IfModule>\n<IfModule mod_rewrite.c>\n  RewriteEngine On\n  RewriteBase /\n  RewriteCond %%{REQUEST_URI} ^/assets/ [NC]\n  RewriteRule ^ - [L]\n  RewriteRule ^index\.html$ - [L]\n  RewriteCond %%{REQUEST_FILENAME} !-f\n  RewriteCond %%{REQUEST_FILENAME} !-d\n  RewriteRule . /index.html [L]\n</IfModule>\n" > $SITE_DIR/public_html/.htaccess
+            printf "<IfModule mod_mime.c>\n  AddType application/javascript .js .mjs\n  AddType text/css .css\n</IfModule>\n<IfModule mod_rewrite.c>\n  RewriteEngine On\n  RewriteBase /\n  RewriteCond %%{REQUEST_URI} ^/assets/ [NC]\n  RewriteRule ^ - [L]\n  RewriteRule ^index\.html$ - [L]\n  RewriteCond %%{REQUEST_FILENAME} !-f\n  RewriteCond %%{REQUEST_FILENAME} !-d\n  RewriteRule . /index.html [L]\n</IfModule>\n" > "$SITE_DIR/public_html/.htaccess"
 
             echo "5. Updating permissions..."
-            chown -R elina6042:elina6042 $SITE_DIR/
-            chmod -R 755 $SITE_DIR/public_html
+            chown -R elina6042:elina6042 "$SITE_DIR/"
+            chmod -R 755 "$SITE_DIR/public_html"
 
             echo "Deployment finished successfully!"
+            '
