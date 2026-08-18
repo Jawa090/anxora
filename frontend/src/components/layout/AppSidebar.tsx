@@ -1057,7 +1057,7 @@ export function AppSidebar({
                 )}
               >
                 <MessageSquare className="h-3.5 w-3.5" />
-                <span>View all chats</span>
+                <span>All Chats</span>
                 <ArrowRight className="h-3 w-3 ml-auto" />
               </NavLink>
             )}
@@ -1180,7 +1180,7 @@ export function AppSidebar({
                 )}
               >
                 <Users className="h-3.5 w-3.5" />
-                <span>View all workgroups</span>
+                <span>All Teams</span>
                 <ArrowRight className="h-3 w-3 ml-auto" />
               </NavLink>
             )}
@@ -1280,7 +1280,7 @@ export function AppSidebar({
                   )}
                 >
                   <Megaphone className="h-3.5 w-3.5" />
-                  <span>View all broadcasts</span>
+                  <span>All Broadcasts</span>
                   <ArrowRight className="h-3 w-3 ml-auto" />
                 </NavLink>
               </div>
