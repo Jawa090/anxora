@@ -22,38 +22,46 @@ jobs:
           key: ${{ secrets.VPS_SSH_KEY }}
           port: ${{ secrets.VPS_PORT || 22 }}
           script: |
-            if [ -f /root/deploy-elinasmart.sh ]; then
-              echo "🚀 Running /root/deploy-elinasmart.sh script..."
-              bash /root/deploy-elinasmart.sh
-            else
-              set -e
-              echo "========================================="
-              echo "   🚀 Starting Deployment (ElinaSmart)   "
-              echo "========================================="
-              SITE_DIR="/home/elinasmart.com"
+            set -e
+            echo "========================================="
+            echo "   🚀 Starting Deployment (ElinaSmart)   "
+            echo "========================================="
+            SITE_DIR="/home/elinasmart.com"
 
-              echo "1️⃣ Pulling latest code from GitHub..."
-              cd $SITE_DIR
-              git fetch --all
-              git reset --hard origin/main
+            echo "1️⃣ Pulling latest code from GitHub..."
+            cd $SITE_DIR
+            git fetch --all
+            git reset --hard origin/main
 
-              echo "2️⃣ Updating Backend..."
-              cd $SITE_DIR/backend
-              npm install
-              pm2 restart elina-backend
+            echo "2️⃣ Updating Backend..."
+            cd $SITE_DIR/backend
+            npm install
+            pm2 restart elina-backend || pm2 start server.js --name elina-backend
 
-              echo "3️⃣ Building Frontend..."
-              cd $SITE_DIR/frontend
-              npm install
-              npm run build
-              rm -rf $SITE_DIR/public_html/assets
-              cp -r dist/* $SITE_DIR/public_html/
+            echo "3️⃣ Building Frontend..."
+            cd $SITE_DIR/frontend
+            npm install
+            npm run build
+            rm -rf $SITE_DIR/public_html/assets
+            cp -r dist/* $SITE_DIR/public_html/
 
-              # Create .htaccess for Single Page App (React Router) redirection on CyberPanel / OpenLiteSpeed
-              cat << 'EOF' > $SITE_DIR/public_html/.htaccess
+            # Create robust .htaccess with MIME types & SPA routing for CyberPanel / OpenLiteSpeed
+            cat << 'EOF' > $SITE_DIR/public_html/.htaccess
+# Force correct MIME types for JS & CSS
+<IfModule mod_mime.c>
+  AddType application/javascript .js .mjs
+  AddType text/css .css
+</IfModule>
+
+# SPA Routing for OpenLiteSpeed / CyberPanel
 <IfModule mod_rewrite.c>
   RewriteEngine On
   RewriteBase /
+
+  # Do not rewrite static asset files
+  RewriteCond %{REQUEST_URI} ^/assets/ [NC]
+  RewriteRule ^ - [L]
+
   RewriteRule ^index\.html$ - [L]
   RewriteCond %{REQUEST_FILENAME} !-f
   RewriteCond %{REQUEST_FILENAME} !-d
@@ -61,11 +69,10 @@ jobs:
 </IfModule>
 EOF
 
-              echo "4️⃣ Setting CyberPanel User Permissions..."
-              chown -R elina6042:elina6042 $SITE_DIR/
-              chmod -R 755 $SITE_DIR/public_html
+            echo "4️⃣ Setting CyberPanel User Permissions..."
+            chown -R elina6042:elina6042 $SITE_DIR/
+            chmod -R 755 $SITE_DIR/public_html
 
-              echo "========================================="
-              echo "   ✅ Deployment Completed Successfully!   "
-              echo "========================================="
-            fi
+            echo "========================================="
+            echo "   ✅ Deployment Completed Successfully!   "
+            echo "========================================="
