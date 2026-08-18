@@ -1,4 +1,4 @@
-name: Deploy ElinaSmart to VPS
+name: Production CI/CD Pipeline (ElinaSmart)
 
 on:
   push:
@@ -7,15 +7,41 @@ on:
   workflow_dispatch:
 
 jobs:
-  deploy:
-    name: Deploy to VPS
+  # ─── JOB 1: Build & Verify Code on GitHub Runner ───────────────
+  build-and-test:
+    name: 1️⃣ Build & Verify Code
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout Repository
+      - name: 📥 Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Deploying via SSH to VPS
+      - name: 🟢 Setup Node.js Environment
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: 📦 Verify Backend Dependencies
+        run: |
+          echo "Checking backend dependencies..."
+          cd backend
+          npm ci || npm install
+
+      - name: ⚛️ Build Frontend App
+        run: |
+          echo "Building frontend application..."
+          cd frontend
+          npm ci || npm install
+          npm run build
+
+  # ─── JOB 2: Deploy to CyberPanel VPS (Sequential) ───────────────
+  deploy:
+    name: 2️⃣ Deploy to CyberPanel VPS
+    needs: build-and-test
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 🚀 Deploying via SSH to VPS
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.VPS_HOST }}
@@ -34,19 +60,19 @@ jobs:
             git fetch --all
             git reset --hard origin/main
 
-            echo "2️⃣ Updating Backend..."
+            echo "2️⃣ Updating Backend & Restarting PM2..."
             cd $SITE_DIR/backend
-            npm install
+            npm install --production
             pm2 restart elina-backend || pm2 start server.js --name elina-backend
 
-            echo "3️⃣ Building Frontend..."
+            echo "3️⃣ Building & Deploying Frontend..."
             cd $SITE_DIR/frontend
             npm install
             npm run build
             rm -rf $SITE_DIR/public_html/assets
             cp -r dist/* $SITE_DIR/public_html/
 
-            # Create robust .htaccess with MIME types & SPA routing for CyberPanel / OpenLiteSpeed
+            echo "4️⃣ Generating Production .htaccess for OpenLiteSpeed..."
             cat << 'EOF' > $SITE_DIR/public_html/.htaccess
 # Force correct MIME types for JS & CSS
 <IfModule mod_mime.c>
@@ -70,7 +96,7 @@ jobs:
 </IfModule>
 EOF
 
-            echo "4️⃣ Setting CyberPanel User Permissions..."
+            echo "5️⃣ Fixing CyberPanel User Permissions..."
             chown -R elina6042:elina6042 $SITE_DIR/
             chmod -R 755 $SITE_DIR/public_html
 
