@@ -4,7 +4,7 @@ import path from "path";
 
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => ({
-  base: "/", // Use absolute base path for domain root deployment
+  base: "/", // Use absolute base path for domain root deployments
   server: {
     host: "::",
     port: 3000,
