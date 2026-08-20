@@ -213,28 +213,28 @@ const navigation: NavItem[] = [
   //     { title: "Communications", href: "/crm/communications", icon: Phone },
   //   ],
   // },
-  // {
-  //   title: "HRMS",
-  //   icon: Briefcase,
-  //   children: [
-  //     { title: "Dashboard", href: "/hrms", icon: BarChart3 },
-  //     { title: "Attendance", href: "/hrms/attendance", icon: ClipboardList },
-  //     {
-  //       title: "Employees",
-  //       href: "/hrms/employees",
-  //       icon: UserCheck,
-  //       roles: ["super_admin", "admin", "manager"],
-  //     },
-  //     { title: "Leave Management", href: "/hrms/leave", icon: Calendar },
-  //     {
-  //       title: "Payroll",
-  //       href: "/hrms/payroll",
-  //       icon: DollarSign,
-  //       roles: ["super_admin", "admin", "manager"],
-  //     },
-  //     { title: "Notifications", href: "/hrms/notifications", icon: Bell },
-  //   ],
-  // },
+  {
+    title: "HRMS",
+    icon: Briefcase,
+    children: [
+      { title: "Dashboard", href: "/hrms", icon: BarChart3 },
+      { title: "Attendance", href: "/hrms/attendance", icon: ClipboardList },
+      {
+        title: "Employees",
+        href: "/hrms/employees",
+        icon: UserCheck,
+        roles: ["super_admin", "admin", "manager"],
+      },
+      { title: "Leave Management", href: "/hrms/leave", icon: Calendar },
+      {
+        title: "Payroll",
+        href: "/hrms/payroll",
+        icon: DollarSign,
+        roles: ["super_admin", "admin", "manager"],
+      },
+      { title: "Notifications", href: "/hrms/notifications", icon: Bell },
+    ],
+  },
   // {
   //   title: "Recruitment",
   //   icon: UserCog,

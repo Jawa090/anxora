@@ -199,7 +199,7 @@ export default function HRMSDashboard() {
   // ── EMPLOYEE VIEW ──────────────────────────────────────────────
   if (!isAdmin) {
     return (
-      <div className="space-y-6 pb-8">
+      <div className="space-y-4">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">HRMS Dashboard</h1>
           <p className="text-muted-foreground mt-1">{format(new Date(), "EEEE, MMMM d, yyyy")}</p>
@@ -321,7 +321,7 @@ export default function HRMSDashboard() {
 
   // ── ADMIN / MANAGER VIEW ────────────────────────────────────────
   return (
-    <div className="space-y-6 pb-8">
+    <div className="space-y-4">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">HRMS Dashboard</h1>
@@ -329,89 +329,89 @@ export default function HRMSDashboard() {
         </div>
         <div className="flex items-center gap-3">
           <Select value={period} onValueChange={setPeriod}>
-            <SelectTrigger className="w-40"><SelectValue /></SelectTrigger>
+            <SelectTrigger className="w-40 h-9"><SelectValue /></SelectTrigger>
             <SelectContent>
               <SelectItem value="today">Today</SelectItem>
               <SelectItem value="week">This Week</SelectItem>
               <SelectItem value="month">This Month</SelectItem>
             </SelectContent>
           </Select>
-          <Button onClick={() => navigate("/hrms/employees")} className="gap-2">
-            <Users className="h-4 w-4" /> Manage Employees
+          <Button onClick={() => navigate("/hrms/employees")} className="gap-2 py-5">
+            <Users className="h-4 w-4 " /> Manage Employees
           </Button>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <Card className="hover:shadow-lg transition-shadow">
-          <CardContent className="p-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
+        <Card className="hover:shadow-lg transition-shadow h-[110px]">
+          <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-muted-foreground">Total Employees</p>
-                <p className="text-3xl font-bold mt-2">{stats?.totalEmployees ?? 0}</p>
+                <p className="text-3xl font-bold">{stats?.totalEmployees ?? 0}</p>
                 <p className="text-xs text-muted-foreground mt-1">Active workforce</p>
               </div>
-              <div className="h-12 w-12 rounded-full bg-blue-100 flex items-center justify-center">
-                <Users className="h-6 w-6 text-blue-600" />
+              <div className="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center">
+                <Users className="h-5 w-5 text-blue-600" />
               </div>
             </div>
           </CardContent>
         </Card>
 
-        <Card className="hover:shadow-lg transition-shadow">
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between mb-3">
+        <Card className="hover:shadow-lg transition-shadow h-[110px]">
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-muted-foreground">Attendance Rate</p>
-                <p className="text-3xl font-bold mt-2">{attendanceRate}%</p>
+                <p className="text-3xl font-bold">{attendanceRate}%</p>
               </div>
-              <div className="h-12 w-12 rounded-full bg-emerald-100 flex items-center justify-center">
-                <UserCheck className="h-6 w-6 text-emerald-600" />
+              <div className="h-10 w-10 rounded-full bg-emerald-100 flex items-center justify-center">
+                <UserCheck className="h-5 w-5 text-emerald-600" />
               </div>
             </div>
             <Progress value={attendanceRate} className="h-2" />
-            <p className="text-xs text-muted-foreground mt-2">{stats?.presentToday ?? 0} present today</p>
+            <p className="text-xs text-muted-foreground">{stats?.presentToday ?? 0} present today</p>
           </CardContent>
         </Card>
 
-        <Card className="hover:shadow-lg transition-shadow">
-          <CardContent className="p-6">
+        <Card className="hover:shadow-lg transition-shadow h-[110px]">
+          <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-muted-foreground">Pending Leaves</p>
-                <p className="text-3xl font-bold mt-2">{stats?.pendingLeaves ?? 0}</p>
+                <p className="text-3xl font-bold">{stats?.pendingLeaves ?? 0}</p>
                 <p className="text-xs text-muted-foreground mt-1">Awaiting approval</p>
               </div>
-              <div className="h-12 w-12 rounded-full bg-yellow-100 flex items-center justify-center">
-                <Calendar className="h-6 w-6 text-yellow-600" />
+              <div className="h-10 w-10 rounded-full bg-yellow-100 flex items-center justify-center">
+                <Calendar className="h-5 w-5 text-yellow-600" />
               </div>
             </div>
-            {stats?.pendingLeaves && stats.pendingLeaves > 0 && (
+            {/* {stats?.pendingLeaves && stats.pendingLeaves > 0 && (
               <Button variant="link" size="sm" className="mt-2 p-0 h-auto text-xs" onClick={() => navigate("/hrms/leave?tab=team-leaves")}>
                 Review requests →
               </Button>
-            )}
+            )} */}
           </CardContent>
         </Card>
 
-        <Card className="hover:shadow-lg transition-shadow">
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between mb-3">
+        <Card className="hover:shadow-lg transition-shadow h-[110px]">
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-muted-foreground">Productivity</p>
-                <p className="text-3xl font-bold mt-2">{productivityScore}%</p>
+                <p className="text-3xl font-bold">{productivityScore}%</p>
               </div>
-              <div className="h-12 w-12 rounded-full bg-purple-100 flex items-center justify-center">
-                <TrendingUp className="h-6 w-6 text-purple-600" />
+              <div className="h-10 w-10 rounded-full bg-purple-100 flex items-center justify-center">
+                <TrendingUp className="h-5 w-5 text-purple-600" />
               </div>
             </div>
             <Progress value={productivityScore} className="h-2" />
-            <p className="text-xs text-muted-foreground mt-2">{stats?.averageWorkHours?.toFixed(1) ?? 0}h avg daily</p>
+            <p className="text-xs text-muted-foreground mt-1">{stats?.averageWorkHours?.toFixed(1) ?? 0}h avg daily</p>
           </CardContent>
         </Card>
       </div>
 
-      <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-4 gap-3">
         {[
           { label: "Present",       value: stats?.presentToday ?? 0,                          color: "bg-emerald-500", icon: UserCheck },
           { label: "Absent",        value: stats?.absentToday ?? 0,                           color: "bg-red-500",     icon: UserX },
@@ -424,11 +424,15 @@ export default function HRMSDashboard() {
         ].map((stat) => (
           <Card key={stat.label} className="hover:shadow-md transition-shadow">
             <CardContent className="p-4">
-              <div className={cn("p-2 rounded-lg w-fit mb-2", stat.color)}>
-                <stat.icon className="h-4 w-4 text-white" />
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">{stat.label}</p>
+                  <p className="text-3xl font-bold">{stat.value}</p>
+                </div>
+                <div className={`h-10 w-10 rounded-full ${stat.color} flex items-center justify-center`}>
+                  <stat.icon className="h-5 w-5 text-white" />
+                </div>
               </div>
-              <p className="text-2xl font-bold">{stat.value}</p>
-              <p className="text-xs text-muted-foreground mt-1">{stat.label}</p>
             </CardContent>
           </Card>
         ))}
@@ -604,7 +608,7 @@ export default function HRMSDashboard() {
       <Card>
         <CardHeader><CardTitle>Quick Actions</CardTitle></CardHeader>
         <CardContent>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4">
             {[
               { label: "Manage Employees", sub: "View & edit staff",      icon: Users,    href: "/hrms/employees",    color: "bg-blue-500" },
               { label: "Attendance",       sub: "Clock in/out records",   icon: Clock,    href: "/hrms/attendance",   color: "bg-emerald-500" },
@@ -613,15 +617,15 @@ export default function HRMSDashboard() {
               { label: "Notifications",    sub: "Alerts & updates",       icon: Bell,     href: "/hrms/notifications",color: "bg-violet-500" },
             ].map((item) => (
               <button key={item.label} onClick={() => navigate(item.href)}
-                className="flex flex-col items-center gap-3 p-6 rounded-xl border border-border hover:shadow-lg hover:border-primary/30 transition-all group">
-                <div className={cn("p-4 rounded-full", item.color)}>
-                  <item.icon className="h-6 w-6 text-white" />
+                className="flex flex-col items-center gap-3 p-2 rounded-xl border border-border hover:shadow-lg hover:border-primary/30 transition-all group relative">
+                <div className={cn("p-2 rounded-full", item.color)}>
+                  <item.icon className="h-5 w-5 text-white" />
                 </div>
+                <ArrowUpRight className="h-4 w-4 text-muted-foreground/30 group-hover:text-muted-foreground transition-colors justify-end absolute right-10 top-5" />
                 <div className="text-center">
                   <p className="text-sm font-semibold">{item.label}</p>
                   <p className="text-xs text-muted-foreground mt-1">{item.sub}</p>
                 </div>
-                <ArrowUpRight className="h-4 w-4 text-muted-foreground/30 group-hover:text-muted-foreground transition-colors" />
               </button>
             ))}
           </div>

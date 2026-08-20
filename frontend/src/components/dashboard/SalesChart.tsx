@@ -1,6 +1,14 @@
 import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
+import {
+  AreaChart,
+  Area,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+} from "recharts";
 import { leadsApi, dealsApi } from "@/lib/api";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -30,18 +38,34 @@ export function SalesChart() {
     const leads = leadsResp?.data || [];
     const deals = dealsResp?.data || [];
 
-    const buckets: { key: string; month: string; leads: number; deals: number; revenue: number }[] = [];
+    const buckets: {
+      key: string;
+      month: string;
+      leads: number;
+      deals: number;
+      revenue: number;
+    }[] = [];
     const now = new Date();
 
     for (let i = monthsBack - 1; i >= 0; i--) {
       const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
       const key = `${d.getFullYear()}-${d.getMonth()}`;
-      buckets.push({ key, month: monthLabel(d), leads: 0, deals: 0, revenue: 0 });
+      buckets.push({
+        key,
+        month: monthLabel(d),
+        leads: 0,
+        deals: 0,
+        revenue: 0,
+      });
     }
 
     const bucketMap = new Map(buckets.map((b) => [b.key, b]));
 
-    const addToBucket = (item: any, valueField: "leads" | "deals", revenueField?: boolean) => {
+    const addToBucket = (
+      item: any,
+      valueField: "leads" | "deals",
+      revenueField?: boolean,
+    ) => {
       const created = item.created_at ? new Date(item.created_at) : null;
       if (!created) return;
       const key = `${created.getFullYear()}-${created.getMonth()}`;
@@ -65,42 +89,53 @@ export function SalesChart() {
   const isLoading = leadsLoading || dealsLoading;
 
   return (
-    <div className="rounded-[22px] border border-border/40 bg-card shadow-sm animate-fade-in overflow-hidden">
-      <div className="border-b border-border/40 px-6 py-4">
+    <div className="rounded-[22px] border border-border/40 bg-card shadow-sm animate-fade-in overflow-hidden h-[300px] flex flex-col">
+      <div className="border-b border-border/40 px-6 py-3 shrink-0">
         <div className="flex items-center justify-between">
           <div>
-            <h3 className="text-sm font-bold tracking-tight text-foreground">Sales Overview</h3>
-            <p className="text-xs text-muted-foreground font-semibold mt-0.5">Monthly performance metrics</p>
+            <h3 className="text-sm font-bold tracking-tight text-foreground">
+              Sales Overview
+            </h3>
+            <p className="text-[11px] text-muted-foreground font-medium mt-0.5">
+              Monthly performance metrics
+            </p>
           </div>
           <div className="flex items-center gap-4 text-xs font-semibold">
             <div className="flex items-center gap-2">
-              <div className="h-3 w-3 rounded-full bg-blue-500" />
-              <span className="text-muted-foreground">Leads</span>
+              <div className="h-2.5 w-2.5 rounded-full bg-[#2DD4BF]" />
+              <span className="text-muted-foreground text-xs">Leads</span>
             </div>
             <div className="flex items-center gap-2">
-              <div className="h-3 w-3 rounded-full bg-emerald-500" />
-              <span className="text-muted-foreground">Deals</span>
+              <div className="h-2.5 w-2.5 rounded-full bg-[#10B981]" />
+              <span className="text-muted-foreground text-xs">Deals</span>
             </div>
           </div>
         </div>
       </div>
-      <div className="p-6">
+      <div className="p-4 flex-1 min-h-0">
         {isLoading ? (
-          <Skeleton className="h-[300px] w-full rounded-2xl" />
+          <Skeleton className="h-full w-full rounded-2xl" />
         ) : (
-          <ResponsiveContainer width="100%" height={300}>
-            <AreaChart data={chartData}>
+          <ResponsiveContainer width="100%" height="100%">
+            <AreaChart
+              data={chartData}
+              margin={{ top: 10, right: 10, left: -20, bottom: 0 }}
+            >
               <defs>
                 <linearGradient id="colorLeads" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="rgb(59, 130, 246)" stopOpacity={0.2} />
-                  <stop offset="95%" stopColor="rgb(59, 130, 246)" stopOpacity={0} />
+                  <stop offset="5%" stopColor="#2DD4BF" stopOpacity={0.3} />
+                  <stop offset="95%" stopColor="#2DD4BF" stopOpacity={0} />
                 </linearGradient>
                 <linearGradient id="colorDeals" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="rgb(16, 185, 129)" stopOpacity={0.2} />
-                  <stop offset="95%" stopColor="rgb(16, 185, 129)" stopOpacity={0} />
+                  <stop offset="5%" stopColor="#10B981" stopOpacity={0.3} />
+                  <stop offset="95%" stopColor="#10B981" stopOpacity={0} />
                 </linearGradient>
               </defs>
-              <CartesianGrid strokeDasharray="3 3" className="stroke-border/40" vertical={false} />
+              <CartesianGrid
+                strokeDasharray="3 3"
+                className="stroke-border/30"
+                vertical={false}
+              />
               <XAxis
                 dataKey="month"
                 axisLine={false}
@@ -127,7 +162,7 @@ export function SalesChart() {
               <Area
                 type="monotone"
                 dataKey="leads"
-                stroke="rgb(59, 130, 246)"
+                stroke="#2DD4BF"
                 strokeWidth={2.5}
                 fillOpacity={1}
                 fill="url(#colorLeads)"
@@ -135,7 +170,7 @@ export function SalesChart() {
               <Area
                 type="monotone"
                 dataKey="deals"
-                stroke="rgb(16, 185, 129)"
+                stroke="#10B981"
                 strokeWidth={2.5}
                 fillOpacity={1}
                 fill="url(#colorDeals)"
