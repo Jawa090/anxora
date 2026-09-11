@@ -31,12 +31,11 @@ const PRESET_DEPARTMENTS = [
 ];
 
 const STATUS_COLORS: Record<string, string> = {
-  active:   "bg-emerald-50 text-emerald-700 border-emerald-200",
+  active: "bg-emerald-50 text-emerald-700 border-emerald-200",
   inactive: "bg-red-50 text-red-700 border-red-200",
-  on_leave: "bg-yellow-50 text-yellow-700 border-yellow-200",
 };
 
-const DEPT_COLORS = ["bg-blue-500","bg-violet-500","bg-emerald-500","bg-orange-500","bg-pink-500","bg-cyan-500","bg-rose-500","bg-amber-500"];
+const DEPT_COLORS = ["bg-blue-500", "bg-violet-500", "bg-emerald-500", "bg-orange-500", "bg-pink-500", "bg-cyan-500", "bg-rose-500", "bg-amber-500"];
 
 function getInitials(name: string) {
   return name.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2);
@@ -83,7 +82,7 @@ export default function EmployeesPage() {
       // 1. Search if already exists in HRMS database by email first
       const existing: any = await api.get("/employees", { search: emp.email });
       const found = (existing?.data || []).find((e: any) => e.email?.toLowerCase() === emp.email?.toLowerCase());
-      
+
       if (found) {
         navigate(editMode ? `/hrms/employees/${found.id}/edit` : `/hrms/employees/${found.id}`);
         return;
@@ -150,11 +149,16 @@ export default function EmployeesPage() {
   );
 
   const hrmsEmployees: Employee[] = ((resp as any)?.data || [])
-    .map((e: any) => ({
-      ...e,
-      _source: 'hrms' as const,
-      profile_picture: e.profile_picture || memberAvatarByEmail.get(e.email?.toLowerCase()) || undefined,
-    }));
+    .map((e: any) => {
+      const sysUser = memberByEmail.get(e.email?.toLowerCase());
+      return {
+        ...e,
+        department: sysUser?.department || e.department,
+        role: sysUser?.role || e.role,
+        profile_picture: e.profile_picture || sysUser?.avatar_url || memberAvatarByEmail.get(e.email?.toLowerCase()) || undefined,
+        _source: 'hrms' as const,
+      };
+    });
 
   const hrmsEmails = new Set(hrmsEmployees.map((e) => e.email?.toLowerCase()));
   const systemUsers: Employee[] = ((membersResp as any) || [])
@@ -171,6 +175,7 @@ export default function EmployeesPage() {
     })
     .filter((u: any) => {
       if (deptFilter === "all") return true;
+      if (deptFilter === "none") return !u.department || u.department.trim() === "";
       return (u.department || "").toLowerCase() === deptFilter.toLowerCase();
     })
     .map((u: any) => ({
@@ -183,7 +188,7 @@ export default function EmployeesPage() {
       department: u.department || null,
       position: u.position || u.role || null,
       hire_date: u.created_at,
-      status: u.is_active === false ? "inactive" : "active",
+      status: u.is_active !== false ? 'active' : 'inactive',
       employee_id: null,
       salary: null,
       address: null,
@@ -199,19 +204,17 @@ export default function EmployeesPage() {
     currentPage * pageSize
   );
 
-  // Start with preset departments, then add any extra from employees (case-insensitive dedup)
+  // Dynamically derive departments strictly from employees in DB (Title Case normalized)
   const departments = (() => {
-    const seen = new Map<string, string>(
-      PRESET_DEPARTMENTS.map((d) => [d.toLowerCase(), d])
-    );
+    const seen = new Map<string, string>();
     employees.forEach((e) => {
-      if (!e.department) return;
-      const key = e.department.toLowerCase();
+      if (!e.department || !e.department.trim()) return;
+      const key = e.department.trim().toLowerCase();
       if (!seen.has(key)) {
-        seen.set(key, e.department.replace(/\b\w/g, (c) => c.toUpperCase()));
+        seen.set(key, e.department.trim().replace(/\b\w/g, (c) => c.toUpperCase()));
       }
     });
-    return [...seen.values()];
+    return [...seen.values()].sort((a, b) => a.localeCompare(b));
   })();
 
   const saveMutation = useMutation({
@@ -256,10 +259,10 @@ export default function EmployeesPage() {
   };
 
   const stats = [
-    { label: "Total",       value: employees.length,                                          icon: Users,      color: "bg-blue-500" },
-    { label: "Active",      value: employees.filter((e) => e.status === "active").length,     icon: UserCheck,  color: "bg-emerald-500" },
-    { label: "Inactive",    value: employees.filter((e) => e.status === "inactive").length,   icon: UserX,      color: "bg-red-500" },
-    { label: "Departments", value: departments.length,                                         icon: Building2,  color: "bg-violet-500" },
+    { label: "Total", value: employees.length, icon: Users, color: "bg-blue-500" },
+    { label: "Active", value: employees.filter((e) => e.status === "active").length, icon: UserCheck, color: "bg-emerald-500" },
+    { label: "Inactive", value: employees.filter((e) => e.status === "inactive").length, icon: UserX, color: "bg-red-500" },
+    { label: "Departments", value: departments.length, icon: Building2, color: "bg-violet-500" },
   ];
 
   if (!isAdmin) return (
@@ -311,12 +314,11 @@ export default function EmployeesPage() {
             <SelectItem value="all">All Status</SelectItem>
             <SelectItem value="active">Active</SelectItem>
             <SelectItem value="inactive">Inactive</SelectItem>
-            <SelectItem value="on_leave">On Leave</SelectItem>
           </SelectContent>
         </Select>
         <Select value={deptFilter} onValueChange={(v) => setDeptFilter(v)}>
           <SelectTrigger className="h-8 w-40 text-sm"><SelectValue placeholder="All Departments" /></SelectTrigger>
-          <SelectContent>
+          <SelectContent className="max-h-[190px] overflow-y-auto">
             <SelectItem value="all">All Departments</SelectItem>
             {departments.map((d) => <SelectItem key={d.toLowerCase()} value={d.toLowerCase()}>{d}</SelectItem>)}
           </SelectContent>
@@ -365,7 +367,7 @@ export default function EmployeesPage() {
                         ? (emp.profile_picture.startsWith('http') ? emp.profile_picture : `${FILE_BASE_URL}${emp.profile_picture}`)
                         : ""
                     } alt={name} />
-                    <AvatarFallback className="bg-primary/10 text-primary font-bold text-[11px]">
+                    <AvatarFallback className="bg-secondary-foreground text-white dark:text-black dark:bg-primary font-bold text-[11px]">
                       {getInitials(name || "?")}
                     </AvatarFallback>
                   </Avatar>
@@ -397,7 +399,7 @@ export default function EmployeesPage() {
                 <div className="w-28 hidden sm:block">
                   <div className="flex items-center gap-1.5 text-xs text-muted-foreground capitalize">
                     <Briefcase className="h-3.5 w-3.5" />
-                    {emp.department || "General"}
+                    {emp.department ? emp.department : <span className="italic text-muted-foreground/60">None</span>}
                   </div>
                 </div>
                 <div className="w-24 hidden lg:block">

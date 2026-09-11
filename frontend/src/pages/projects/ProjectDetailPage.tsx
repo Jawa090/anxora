@@ -56,6 +56,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
+import { DatePicker } from "@/components/ui/date-picker";
 import { Textarea } from "@/components/ui/textarea";
 import {
   Dialog,
@@ -802,11 +803,11 @@ export default function ProjectDetailPage() {
   const tasksProgress =
     total > 0
       ? Math.round(
-          tasksArray.reduce(
-            (acc: number, t: any) => acc + (t.progress || 0),
-            0,
-          ) / total,
-        )
+        tasksArray.reduce(
+          (acc: number, t: any) => acc + (t.progress || 0),
+          0,
+        ) / total,
+      )
       : 0;
 
   // Calculate milestones progress and counts
@@ -824,11 +825,11 @@ export default function ProjectDetailPage() {
   const milestonesProgress =
     totalMilestones > 0
       ? Math.round(
-          milestonesArray.reduce(
-            (acc: number, m: any) => acc + (m.progress || 0),
-            0,
-          ) / totalMilestones,
-        )
+        milestonesArray.reduce(
+          (acc: number, m: any) => acc + (m.progress || 0),
+          0,
+        ) / totalMilestones,
+      )
       : 0;
 
   // Combined project progress (average of tasks and milestones)
@@ -1394,11 +1395,11 @@ export default function ProjectDetailPage() {
                 const milestoneProgress =
                   totalMilestones > 0
                     ? Math.round(
-                        milestonesArray.reduce(
-                          (acc: number, m: any) => acc + (m.progress || 0),
-                          0,
-                        ) / totalMilestones,
-                      )
+                      milestonesArray.reduce(
+                        (acc: number, m: any) => acc + (m.progress || 0),
+                        0,
+                      ) / totalMilestones,
+                    )
                     : 0;
 
                 return (
@@ -1775,18 +1776,18 @@ export default function ProjectDetailPage() {
                                     src={t.assigned_to_avatar}
                                     alt={t.assigned_to_name || ""}
                                   />
-                                  <AvatarFallback className="text-[10px] font-bold bg-secondary-foreground text-primary">
+                                  <AvatarFallback className="text-[10px] font-bold bg-secondary-foreground text-white">
                                     {getInitials(
                                       t.assigned_to_name ||
-                                        getMemberName(t.assigned_to),
+                                      getMemberName(t.assigned_to),
                                     )}
                                   </AvatarFallback>
                                 </Avatar>
                               ) : (
-                                <div className="h-5 w-5 rounded-full border border-border bg-secondary-foreground text-primary text-[10px] font-bold flex items-center justify-center">
+                                <div className="h-5 w-5 rounded-full border border-border bg-secondary-foreground text-white dark:bg-primary dark:text-black text-[10px] font-bold flex items-center justify-center">
                                   {getInitials(
                                     t.assigned_to_name ||
-                                      getMemberName(t.assigned_to),
+                                    getMemberName(t.assigned_to),
                                   )}
                                 </div>
                               )}
@@ -2042,10 +2043,10 @@ export default function ProjectDetailPage() {
               !isAdmin && !isMilestoneOwner && isMilestoneAssignee;
             const milestoneComments = activeMilestone
               ? comments.filter(
-                  (c: any) =>
-                    c.entity_type === "milestone" &&
-                    c.entity_id === activeMilestone.id,
-                )
+                (c: any) =>
+                  c.entity_type === "milestone" &&
+                  c.entity_id === activeMilestone.id,
+              )
               : [];
 
             const handlePostMilestoneComment = () => {
@@ -2099,10 +2100,10 @@ export default function ProjectDetailPage() {
                               <>
                                 {(pendingMilestones > 0 ||
                                   activeMilestones > 0) && (
-                                  <span className="text-muted-foreground/50">
-                                    ·
-                                  </span>
-                                )}
+                                    <span className="text-muted-foreground/50">
+                                      ·
+                                    </span>
+                                  )}
                                 <span className="text-emerald-400 font-bold">
                                   {completedMilestones} Done
                                 </span>
@@ -2137,7 +2138,7 @@ export default function ProjectDetailPage() {
                           className={cn(
                             "border-border bg-card/30 hover:bg-card/50 transition-all rounded-xl p-4 cursor-pointer relative overflow-hidden shadow-sm",
                             isSelected &&
-                              "border-blue-500/60 bg-blue-500/5 hover:bg-blue-500/5 ring-1 ring-blue-500/30",
+                            "border-blue-500/60 bg-blue-500/5 hover:bg-blue-500/5 ring-1 ring-blue-500/30",
                           )}
                         >
                           <div className="flex items-start justify-between gap-3 mb-2.5">
@@ -2344,27 +2345,27 @@ export default function ProjectDetailPage() {
                             <Label className="text-[10px] font-bold text-muted-foreground uppercase">
                               Target Due Date
                             </Label>
-                            <Input
-                              type="date"
+                            <DatePicker
                               disabled={isRestrictedMilestoneUser}
                               value={
                                 activeMilestone.due_date
                                   ? activeMilestone.due_date.slice(0, 10)
                                   : ""
                               }
-                              onChange={(e) => {
+                              onChange={(val) => {
                                 updateMilestone.mutate(
                                   {
                                     id: activeMilestone.id,
                                     project_id: id!,
-                                    due_date: e.target.value || null,
+                                    due_date: val || null,
                                   },
                                   {
                                     onSuccess: () => refetchMilestones(),
                                   },
                                 );
                               }}
-                              className="text-xs bg-muted border-border text-foreground h-9"
+                              placeholder="Select due date"
+                              className="h-9"
                             />
                           </div>
                         </div>
@@ -2496,9 +2497,9 @@ export default function ProjectDetailPage() {
                                       <span className="text-[9px] text-muted-foreground/60">
                                         {comm.created_at
                                           ? formatDistanceToNow(
-                                              new Date(comm.created_at),
-                                              { addSuffix: true },
-                                            )
+                                            new Date(comm.created_at),
+                                            { addSuffix: true },
+                                          )
                                           : "Just now"}
                                       </span>
                                     </div>
@@ -2592,7 +2593,7 @@ export default function ProjectDetailPage() {
                     {folder === "All"
                       ? filesArray.length
                       : filesArray.filter((f: any) => f.folder === folder)
-                          .length}
+                        .length}
                   </Badge>
                 </button>
               ))}
@@ -2609,7 +2610,7 @@ export default function ProjectDetailPage() {
                     {activeFolder === "All"
                       ? filesArray.length
                       : filesArray.filter((f: any) => f.folder === activeFolder)
-                          .length}{" "}
+                        .length}{" "}
                     files
                   </span>
                 </div>
@@ -2691,9 +2692,9 @@ export default function ProjectDetailPage() {
                                     {file.date ||
                                       (file.created_at
                                         ? format(
-                                            new Date(file.created_at),
-                                            "MMM d, yyyy",
-                                          )
+                                          new Date(file.created_at),
+                                          "MMM d, yyyy",
+                                        )
                                         : "")}
                                   </span>
                                 </div>
@@ -2711,20 +2712,20 @@ export default function ProjectDetailPage() {
                               {(profile?.id === file.uploaded_by ||
                                 userRole?.role === "admin" ||
                                 userRole?.role === "super_admin") && (
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  onClick={() =>
-                                    deleteFile.mutate(
-                                      { id: file.id, projectId: id! },
-                                      { onSuccess: () => refetchFiles() },
-                                    )
-                                  }
-                                  className="hover:bg-red-500/10 hover:text-destructive h-8 w-8 text-muted-foreground/70 bg-transparent"
-                                >
-                                  <Trash className="h-4 w-4" />
-                                </Button>
-                              )}
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={() =>
+                                      deleteFile.mutate(
+                                        { id: file.id, projectId: id! },
+                                        { onSuccess: () => refetchFiles() },
+                                      )
+                                    }
+                                    className="hover:bg-red-500/10 hover:text-destructive h-8 w-8 text-muted-foreground/70 bg-transparent"
+                                  >
+                                    <Trash className="h-4 w-4" />
+                                  </Button>
+                                )}
                             </div>
                           </div>
                         ))}
@@ -2777,13 +2778,13 @@ export default function ProjectDetailPage() {
                   const workload =
                     activeCount > 0
                       ? Math.min(
-                          100,
-                          Math.round(
-                            (activeCount / Math.max(total, 1)) *
-                              100 *
-                              membersArray.length,
-                          ),
-                        )
+                        100,
+                        Math.round(
+                          (activeCount / Math.max(total, 1)) *
+                          100 *
+                          membersArray.length,
+                        ),
+                      )
                       : 0;
                   return (
                     <Card
@@ -2902,8 +2903,8 @@ export default function ProjectDetailPage() {
                           <span className="text-[10px] text-muted-foreground/70">
                             {comm.created_at
                               ? formatDistanceToNow(new Date(comm.created_at), {
-                                  addSuffix: true,
-                                })
+                                addSuffix: true,
+                              })
                               : "Just now"}
                           </span>
                         </div>
@@ -2951,10 +2952,10 @@ export default function ProjectDetailPage() {
                         .toLowerCase()
                         .includes(tagSearchQuery.toLowerCase()),
                     ).length === 0 && (
-                      <div className="text-[10px] text-muted-foreground text-center py-3">
-                        No members found
-                      </div>
-                    )}
+                        <div className="text-[10px] text-muted-foreground text-center py-3">
+                          No members found
+                        </div>
+                      )}
                   </div>
                 )}
                 <Textarea
@@ -3046,8 +3047,8 @@ export default function ProjectDetailPage() {
                         <p className="text-[10px] text-muted-foreground/70 mt-0.5">
                           {act.created_at
                             ? formatDistanceToNow(new Date(act.created_at), {
-                                addSuffix: true,
-                              })
+                              addSuffix: true,
+                            })
                             : "Just now"}
                         </p>
                       </div>
@@ -3355,24 +3356,22 @@ export default function ProjectDetailPage() {
                     <Label className="text-[10px] font-bold text-muted-foreground uppercase">
                       Start Date
                     </Label>
-                    <Input
-                      type="date"
+                    <DatePicker
                       value={settingsStart}
-                      onChange={(e) => setSettingsStart(e.target.value)}
+                      onChange={(val) => setSettingsStart(val)}
                       disabled={profile?.id !== project?.created_by}
-                      className="disabled:opacity-60 bg-muted border-border text-xs rounded-xl text-foreground"
+                      placeholder="Select start date"
                     />
                   </div>
                   <div className="space-y-1.5">
                     <Label className="text-[10px] font-bold text-muted-foreground uppercase">
                       End Date
                     </Label>
-                    <Input
-                      type="date"
+                    <DatePicker
                       value={settingsEnd}
-                      onChange={(e) => setSettingsEnd(e.target.value)}
+                      onChange={(val) => setSettingsEnd(val)}
                       disabled={profile?.id !== project?.created_by}
-                      className="disabled:opacity-60 bg-muted border-border text-xs rounded-xl text-foreground"
+                      placeholder="Select end date"
                     />
                   </div>
                 </div>
@@ -3510,15 +3509,15 @@ export default function ProjectDetailPage() {
                       <AvatarFallback className="text-[10px] font-bold bg-blue-500/10 text-primary">
                         {getInitials(
                           selectedTaskForDrawer.assigned_to_name ||
-                            getMemberName(selectedTaskForDrawer.assigned_to),
+                          getMemberName(selectedTaskForDrawer.assigned_to),
                         )}
                       </AvatarFallback>
                     </Avatar>
                   ) : (
-                    <div className="h-5 w-5 rounded-full border border-border bg-blue-500/10 text-primary text-[10px] font-bold flex items-center justify-center">
+                    <div className="h-5 w-5 rounded-full border border-border bg-secondary-foreground text-white dark:bg-primary dark:text-black text-[10px] font-bold flex items-center justify-center">
                       {getInitials(
                         selectedTaskForDrawer.assigned_to_name ||
-                          getMemberName(selectedTaskForDrawer.assigned_to),
+                        getMemberName(selectedTaskForDrawer.assigned_to),
                       )}
                     </div>
                   )}
@@ -3535,9 +3534,9 @@ export default function ProjectDetailPage() {
                 <span className="text-xs font-bold text-foreground">
                   {selectedTaskForDrawer.due_date
                     ? format(
-                        new Date(selectedTaskForDrawer.due_date),
-                        "MMM d, yyyy",
-                      )
+                      new Date(selectedTaskForDrawer.due_date),
+                      "MMM d, yyyy",
+                    )
                     : "No date"}
                 </span>
               </div>
@@ -3688,11 +3687,10 @@ export default function ProjectDetailPage() {
                 <Label className="text-[10px] font-bold text-muted-foreground uppercase">
                   Due Date
                 </Label>
-                <Input
-                  type="date"
+                <DatePicker
                   value={newTaskDueDate}
-                  onChange={(e) => setNewTaskDueDate(e.target.value)}
-                  className="text-xs bg-muted border-border text-foreground"
+                  onChange={(val) => setNewTaskDueDate(val)}
+                  placeholder="Select due date"
                 />
               </div>
             </div>
@@ -3906,8 +3904,8 @@ export default function ProjectDetailPage() {
                         <span className="text-muted-foreground">
                           {editTaskAssignee
                             ? orgMembers.find(
-                                (m: any) => m.id === editTaskAssignee,
-                              )?.full_name || "Assigned User"
+                              (m: any) => m.id === editTaskAssignee,
+                            )?.full_name || "Assigned User"
                             : "Unassigned"}
                         </span>
                       </div>
@@ -3917,12 +3915,11 @@ export default function ProjectDetailPage() {
                     <Label className="text-[10px] font-bold text-muted-foreground uppercase">
                       Due Date
                     </Label>
-                    <Input
-                      type="date"
+                    <DatePicker
                       value={editTaskDueDate}
-                      onChange={(e) => setEditTaskDueDate(e.target.value)}
-                      className="text-xs bg-muted border-border text-foreground"
+                      onChange={(val) => setEditTaskDueDate(val)}
                       disabled={!canEditDates}
+                      placeholder="Select due date"
                     />
                   </div>
                 </div>
@@ -3977,7 +3974,7 @@ export default function ProjectDetailPage() {
                   const isDelayed =
                     editTaskDueDate &&
                     new Date(editTaskDueDate).setHours(23, 59, 59, 999) <
-                      Date.now() &&
+                    Date.now() &&
                     editTaskStatus !== "done" &&
                     editTaskStatus !== "completed";
 
@@ -4054,12 +4051,10 @@ export default function ProjectDetailPage() {
               <Label className="text-[10px] font-bold text-muted-foreground uppercase">
                 Target Date *
               </Label>
-              <Input
-                type="date"
+              <DatePicker
                 value={newMilestoneDate}
-                onChange={(e) => setNewMilestoneDate(e.target.value)}
-                required
-                className="text-xs bg-muted border-border text-foreground"
+                onChange={(val) => setNewMilestoneDate(val)}
+                placeholder="Select target date"
               />
             </div>
             <div className="space-y-1.5">

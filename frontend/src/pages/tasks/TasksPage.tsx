@@ -931,7 +931,7 @@ export default function TasksPage() {
         open={showCommandMenu}
         onOpenChange={setShowCommandMenu}
         onCreateTask={() => setShowTaskDialog(true)}
-        onCreateProject={() => {}}
+        onCreateProject={() => { }}
         onChangeView={setView}
         onChangeFilter={setFilterView}
       />

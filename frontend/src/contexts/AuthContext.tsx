@@ -140,10 +140,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (!socket) return;
 
     const handleUserUpdate = (updatedUser: any) => {
-      console.log('Real-time user update received:', updatedUser.id);
-      if (updatedUser.id === user.id) {
+      console.log('Real-time user update received:', updatedUser?.id);
+      if (updatedUser?.id === user?.id) {
+        if ('avatar_url' in updatedUser) {
+          setProfile((prev) =>
+            prev ? { ...prev, avatar_url: updatedUser.avatar_url } : prev
+          );
+        }
         fetchUserData();
       }
+      queryClient.invalidateQueries({ queryKey: ['organization-profiles'] });
+      queryClient.invalidateQueries({ queryKey: ['users'] });
+      queryClient.invalidateQueries({ queryKey: ['employees'] });
+      queryClient.invalidateQueries({ queryKey: ['hrms-employees'] });
+      queryClient.invalidateQueries({ queryKey: ['team-members'] });
+      queryClient.invalidateQueries({ queryKey: ['independent-tasks'] });
+      queryClient.invalidateQueries({ queryKey: ['tasks'] });
     };
 
     socket.on('user:updated', handleUserUpdate);
@@ -199,7 +211,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const refreshProfile = async () => {
-    await fetchUserData();
+    const data = await fetchUserData();
+    queryClient.invalidateQueries({ queryKey: ['organization-profiles'] });
+    queryClient.invalidateQueries({ queryKey: ['users'] });
+    queryClient.invalidateQueries({ queryKey: ['employees'] });
+    queryClient.invalidateQueries({ queryKey: ['hrms-employees'] });
+    queryClient.invalidateQueries({ queryKey: ['team-members'] });
+    queryClient.invalidateQueries({ queryKey: ['independent-tasks'] });
+    queryClient.invalidateQueries({ queryKey: ['tasks'] });
+    return data;
   };
 
   const updateProfilePermissions = (permissions: Record<string, string[]>) => {

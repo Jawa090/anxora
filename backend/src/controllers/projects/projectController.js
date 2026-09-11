@@ -279,7 +279,7 @@ const getMembers = async (req, res, next) => {
       `SELECT pm.*, u.id, u.full_name, u.email, u.avatar_url
        FROM project_members pm
        JOIN users u ON pm.user_id = u.id
-       WHERE pm.project_id = $1 AND pm.org_id = $2
+       WHERE pm.project_id = $1 AND pm.org_id = $2 AND (u.is_active = true OR u.is_active IS NULL)
        ORDER BY pm.created_at ASC`,
       [id, req.user.orgId]
     );

@@ -647,7 +647,7 @@ const getWorkgroupMembers = async (req, res, next) => {
       FROM workgroup_members wm
       JOIN users u ON wm.user_id = u.id
       LEFT JOIN users ui ON wm.invited_by = ui.id
-      WHERE wm.workgroup_id = $1
+      WHERE wm.workgroup_id = $1 AND (u.is_active = true OR u.is_active IS NULL)
       ORDER BY 
         CASE wm.role 
           WHEN 'owner' THEN 1 

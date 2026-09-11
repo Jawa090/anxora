@@ -12,6 +12,7 @@ import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import { DEPARTMENTS } from '@/lib/constants';
 import { format } from 'date-fns';
+import { DatePicker } from '@/components/ui/date-picker';
 
 export default function EditEmployeePage() {
   const navigate = useNavigate();
@@ -21,7 +22,7 @@ export default function EditEmployeePage() {
   const [fetching, setFetching] = useState(true);
   const [documents, setDocuments] = useState<any[]>([]);
   const [uploadingDoc, setUploadingDoc] = useState(false);
-  
+
   const [formData, setFormData] = useState({
     // Basic Info
     full_name: '',
@@ -32,7 +33,7 @@ export default function EditEmployeePage() {
     secondary_phone: '',
     official_email: '',
     personal_email: '',
-    
+
     // Personal Info
     cnic: '',
     date_of_birth: '',
@@ -41,7 +42,7 @@ export default function EditEmployeePage() {
     marital_status: '',
     blood_group: '',
     nationality: 'Pakistani',
-    
+
     // Address
     current_address: '',
     permanent_address: '',
@@ -49,7 +50,7 @@ export default function EditEmployeePage() {
     state: '',
     postal_code: '',
     country: 'Pakistan',
-    
+
     // Employment
     employee_id: '',
     department: '',
@@ -62,24 +63,24 @@ export default function EditEmployeePage() {
     base_salary: '',
     commission_rate: '',
     attendance_machine_id: '',
-    
+
     // Emergency Contact
     emergency_contact_name: '',
     emergency_contact_phone: '',
     emergency_contact_relation: '',
-    
+
     // Banking
     bank_name: '',
     bank_account_number: '',
     bank_account_title: '',
     tax_id: '',
-    
+
     // Education
     education_level: '',
     university: '',
     degree: '',
     graduation_year: '',
-    
+
     // Experience
     previous_company: '',
     previous_position: '',
@@ -87,7 +88,7 @@ export default function EditEmployeePage() {
     skills: '',
     certifications: '',
     languages: '',
-    
+
     // Additional
     notes: '',
   });
@@ -102,11 +103,11 @@ export default function EditEmployeePage() {
       setFetching(true);
       const response: any = await api.get(`/employees/${id}`);
       const employee = response.data || response;
-      
+
       if (!employee || !employee.id) {
         throw new Error('Employee data not found');
       }
-      
+
       // Convert arrays to comma-separated strings and handle all fields safely
       const formattedData = {
         full_name: `${employee.first_name || ''} ${employee.last_name || ''}`.trim(),
@@ -160,7 +161,7 @@ export default function EditEmployeePage() {
         languages: Array.isArray(employee.languages) ? employee.languages.join(', ') : (employee.languages || ''),
         notes: employee.notes || '',
       };
-      
+
       setFormData(formattedData);
     } catch (error: any) {
       console.error('Error fetching employee:', error);
@@ -220,7 +221,7 @@ export default function EditEmployeePage() {
       }
 
       await api.put(`/employees/${id}`, cleanedData);
-      
+
       toast.success('Employee updated successfully!');
       navigate('/hrms/employees');
     } catch (error: any) {
@@ -308,14 +309,14 @@ export default function EditEmployeePage() {
             <ArrowLeft className="h-4 w-4" />
             Back to Employees
           </Button>
-          
+
           <div className="flex items-center gap-4">
-            <div className="p-3 bg-primary rounded-2xl shadow-lg">
+            <div className="p-3 bg-secondary-foreground dark:bg-primary rounded-2xl shadow-lg">
               <User className="h-8 w-8 text-white" />
             </div>
             <div>
-              <h1 className="text-3xl font-bold text-gray-900 text-primary/80">Edit Employee</h1>
-              <p className="text-gray-600 mt-1">{formData.full_name}</p>
+              <h1 className="text-3xl font-bold text-secondary-foreground dark:text-primary">{formData.full_name}</h1>
+              {/* <p className="text-gray-400 font-bold text-lg mt-1">{formData.full_name}</p> */}
             </div>
           </div>
 
@@ -324,23 +325,20 @@ export default function EditEmployeePage() {
             {steps.map((step, index) => (
               <React.Fragment key={step.id}>
                 <div className="flex items-center">
-                  <div className={`flex items-center justify-center w-10 h-10 rounded-full ${
-                    currentStep >= step.id
-                      ? 'bg-primary text-white'
-                      : 'bg-gray-200 text-gray-600'
-                  }`}>
+                  <div className={`flex items-center justify-center w-10 h-10 rounded-full ${currentStep >= step.id
+                    ? 'bg-secondary-foreground dark:bg-primary text-white'
+                    : 'bg-gray-200 text-gray-600'
+                    }`}>
                     {currentStep > step.id ? '✓' : step.id}
                   </div>
-                  <span className={`ml-2 text-sm font-medium ${
-                    currentStep >= step.id ? 'text-blue-600' : 'text-gray-500'
-                  }`}>
+                  <span className={`ml-2 text-sm font-medium ${currentStep >= step.id ? 'text-secondary-foreground text-primary' : 'text-gray-500'
+                    }`}>
                     {step.title}
                   </span>
                 </div>
                 {index < steps.length - 1 && (
-                  <div className={`flex-1 h-1 mx-4 ${
-                    currentStep > step.id ? 'bg-blue-600' : 'bg-gray-200'
-                  }`} />
+                  <div className={`flex-1 h-1 mx-4 ${currentStep > step.id ? 'bg-secondary-foreground dark:bg-primary' : 'bg-gray-200'
+                    }`} />
                 )}
               </React.Fragment>
             ))}
@@ -356,8 +354,8 @@ export default function EditEmployeePage() {
             {currentStep === 1 && (
               <div className="space-y-6">
                 <div>
-                  <h2 className="text-2xl font-bold text-gray-900 mb-2">Basic Information</h2>
-                  <p className="text-gray-600">Update employee's basic contact details</p>
+                  <h2 className="text-2xl font-bold dark:text-primary mb-2">Basic Information</h2>
+                  <p className="text-gray-400">Update employee's basic contact details</p>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -448,11 +446,11 @@ export default function EditEmployeePage() {
 
                   <div>
                     <Label>Date of Birth</Label>
-                    <Input
-                      type="date"
-                      value={formData.date_of_birth}
-                      onChange={(e) => handleChange('date_of_birth', e.target.value)}
-                      className="mt-2"
+                    <DatePicker
+                      value={formData.date_of_birth ? formData.date_of_birth.split('T')[0] : ''}
+                      onChange={(val) => handleChange('date_of_birth', val)}
+                      placeholder="Select date of birth"
+                      className="w-full h-10 text-sm mt-2 font-normal"
                     />
                   </div>
 
@@ -682,11 +680,11 @@ export default function EditEmployeePage() {
 
                   <div>
                     <Label>Hire Date</Label>
-                    <Input
-                      type="date"
-                      value={formData.hire_date}
-                      onChange={(e) => handleChange('hire_date', e.target.value)}
-                      className="mt-2"
+                    <DatePicker
+                      value={formData.hire_date ? formData.hire_date.split('T')[0] : ''}
+                      onChange={(val) => handleChange('hire_date', val)}
+                      placeholder="Select hire date"
+                      className="w-full h-10 text-sm mt-2 font-normal"
                     />
                   </div>
 
@@ -721,11 +719,11 @@ export default function EditEmployeePage() {
 
                   <div>
                     <Label>Probation End Date</Label>
-                    <Input
-                      type="date"
-                      value={formData.probation_end_date}
-                      onChange={(e) => handleChange('probation_end_date', e.target.value)}
-                      className="mt-2"
+                    <DatePicker
+                      value={formData.probation_end_date ? formData.probation_end_date.split('T')[0] : ''}
+                      onChange={(val) => handleChange('probation_end_date', val)}
+                      placeholder="Select probation end date"
+                      className="w-full h-10 text-sm mt-2 font-normal"
                     />
                   </div>
 
@@ -1149,7 +1147,7 @@ export default function EditEmployeePage() {
               <Button
                 variant="outline"
                 onClick={() => currentStep > 1 ? setCurrentStep(currentStep - 1) : navigate('/hrms/employees')}
-                className="gap-2"
+                className="gap-2 hover:bg-secondary-foreground dark:hover:bg-primary hover:text-white"
               >
                 <ChevronLeft className="h-4 w-4" />
                 {currentStep === 1 ? 'Cancel' : 'Previous'}
@@ -1158,7 +1156,7 @@ export default function EditEmployeePage() {
               {currentStep < 4 ? (
                 <Button
                   onClick={() => setCurrentStep(currentStep + 1)}
-                  className="gap-2 bg-blue-600 hover:bg-blue-700"
+                  className="gap-2"
                 >
                   Next
                   <ChevronRight className="h-4 w-4" />
@@ -1167,7 +1165,7 @@ export default function EditEmployeePage() {
                 <Button
                   onClick={handleSubmit}
                   disabled={loading}
-                  className="gap-2 bg-primary hover:bg-primary/90"
+                  className="gap-2 "
                 >
                   <Save className="h-4 w-4" />
                   {loading ? 'Updating...' : 'Update Employee'}

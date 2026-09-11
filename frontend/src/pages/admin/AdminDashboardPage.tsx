@@ -3,6 +3,8 @@ import { useQuery, useMutation, useQueryClient, keepPreviousData } from "@tansta
 import {
   Users,
   UserPlus,
+  UserCheck,
+  UserMinus,
   Search,
   Mail,
   ShieldCheck,
@@ -106,6 +108,7 @@ export default function AdminDashboardPage() {
     department: "",
     role: "employee",
     position: "",
+    isActive: true,
   });
 
   const [selectedModules, setSelectedModules] = useState<
@@ -138,7 +141,7 @@ export default function AdminDashboardPage() {
     queryFn: () => usersApi.getAll({
       search: searchTerm || undefined,
       role: filterRole !== "all" ? filterRole : undefined,
-      status: filterStatus !== "all" ? filterStatus : undefined,
+      status: filterStatus,
       department: filterDept !== "all" ? filterDept : undefined,
       includeSelf: true,
     }),
@@ -155,6 +158,22 @@ export default function AdminDashboardPage() {
     refetchIntervalInBackground: false,
     refetchOnWindowFocus: true,
   });
+
+  // Dynamically fetched departments from DB users
+  const { data: dbDepartments = [] } = useQuery({
+    queryKey: ["admin-users-departments"],
+    queryFn: () => usersApi.getDepartments(),
+    refetchInterval: 10000,
+    refetchOnWindowFocus: true,
+  });
+
+  const uniqueDepartments = Array.from(
+    new Set(
+      (dbDepartments || [])
+        .filter(Boolean)
+        .map((d: string) => d.trim().replace(/\b\w/g, (c) => c.toUpperCase()))
+    )
+  ).sort((a, b) => a.localeCompare(b));
 
   // Pending invites — DB se real data
   const { data: dbInvites = [], isLoading: invitesLoading } = useQuery({
@@ -187,6 +206,8 @@ export default function AdminDashboardPage() {
     mutationFn: (data: any) => usersApi.create(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin-users"] });
+      queryClient.invalidateQueries({ queryKey: ["admin-users-stats"] });
+      queryClient.invalidateQueries({ queryKey: ["admin-users-departments"] });
       queryClient.invalidateQueries({ queryKey: ["admin-invites"] });
       showToast("success", "Employee created successfully");
       closeDialog();
@@ -201,6 +222,8 @@ export default function AdminDashboardPage() {
       usersApi.update(id, data),
     onSuccess: async (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ["admin-users"] });
+      queryClient.invalidateQueries({ queryKey: ["admin-users-stats"] });
+      queryClient.invalidateQueries({ queryKey: ["admin-users-departments"] });
       if (user?.id === variables.id && variables.data?.module_permissions) {
         // Apply immediately so permission checks update without full page refresh.
         updateProfilePermissions(variables.data.module_permissions);
@@ -214,14 +237,39 @@ export default function AdminDashboardPage() {
     },
   });
 
+  const activateMutation = useMutation({
+    mutationFn: (id: string) => usersApi.update(id, { is_active: true }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin-users"] });
+      queryClient.invalidateQueries({ queryKey: ["admin-users-stats"] });
+      showToast("success", "Employee activated successfully");
+    },
+    onError: (error: any) => {
+      showToast("error", error.message || "Failed to activate employee");
+    },
+  });
+
+  const deactivateMutation = useMutation({
+    mutationFn: (id: string) => usersApi.update(id, { is_active: false }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin-users"] });
+      queryClient.invalidateQueries({ queryKey: ["admin-users-stats"] });
+      showToast("success", "Employee deactivated successfully");
+    },
+    onError: (error: any) => {
+      showToast("error", error.message || "Failed to deactivate employee");
+    },
+  });
+
   const deleteMutation = useMutation({
     mutationFn: (id: string) => usersApi.delete(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin-users"] });
-      showToast("success", "Employee deleted successfully");
+      queryClient.invalidateQueries({ queryKey: ["admin-users-stats"] });
+      showToast("success", "Employee permanently deleted successfully");
     },
     onError: (error: any) => {
-      showToast("error", error.message || "Failed to delete employee");
+      showToast("error", error.message || "Failed to permanently delete employee");
     },
   });
 
@@ -233,6 +281,7 @@ export default function AdminDashboardPage() {
       department: "",
       role: "employee",
       position: "",
+      isActive: true,
     });
     setEditingUser(null);
     setSelectedModules({});
@@ -261,6 +310,7 @@ export default function AdminDashboardPage() {
       department: "",
       role: "employee",
       position: "",
+      isActive: true,
     });
     setIsDialogOpen(true);
   };
@@ -286,6 +336,7 @@ export default function AdminDashboardPage() {
       department: matchedDept,
       role: user.role || "employee",
       position: user.position || "",
+      isActive: user.is_active !== false,
     });
     // Set initial permissions if available
     setSelectedModules(user.module_permissions || {});
@@ -303,8 +354,9 @@ export default function AdminDashboardPage() {
     e.preventDefault();
     console.log("Handle Submit called.");
 
+    const { isActive, ...restFormData } = formData;
     const payload = {
-      ...formData,
+      ...restFormData,
       module_permissions: {},
     };
 
@@ -537,9 +589,9 @@ export default function AdminDashboardPage() {
                   <SelectTrigger className="w-36 bg-secondary/50 border-none h-9 text-sm">
                     <SelectValue placeholder="All Depts" />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className="max-h-[190px] overflow-y-auto">
                     <SelectItem value="all">All Depts</SelectItem>
-                    {DEPARTMENTS.map((d) => (
+                    {uniqueDepartments.map((d: string) => (
                       <SelectItem key={d} value={d}>{d}</SelectItem>
                     ))}
                   </SelectContent>
@@ -591,7 +643,7 @@ export default function AdminDashboardPage() {
                             <div className="flex items-center gap-3">
                               <Avatar className="h-9 w-9 border border-border/50">
                                 <AvatarImage src={getAvatarUrl(u.avatar_url)} />
-                                <AvatarFallback className="bg-primary/10 text-primary font-bold">
+                                <AvatarFallback className="bg-secondary-foreground dark:bg-primary dark:text-black text-white font-bold">
                                   {u.full_name
                                     ?.split(" ")
                                     .map((n: string) => n[0])
@@ -659,26 +711,66 @@ export default function AdminDashboardPage() {
                               : "—"}
                           </td>
                           <td className="px-6 py-4 text-right">
-                            <div className="flex items-center justify-end gap-2">
+                            <div className="flex items-center justify-end gap-1.5">
+                              {/* Edit Button */}
                               <Button
                                 variant="ghost"
                                 size="icon"
-                                className="h-8 w-8 text-primary hover:text-primary hover:bg-primary/10"
+                                className="h-8 w-8 hover:bg-secondary-foreground dark:hover:bg-primary hover:text-white"
                                 onClick={() => handleEditClick(u)}
                                 disabled={!canModify(u)}
                                 title="Edit User"
                               >
                                 <Edit2 className="h-4 w-4" />
                               </Button>
+
+                              {/* Status Toggle Button (UserMinus for Inactive, UserCheck for Active) */}
+                              {u.is_active !== false ? (
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-8 w-8 text-amber-500 hover:text-amber-600 hover:bg-amber-500/15"
+                                  disabled={!canModify(u) || deactivateMutation.isPending}
+                                  onClick={() => deactivateMutation.mutate(u.id)}
+                                  title="Deactivate Employee (Mark Inactive)"
+                                >
+                                  {deactivateMutation.isPending && deactivateMutation.variables === u.id ? (
+                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                  ) : (
+                                    <UserMinus className="h-4 w-4" />
+                                  )}
+                                </Button>
+                              ) : (
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-8 w-8 text-emerald-500 hover:text-emerald-400 hover:bg-emerald-500/15"
+                                  disabled={!canModify(u) || activateMutation.isPending}
+                                  onClick={() => activateMutation.mutate(u.id)}
+                                  title="Activate Employee (Mark Active)"
+                                >
+                                  {activateMutation.isPending && activateMutation.variables === u.id ? (
+                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                  ) : (
+                                    <UserCheck className="h-4 w-4" />
+                                  )}
+                                </Button>
+                              )}
+
+                              {/* Delete Button */}
                               <Button
                                 variant="ghost"
                                 size="icon"
                                 className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
-                                disabled={!canModify(u)}
+                                disabled={!canModify(u) || deleteMutation.isPending}
                                 onClick={() => handleDeleteClick(u)}
-                                title="Delete User"
+                                title="Permanently Delete Employee"
                               >
-                                <Trash2 className="h-4 w-4" />
+                                {deleteMutation.isPending && userToDelete?.id === u.id ? (
+                                  <Loader2 className="h-4 w-4 animate-spin" />
+                                ) : (
+                                  <Trash2 className="h-4 w-4" />
+                                )}
                               </Button>
                             </div>
                           </td>
@@ -955,14 +1047,12 @@ export default function AdminDashboardPage() {
                 <Trash2 className="h-5 w-5 text-destructive" />
               </div>
               <AlertDialogTitle className="text-xl">
-                Are you absolutely sure?
+                Permanently Delete Employee
               </AlertDialogTitle>
             </div>
             <AlertDialogDescription className="text-sm">
-              This will deactivate{" "}
-              <strong>{userToDelete?.full_name}'s</strong> account. They will
-              no longer be able to log in to the system. This action is
-              carefully logged.
+              Are you sure you want to permanently delete{" "}
+              <strong>{userToDelete?.full_name}</strong>? This action cannot be undone and will permanently remove all their employee records, account access, and related data.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="mt-4">
@@ -973,7 +1063,7 @@ export default function AdminDashboardPage() {
               onClick={handleConfirmDelete}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90 shadow-lg shadow-destructive/20"
             >
-              Yes, Delete Account
+              Yes, Permanently Delete
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

@@ -250,7 +250,7 @@ export default function LeaveSettingsTab() {
 
       {/* Create Dialog */}
       <Dialog open={createDialog} onOpenChange={setCreateDialog}>
-        <DialogContent className="sm:max-w-lg">
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Create Leave Type</DialogTitle>
           </DialogHeader>

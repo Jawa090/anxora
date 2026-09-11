@@ -148,7 +148,7 @@ const getMembers = async (req, res, next) => {
          u.is_active,
          u.created_at AS joined_at
        FROM users u
-       WHERE u.org_id = $1
+       WHERE u.org_id = $1 AND (u.is_active = true OR u.is_active IS NULL)
        ORDER BY u.created_at ASC`,
       [req.user.orgId]
     );

@@ -26,13 +26,14 @@ const getAll = async (req, res, next) => {
       params.push(req.user.id);
     }
 
-    // Status filter — default shows ALL (active + inactive)
-    if (status && status !== 'all') {
-      if (status === 'active') {
-        conditions.push(`u.is_active = true`);
-      } else if (status === 'inactive') {
-        conditions.push(`(u.is_active = false OR u.is_active IS NULL)`);
-      }
+    // Status filter — default shows ONLY active users across the whole system
+    if (status === 'all') {
+      // Explicitly show all users (e.g. Employee Management with 'all' filter)
+    } else if (status === 'inactive') {
+      conditions.push(`(u.is_active = false OR u.is_active IS NULL)`);
+    } else {
+      // Default: Only active users everywhere in search, assignees, dropdowns
+      conditions.push(`u.is_active = true`);
     }
 
     // Role filter
@@ -41,15 +42,19 @@ const getAll = async (req, res, next) => {
       params.push(role);
     }
 
-    // Department filter (case-insensitive, supports comma-separated list)
+    // Department filter (case-insensitive, supports comma-separated list or 'none')
     if (department && department !== 'all') {
-      const deptList = department.split(',').map(d => d.trim().toLowerCase());
-      if (deptList.length > 1) {
-        conditions.push(`LOWER(u.department) = ANY($${params.length + 1})`);
-        params.push(deptList);
+      if (department.toLowerCase() === 'none') {
+        conditions.push(`(u.department IS NULL OR TRIM(u.department) = '')`);
       } else {
-        conditions.push(`LOWER(u.department) = LOWER($${params.length + 1})`);
-        params.push(deptList[0]);
+        const deptList = department.split(',').map(d => d.trim().toLowerCase());
+        if (deptList.length > 1) {
+          conditions.push(`LOWER(u.department) = ANY($${params.length + 1})`);
+          params.push(deptList);
+        } else {
+          conditions.push(`LOWER(u.department) = LOWER($${params.length + 1})`);
+          params.push(deptList[0]);
+        }
       }
     }
 
@@ -94,6 +99,29 @@ const getStats = async (req, res, next) => {
       [req.user.orgId, req.user.id]
     );
     res.json(result.rows[0]);
+  } catch (err) {
+    next(err);
+  }
+};
+
+// GET /api/members/departments — distinct departments saved for users/employees in DB (case-normalized)
+const getDepartments = async (req, res, next) => {
+  try {
+    const result = await db.query(
+      `SELECT DISTINCT ON (LOWER(TRIM(dept))) 
+              INITCAP(TRIM(dept)) AS department
+       FROM (
+         SELECT department AS dept FROM public.users 
+         WHERE org_id = $1 AND department IS NOT NULL AND TRIM(department) != ''
+         UNION
+         SELECT department AS dept FROM public.employees 
+         WHERE org_id = $1 AND department IS NOT NULL AND TRIM(department) != ''
+       ) sub
+       ORDER BY LOWER(TRIM(dept)) ASC`,
+      [req.user.orgId]
+    );
+    const depts = result.rows.map(r => r.department).filter(Boolean);
+    res.json(depts);
   } catch (err) {
     next(err);
   }
@@ -158,8 +186,8 @@ const create = async (req, res, next) => {
     const orgId = req.user.orgId;
     const inviteId = uuidv4();
 
-    // Normalize department (lowercase and trimmed)
-    const normalizedDept = department ? department.trim().toLowerCase() : department;
+    // Normalize department (Title Case and trimmed)
+    const normalizedDept = department ? department.trim().replace(/\b\w/g, (c) => c.toUpperCase()) : department;
 
     // Get organization name
     const orgResult = await client.query('SELECT name FROM public.organizations WHERE id = $1', [orgId]);
@@ -219,8 +247,8 @@ const update = async (req, res, next) => {
     const userValues = [];
     let uIdx = 1;
 
-    // Normalize department
-    const normalizedDept = department ? department.trim().toLowerCase() : department;
+    // Normalize department (Title Case and trimmed)
+    const normalizedDept = department ? department.trim().replace(/\b\w/g, (c) => c.toUpperCase()) : department;
 
     if (fullName !== undefined)              { userFields.push(`full_name = $${uIdx++}`);              userValues.push(fullName); }
     if (phone !== undefined)                 { userFields.push(`phone = $${uIdx++}`);                  userValues.push(phone); }
@@ -262,20 +290,47 @@ const update = async (req, res, next) => {
       );
     }
 
+    // Synchronize to public.employees (department, position/job_title, phone, name, status)
+    const empFields = [];
+    const empValues = [];
+    let eIdx = 1;
+
     if (fullName) {
       const parts = fullName.trim().split(/\s+/);
       const firstName = parts[0] || '';
       const lastName = parts.slice(1).join(' ') || '';
+      empFields.push(`first_name = $${eIdx++}`);
+      empValues.push(firstName);
+      empFields.push(`last_name = $${eIdx++}`);
+      empValues.push(lastName);
+    }
+    if (normalizedDept !== undefined) {
+      empFields.push(`department = $${eIdx++}`);
+      empValues.push(normalizedDept);
+    }
+    if (position !== undefined || job_title !== undefined) {
+      empFields.push(`job_title = $${eIdx++}`);
+      empValues.push(position || job_title);
+    }
+    if (phone !== undefined) {
+      empFields.push(`phone = $${eIdx++}`);
+      empValues.push(phone);
+    }
+    if (is_active !== undefined) {
+      const empStatus = is_active ? 'active' : 'inactive';
+      empFields.push(`status = $${eIdx++}`);
+      empValues.push(empStatus);
+    }
 
+    if (empFields.length > 0) {
+      empFields.push(`updated_at = NOW()`);
+      empValues.push(id, orgId);
       await client.query(
         `UPDATE public.employees 
-         SET first_name = $1, 
-             last_name = $2, 
-             phone = COALESCE($3, phone),
-             department = COALESCE($4, department),
-             job_title = COALESCE($5, job_title)
-         WHERE user_id = $6 OR LOWER(email) = (SELECT LOWER(email) FROM public.users WHERE id = $6)`,
-        [firstName, lastName, phone || null, department || null, position || null, id]
+         SET ${empFields.join(', ')} 
+         WHERE org_id = $${eIdx + 1} 
+           AND (user_id = $${eIdx} OR LOWER(email) = (SELECT LOWER(email) FROM public.users WHERE id = $${eIdx}))`,
+        empValues
       ).catch((e) => console.error('Employees sync error inside user update:', e.message));
     }
 
@@ -326,102 +381,121 @@ const remove = async (req, res, next) => {
     const requesterResult = await client.query('SELECT role FROM public.users WHERE id = $1', [req.user.id]);
     const requesterRole = requesterResult.rows[0]?.role;
 
-    const targetResult = await client.query('SELECT role FROM public.users WHERE id = $1', [id]);
+    const targetResult = await client.query('SELECT id, role, email, full_name FROM public.users WHERE id = $1 AND org_id = $2', [id, req.user.orgId]);
     if (targetResult.rows.length === 0) {
       return res.status(404).json({ error: 'User not found' });
     }
-    const targetRole = targetResult.rows[0].role;
+    const targetUser = targetResult.rows[0];
 
-    if (targetRole === 'super_admin' && requesterRole !== 'super_admin') {
-      return res.status(403).json({ error: 'You are not authorized to delete a Super Admin' });
+    if (targetUser.role === 'super_admin' && requesterRole !== 'super_admin') {
+      return res.status(403).json({ error: 'You are not authorized to modify a Super Admin' });
+    }
+
+    if (targetUser.id === req.user.id) {
+      return res.status(400).json({ error: 'You cannot delete your own account' });
     }
 
     await client.query('BEGIN');
 
-    // Step 1: Dynamically find and handle ALL foreign key references to the users table
-    const fkQuery = `
-      SELECT 
-        tc.table_name, 
-        kcu.column_name
-      FROM information_schema.table_constraints tc
-      JOIN information_schema.key_column_usage kcu 
-        ON tc.constraint_name = kcu.constraint_name
-      JOIN information_schema.constraint_column_usage ccu 
-        ON tc.constraint_name = ccu.constraint_name
-      WHERE tc.constraint_type = 'FOREIGN KEY'
-        AND ccu.table_name = 'users'
-        AND ccu.column_name = 'id'
-        AND tc.table_schema = 'public'
-    `;
-    const fkResult = await db.query(fkQuery);
-    
-    // Step 2: For each referencing table/column, either SET NULL or DELETE
-    const deleteTargets = [
-      'attendance', 'leave_requests', 'salary_slips', 'employee_documents',
-      'crm_activities', 'workgroup_posts', 'workgroup_post_reads',
-      'workgroup_files', 'workgroup_members', 'workgroup_notifications',
-      'workgroup_activities', 'connected_mailboxes', 'calendar_connections',
-      'calendar_event_attendees', 'profiles', 'push_subscriptions',
-      'fcm_tokens', 'user_settings'
-    ];
-
-    for (const fk of fkResult.rows) {
-      const tableName = fk.table_name;
-      const columnName = fk.column_name;
-      
-      // Skip the users table itself
-      if (tableName === 'users') continue;
-      
-      try {
-        if (deleteTargets.includes(tableName)) {
-          // Delete records from tables that are user-specific data
-          await db.query(`DELETE FROM public."${tableName}" WHERE "${columnName}" = $1`, [id]);
-        } else {
-          // For shared tables (workgroups, channels, etc.), reassign to the deleting admin
-          try {
-            await db.query(`UPDATE public."${tableName}" SET "${columnName}" = $2 WHERE "${columnName}" = $1`, [id, req.user.id]);
-          } catch (updateErr) {
-            // If UPDATE fails (e.g. NOT NULL + unique), try SET NULL
-            try {
-              await db.query(`UPDATE public."${tableName}" SET "${columnName}" = NULL WHERE "${columnName}" = $1`, [id]);
-            } catch (nullErr) {
-              // Last resort: delete the referencing rows  
-              await db.query(`DELETE FROM public."${tableName}" WHERE "${columnName}" = $1`, [id]);
-            }
-          }
-        }
-      } catch (e) {
-        console.log(`Cleanup: skipping ${tableName}.${columnName} - ${e.message}`);
-      }
-    }
-
-    // Step 3: Explicit cleanup for known tables with multiple user references
-    await db.query('DELETE FROM public.leads WHERE assigned_to = $1', [id]);
-    await db.query('DELETE FROM public.deals WHERE assigned_to = $1', [id]);
-    await db.query('DELETE FROM public.tasks WHERE assigned_to = $1 OR created_by = $1', [id]);
-    
-    // Get user email to delete from employees table properly
-    const userEmailResult = await client.query('SELECT email FROM public.users WHERE id = $1', [id]);
-    const userEmail = userEmailResult.rows[0]?.email;
-    if (userEmail) {
-      await client.query('DELETE FROM public.employees WHERE user_id = $1 OR LOWER(email) = LOWER($2)', [id, userEmail]);
-    } else {
-      await client.query('DELETE FROM public.employees WHERE user_id = $1', [id]);
-    }
-
-    // Step 4: Final delete of the user
-    const result = await db.query(
-      'DELETE FROM public.users WHERE id = $1 AND org_id = $2 RETURNING id',
-      [id, req.user.orgId]
+    // 1. Unlink & permanently delete employee records
+    const empRes = await client.query(
+      `SELECT id FROM public.employees WHERE org_id = $1 AND (user_id = $2 OR LOWER(email) = LOWER($3))`,
+      [req.user.orgId, id, targetUser.email]
     );
-
-    if (result.rows.length === 0) {
-      await client.query('ROLLBACK');
-      return res.status(404).json({ error: 'User not found or you do not have permission' });
+    if (empRes.rows.length > 0) {
+      const empIds = empRes.rows.map((r) => r.id);
+      await client.query(
+        `UPDATE public.employees SET reporting_manager_id = NULL WHERE reporting_manager_id = ANY($1::uuid[])`,
+        [empIds]
+      );
+      await client.query(
+        `UPDATE public.employees SET manager_id = NULL WHERE manager_id = ANY($1::uuid[])`,
+        [empIds]
+      );
+      await client.query(
+        `DELETE FROM public.employees WHERE id = ANY($1::uuid[])`,
+        [empIds]
+      );
     }
+
+    // 2. Clear / reassign non-cascading foreign keys on public.users
+    const safeRequester = req.user.id;
+
+    // Tasks & projects
+    await client.query(`UPDATE public.tasks SET assigned_to = NULL WHERE assigned_to = $1`, [id]).catch(() => {});
+    await client.query(`UPDATE public.tasks SET created_by = $1 WHERE created_by = $2`, [safeRequester, id]).catch(() => {});
+    await client.query(`UPDATE public.tasks SET delegated_by = NULL WHERE delegated_by = $1`, [id]).catch(() => {});
+    await client.query(`UPDATE public.independent_tasks SET assigned_to = NULL WHERE assigned_to = $1`, [id]).catch(() => {});
+    await client.query(`UPDATE public.independent_tasks SET created_by = $1 WHERE created_by = $2`, [safeRequester, id]).catch(() => {});
+    await client.query(`UPDATE public.project_tasks SET assigned_to = NULL WHERE assigned_to = $1`, [id]).catch(() => {});
+    await client.query(`UPDATE public.project_tasks SET created_by = $1 WHERE created_by = $2`, [safeRequester, id]).catch(() => {});
+    await client.query(`UPDATE public.projects SET manager_id = NULL WHERE manager_id = $1`, [id]).catch(() => {});
+    await client.query(`UPDATE public.projects SET owner_id = $1 WHERE owner_id = $2`, [safeRequester, id]).catch(() => {});
+    await client.query(`UPDATE public.projects SET created_by = $1 WHERE created_by = $2`, [safeRequester, id]).catch(() => {});
+    await client.query(`UPDATE public.project_risks SET owner_id = NULL WHERE owner_id = $1`, [id]).catch(() => {});
+    await client.query(`UPDATE public.project_documents SET uploaded_by = NULL WHERE uploaded_by = $1`, [id]).catch(() => {});
+
+    // CRM: activities, deals, leads, contacts, companies
+    await client.query(`UPDATE public.activities SET owner_id = NULL WHERE owner_id = $1`, [id]).catch(() => {});
+    await client.query(`UPDATE public.activities SET assigned_to = NULL WHERE assigned_to = $1`, [id]).catch(() => {});
+    await client.query(`UPDATE public.deals SET owner_id = NULL WHERE owner_id = $1`, [id]).catch(() => {});
+    await client.query(`UPDATE public.deals SET assigned_to = NULL WHERE assigned_to = $1`, [id]).catch(() => {});
+    await client.query(`UPDATE public.leads SET owner_id = NULL WHERE owner_id = $1`, [id]).catch(() => {});
+    await client.query(`UPDATE public.leads SET assigned_to = NULL WHERE assigned_to = $1`, [id]).catch(() => {});
+    await client.query(`UPDATE public.contacts SET owner_id = NULL WHERE owner_id = $1`, [id]).catch(() => {});
+    await client.query(`UPDATE public.contacts SET responsible_id = NULL WHERE responsible_id = $1`, [id]).catch(() => {});
+    await client.query(`UPDATE public.contacts SET created_by = NULL WHERE created_by = $1`, [id]).catch(() => {});
+    await client.query(`UPDATE public.companies SET owner_id = NULL WHERE owner_id = $1`, [id]).catch(() => {});
+    await client.query(`UPDATE public.companies SET created_by = NULL WHERE created_by = $1`, [id]).catch(() => {});
+
+    // Workgroups
+    await client.query(`UPDATE public.workgroups SET created_by = $1 WHERE created_by = $2`, [safeRequester, id]).catch(() => {});
+    await client.query(`UPDATE public.workgroup_channels SET created_by = $1 WHERE created_by = $2`, [safeRequester, id]).catch(() => {});
+    await client.query(`UPDATE public.workgroup_meetings SET created_by = $1 WHERE created_by = $2`, [safeRequester, id]).catch(() => {});
+    await client.query(`UPDATE public.workgroup_wiki SET created_by = $1 WHERE created_by = $2`, [safeRequester, id]).catch(() => {});
+    await client.query(`UPDATE public.workgroup_wiki SET updated_by = NULL WHERE updated_by = $1`, [id]).catch(() => {});
+    await client.query(`UPDATE public.workgroup_wiki_pages SET last_modified_by = NULL WHERE last_modified_by = $1`, [id]).catch(() => {});
+    await client.query(`UPDATE public.workgroup_wiki_pages SET created_by = $1 WHERE created_by = $2`, [safeRequester, id]).catch(() => {});
+    await client.query(`UPDATE public.workgroup_files SET uploaded_by = $1 WHERE uploaded_by = $2`, [safeRequester, id]).catch(() => {});
+    await client.query(`UPDATE public.workgroup_members SET invited_by = NULL WHERE invited_by = $1`, [id]).catch(() => {});
+
+    // Recruitment & inventory
+    await client.query(`UPDATE public.talent_pools SET managed_by = NULL WHERE managed_by = $1`, [id]).catch(() => {});
+    await client.query(`UPDATE public.talent_pools SET created_by = $1 WHERE created_by = $2`, [safeRequester, id]).catch(() => {});
+    await client.query(`DELETE FROM public.talent_pool_members WHERE added_by = $1`, [id]).catch(() => {});
+    await client.query(`UPDATE public.warehouses SET manager_id = NULL WHERE manager_id = $1`, [id]).catch(() => {});
+    await client.query(`UPDATE public.stock SET created_by = $1 WHERE created_by = $2`, [safeRequester, id]).catch(() => {});
+    await client.query(`UPDATE public.stock_movements SET created_by = $1 WHERE created_by = $2`, [safeRequester, id]).catch(() => {});
+    await client.query(`UPDATE public.invoices SET created_by = NULL WHERE created_by = $1`, [id]).catch(() => {});
+    await client.query(`UPDATE public.purchase_orders SET created_by = NULL WHERE created_by = $1`, [id]).catch(() => {});
+    await client.query(`UPDATE public.vendors SET created_by = NULL WHERE created_by = $1`, [id]).catch(() => {});
+    await client.query(`UPDATE public.products SET created_by = NULL WHERE created_by = $1`, [id]).catch(() => {});
+    await client.query(`UPDATE public.calendar_events SET created_by = $1 WHERE created_by = $2`, [safeRequester, id]).catch(() => {});
+    await client.query(`UPDATE public.call_logs SET user_id = NULL WHERE user_id = $1`, [id]).catch(() => {});
+    await client.query(`UPDATE public.sms_logs SET user_id = NULL WHERE user_id = $1`, [id]).catch(() => {});
+    await client.query(`DELETE FROM public.leave_request_comments WHERE user_id = $1`, [id]).catch(() => {});
+    await client.query(`UPDATE public.leave_requests SET approver_id = NULL WHERE approver_id = $1`, [id]).catch(() => {});
+    await client.query(`UPDATE public.leave_requests SET approved_by = NULL WHERE approved_by = $1`, [id]).catch(() => {});
+
+    // Drive
+    await client.query(`UPDATE public.drive_files SET created_by = $1 WHERE created_by = $2`, [safeRequester, id]).catch(() => {});
+    await client.query(`UPDATE public.drive_files SET uploaded_by = $1 WHERE uploaded_by = $2`, [safeRequester, id]).catch(() => {});
+    await client.query(`UPDATE public.drive_folders SET created_by = $1 WHERE created_by = $2`, [safeRequester, id]).catch(() => {});
+    await client.query(`UPDATE public.drive_file_versions SET created_by = $1 WHERE created_by = $2`, [safeRequester, id]).catch(() => {});
+    await client.query(`DELETE FROM public.drive_permissions WHERE user_id = $1`, [id]).catch(() => {});
+    await client.query(`UPDATE public.connected_drives SET connected_by = NULL WHERE connected_by = $1`, [id]).catch(() => {});
+    await client.query(`UPDATE public.entity_drive_files SET linked_by = NULL WHERE linked_by = $1`, [id]).catch(() => {});
+
+    // Delete user profile & user permanently
+    await client.query(`DELETE FROM public.profiles WHERE id = $1`, [id]).catch(() => {});
+    await client.query(`DELETE FROM public.users WHERE id = $1 AND org_id = $2`, [id, req.user.orgId]);
 
     await client.query('COMMIT');
-    res.json({ message: 'User and all related records deleted permanently' });
+
+    const realtimeService = require('../../services/realtimeService');
+    realtimeService.emitUserDeleted?.(id, req.user.orgId);
+
+    res.json({ message: 'Employee permanently deleted successfully', id });
   } catch (err) {
     await client.query('ROLLBACK').catch(() => {});
     next(err);
@@ -442,6 +516,7 @@ const resetPassword = async (req, res, next) => {
 module.exports = {
   getAll,
   getStats,
+  getDepartments,
   getById,
   create,
   update,

@@ -20,6 +20,8 @@ export function TimePicker({
   disabled = false,
 }: TimePickerProps) {
   const [open, setOpen] = React.useState(false);
+  const hourContainerRef = React.useRef<HTMLDivElement>(null);
+  const minContainerRef = React.useRef<HTMLDivElement>(null);
 
   // Parse 24-hour value into 12-hour components
   const { hour12, minute, period } = React.useMemo(() => {
@@ -46,14 +48,34 @@ export function TimePicker({
   };
 
   const hours = Array.from({ length: 12 }, (_, i) => String(i + 1).padStart(2, "0"));
-  const minutes = [
-    "00", "05", "10", "15", "20", "25", "30", "35", "40", "45", "50", "55"
-  ];
+  // All 60 minutes (00 to 59)
+  const minutes = Array.from({ length: 60 }, (_, i) => String(i).padStart(2, "0"));
 
   const displayTime = React.useMemo(() => {
     if (!value) return "";
     return `${hour12}:${minute} ${period}`;
   }, [value, hour12, minute, period]);
+
+  // Auto-scroll selected hour & minute into view when popover opens
+  React.useEffect(() => {
+    if (open) {
+      const timer = setTimeout(() => {
+        hourContainerRef.current
+          ?.querySelector('[data-selected="true"]')
+          ?.scrollIntoView({ block: "center", behavior: "smooth" });
+        minContainerRef.current
+          ?.querySelector('[data-selected="true"]')
+          ?.scrollIntoView({ block: "center", behavior: "smooth" });
+      }, 50);
+      return () => clearTimeout(timer);
+    }
+  }, [open]);
+
+  // Handle wheel scrolling explicitly to bypass modal scroll locks
+  const handleWheel = (e: React.WheelEvent<HTMLDivElement>) => {
+    e.stopPropagation();
+    e.currentTarget.scrollTop += e.deltaY;
+  };
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -62,7 +84,7 @@ export function TimePicker({
           type="button"
           disabled={disabled}
           className={cn(
-            "flex h-9 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-1 text-xs shadow-sm ring-offset-background",
+            "flex h-9 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-1 text-xs shadow-sm ring-offset-background cursor-pointer",
             "focus:outline-none focus:ring-1 focus:ring-primary hover:border-primary/50 transition-colors",
             "disabled:cursor-not-allowed disabled:opacity-50",
             className
@@ -77,7 +99,7 @@ export function TimePicker({
       <PopoverContent
         align="start"
         sideOffset={6}
-        className="w-64 p-3 bg-card border border-border shadow-2xl rounded-xl z-50"
+        className="w-64 p-3 bg-card border border-border shadow-2xl rounded-xl z-[99999]"
       >
         <div className="flex items-center justify-between pb-2 mb-2 border-b border-border/60">
           <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
@@ -94,16 +116,22 @@ export function TimePicker({
             <span className="text-[10px] font-bold text-muted-foreground block text-center uppercase tracking-wider mb-1">
               Hour
             </span>
-            <div className="h-44 overflow-y-auto space-y-1 pr-1 scrollbar-thin">
+            <div
+              ref={hourContainerRef}
+              onWheel={handleWheel}
+              style={{ overscrollBehavior: "contain" }}
+              className="h-44 overflow-y-auto space-y-1 pr-1 scrollbar-thin select-none"
+            >
               {hours.map((h) => {
                 const isSelected = h === hour12;
                 return (
                   <button
                     key={h}
                     type="button"
+                    data-selected={isSelected}
                     onClick={() => updateTime(h, minute, period)}
                     className={cn(
-                      "w-full py-1 text-xs font-medium rounded-md text-center transition-colors",
+                      "w-full py-1 text-xs font-medium rounded-md text-center transition-colors cursor-pointer",
                       isSelected
                         ? "bg-primary text-primary-foreground font-bold shadow-sm"
                         : "text-foreground hover:bg-primary/15 hover:text-primary"
@@ -121,16 +149,22 @@ export function TimePicker({
             <span className="text-[10px] font-bold text-muted-foreground block text-center uppercase tracking-wider mb-1">
               Min
             </span>
-            <div className="h-44 overflow-y-auto space-y-1 pr-1 scrollbar-thin">
+            <div
+              ref={minContainerRef}
+              onWheel={handleWheel}
+              style={{ overscrollBehavior: "contain" }}
+              className="h-44 overflow-y-auto space-y-1 pr-1 scrollbar-thin select-none"
+            >
               {minutes.map((m) => {
                 const isSelected = m === minute;
                 return (
                   <button
                     key={m}
                     type="button"
+                    data-selected={isSelected}
                     onClick={() => updateTime(hour12, m, period)}
                     className={cn(
-                      "w-full py-1 text-xs font-medium rounded-md text-center transition-colors",
+                      "w-full py-1 text-xs font-medium rounded-md text-center transition-colors cursor-pointer",
                       isSelected
                         ? "bg-primary text-primary-foreground font-bold shadow-sm"
                         : "text-foreground hover:bg-primary/15 hover:text-primary"
@@ -157,7 +191,7 @@ export function TimePicker({
                     type="button"
                     onClick={() => updateTime(hour12, minute, p)}
                     className={cn(
-                      "w-full py-2 text-xs font-medium rounded-md text-center transition-colors",
+                      "w-full py-2 text-xs font-medium rounded-md text-center transition-colors cursor-pointer",
                       isSelected
                         ? "bg-primary text-primary-foreground font-bold shadow-sm"
                         : "text-foreground hover:bg-primary/15 hover:text-primary"
@@ -176,7 +210,7 @@ export function TimePicker({
             size="sm"
             type="button"
             onClick={() => setOpen(false)}
-            className="h-7 text-xs font-semibold px-3"
+            className="h-7 text-xs font-semibold px-3 cursor-pointer"
           >
             Done
           </Button>

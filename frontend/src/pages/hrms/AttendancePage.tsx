@@ -74,6 +74,8 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useOrganization } from "@/contexts/OrganizationContext";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { TimePicker } from "@/components/ui/time-picker";
+import { MonthPicker } from "@/components/ui/month-picker";
+import { DatePicker } from "@/components/ui/date-picker";
 
 interface AttendanceRecord {
   id: string;
@@ -177,6 +179,67 @@ export default function AttendancePage() {
 
   const [adminFrom, setAdminFrom] = useState("");
   const [adminTo, setAdminTo] = useState("");
+  const [adminMonth, setAdminMonth] = useState("");
+  const [fromDate, setFromDate] = useState("");
+  const [toDate, setToDate] = useState("");
+  const [myMonth, setMyMonth] = useState("");
+
+  const handleAdminMonthChange = (val: string) => {
+    setAdminMonth(val);
+    if (val) {
+      setAdminFrom("");
+      setAdminTo("");
+    }
+  };
+
+  const handleMyMonthChange = (val: string) => {
+    setMyMonth(val);
+    if (val) {
+      setFromDate("");
+      setToDate("");
+    }
+  };
+
+  const effectiveAdminFrom = useMemo(() => {
+    if (adminFrom) return adminFrom;
+    if (adminMonth) return `${adminMonth}-01`;
+    return "";
+  }, [adminFrom, adminMonth]);
+
+  const effectiveAdminTo = useMemo(() => {
+    if (adminTo) return adminTo;
+    if (adminMonth) {
+      try {
+        const [yearStr, monthStr] = adminMonth.split("-");
+        const end = new Date(parseInt(yearStr, 10), parseInt(monthStr, 10), 0);
+        return format(end, "yyyy-MM-dd");
+      } catch {
+        return "";
+      }
+    }
+    return "";
+  }, [adminTo, adminMonth]);
+
+  const effectiveMyFrom = useMemo(() => {
+    if (fromDate) return fromDate;
+    if (myMonth) return `${myMonth}-01`;
+    return "";
+  }, [fromDate, myMonth]);
+
+  const effectiveMyTo = useMemo(() => {
+    if (toDate) return toDate;
+    if (myMonth) {
+      try {
+        const [yearStr, monthStr] = myMonth.split("-");
+        const end = new Date(parseInt(yearStr, 10), parseInt(monthStr, 10), 0);
+        return format(end, "yyyy-MM-dd");
+      } catch {
+        return "";
+      }
+    }
+    return "";
+  }, [toDate, myMonth]);
+
   const [search, setSearch] = useState("");
   const [clockDialog, setClockDialog] = useState(false);
   const [clockType, setClockType] = useState<ClockType>("clock_in");
@@ -248,9 +311,6 @@ export default function AttendancePage() {
     null,
   );
 
-  const [fromDate, setFromDate] = useState("");
-  const [toDate, setToDate] = useState("");
-
   // Pagination State (Admin)
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(50);
@@ -261,11 +321,11 @@ export default function AttendancePage() {
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [adminFrom, adminTo, search]);
+  }, [effectiveAdminFrom, effectiveAdminTo, search]);
 
   useEffect(() => {
     setMyCurrentPage(1);
-  }, [fromDate, toDate]);
+  }, [effectiveMyFrom, effectiveMyTo]);
 
   const qc = useQueryClient();
 
@@ -312,11 +372,11 @@ export default function AttendancePage() {
   const monthDiff = monthActual - monthExpected;
 
   const { data: rawAttendanceData, isLoading } = useQuery({
-    queryKey: ["attendance", adminFrom, adminTo, search],
+    queryKey: ["attendance", effectiveAdminFrom, effectiveAdminTo, search],
     queryFn: () =>
       api.get<any>("/hrms/attendance", {
-        ...(adminFrom && { from: adminFrom }),
-        ...(adminTo && { to: adminTo }),
+        ...(effectiveAdminFrom && { from: effectiveAdminFrom }),
+        ...(effectiveAdminTo && { to: effectiveAdminTo }),
         search,
         limit: "all",
       }),
@@ -371,12 +431,12 @@ export default function AttendancePage() {
   });
 
   const { data: myHistory = [] } = useQuery({
-    queryKey: ["my-attendance-history", fromDate, toDate],
+    queryKey: ["my-attendance-history", effectiveMyFrom, effectiveMyTo],
     queryFn: () =>
       api.get<AttendanceRecord[]>("/hrms/attendance/my-history", {
         limit: "all",
-        ...(fromDate && { from: fromDate }),
-        ...(toDate && { to: toDate }),
+        ...(effectiveMyFrom && { from: effectiveMyFrom }),
+        ...(effectiveMyTo && { to: effectiveMyTo }),
       }),
     enabled: !isSuperAdmin,
     refetchInterval: 600000,
@@ -538,33 +598,53 @@ export default function AttendancePage() {
           <Clock className="h-4 w-4 text-muted-foreground" />
           <span className="text-sm font-semibold">
             My Attendance History
+            {myMonth && !fromDate && !toDate
+              ? ` — ${format(parseISO(`${myMonth}-01`), "MMMM yyyy")}`
+              : effectiveMyFrom || effectiveMyTo
+                ? ` — ${effectiveMyFrom ? format(parseISO(effectiveMyFrom), "MMM d") : "…"} to ${effectiveMyTo ? format(parseISO(effectiveMyTo), "MMM d, yyyy") : "…"}`
+                : ""}
           </span>
           <span className="text-xs text-muted-foreground">
             ({(myHistory as AttendanceRecord[]).length} records)
           </span>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <span className="text-xs text-muted-foreground">From</span>
-          <input
-            type="date"
-            value={fromDate}
-            onChange={(e) => setFromDate(e.target.value)}
-            className="h-8 text-xs rounded-md border border-border bg-background px-2 text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
-          />
-          <span className="text-xs text-muted-foreground">To</span>
-          <input
-            type="date"
-            value={toDate}
-            onChange={(e) => setToDate(e.target.value)}
-            className="h-8 text-xs rounded-md border border-border bg-background px-2 text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
-          />
-          {(fromDate || toDate) && (
+          <div className="flex items-center gap-1.5">
+            <span className="text-xs text-muted-foreground font-medium">Month</span>
+            <MonthPicker value={myMonth} onChange={handleMyMonthChange} />
+          </div>
+          <div className="flex items-center gap-1.5">
+            <span className="text-xs text-muted-foreground font-medium">From</span>
+            <DatePicker
+              value={fromDate}
+              onChange={(val) => {
+                setFromDate(val);
+                if (val) setMyMonth("");
+              }}
+              placeholder="dd/mm/yyyy"
+              className="w-32 sm:w-36"
+            />
+          </div>
+          <div className="flex items-center gap-1.5">
+            <span className="text-xs text-muted-foreground font-medium">To</span>
+            <DatePicker
+              value={toDate}
+              onChange={(val) => {
+                setToDate(val);
+                if (val) setMyMonth("");
+              }}
+              placeholder="dd/mm/yyyy"
+              className="w-32 sm:w-36"
+            />
+          </div>
+          {(fromDate || toDate || myMonth) && (
             <button
               onClick={() => {
                 setFromDate("");
                 setToDate("");
+                setMyMonth("");
               }}
-              className="text-xs text-muted-foreground hover:text-destructive px-1 mr-2"
+              className="text-xs text-muted-foreground hover:text-destructive px-1 mr-2 font-medium"
             >
               ✕ Clear
             </button>
@@ -770,28 +850,43 @@ export default function AttendancePage() {
             onChange={(e) => setSearch(e.target.value)}
           />
         </div>
-        <div className="flex items-center gap-2">
-          <span className="text-xs text-muted-foreground">From</span>
-          <input
-            type="date"
-            value={adminFrom}
-            onChange={(e) => setAdminFrom(e.target.value)}
-            className="h-8 text-xs rounded-md border border-border bg-background px-2 text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
-          />
-          <span className="text-xs text-muted-foreground">To</span>
-          <input
-            type="date"
-            value={adminTo}
-            onChange={(e) => setAdminTo(e.target.value)}
-            className="h-8 text-xs rounded-md border border-border bg-background px-2 text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
-          />
-          {(adminFrom || adminTo) && (
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="flex items-center gap-1.5">
+            <span className="text-xs text-muted-foreground font-medium">Month</span>
+            <MonthPicker value={adminMonth} onChange={handleAdminMonthChange} />
+          </div>
+          <div className="flex items-center gap-1.5">
+            <span className="text-xs text-muted-foreground font-medium">From</span>
+            <DatePicker
+              value={adminFrom}
+              onChange={(val) => {
+                setAdminFrom(val);
+                if (val) setAdminMonth("");
+              }}
+              placeholder="dd/mm/yyyy"
+              className="w-32 sm:w-36"
+            />
+          </div>
+          <div className="flex items-center gap-1.5">
+            <span className="text-xs text-muted-foreground font-medium">To</span>
+            <DatePicker
+              value={adminTo}
+              onChange={(val) => {
+                setAdminTo(val);
+                if (val) setAdminMonth("");
+              }}
+              placeholder="dd/mm/yyyy"
+              className="w-32 sm:w-36"
+            />
+          </div>
+          {(adminFrom || adminTo || adminMonth) && (
             <button
               onClick={() => {
                 setAdminFrom("");
                 setAdminTo("");
+                setAdminMonth("");
               }}
-              className="text-xs text-muted-foreground hover:text-destructive px-1"
+              className="text-xs text-muted-foreground hover:text-destructive px-1 font-medium"
             >
               ✕ Clear
             </button>
@@ -805,9 +900,11 @@ export default function AttendancePage() {
             <Clock className="h-4 w-4 text-muted-foreground" />
             <span className="text-sm font-semibold">
               Records
-              {adminFrom || adminTo
-                ? ` — ${adminFrom ? format(parseISO(adminFrom), "MMM d") : "…"} to ${adminTo ? format(parseISO(adminTo), "MMM d, yyyy") : "…"}`
-                : ""}
+              {adminMonth && !adminFrom && !adminTo
+                ? ` — ${format(parseISO(`${adminMonth}-01`), "MMMM yyyy")}`
+                : effectiveAdminFrom || effectiveAdminTo
+                  ? ` — ${effectiveAdminFrom ? format(parseISO(effectiveAdminFrom), "MMM d") : "…"} to ${effectiveAdminTo ? format(parseISO(effectiveAdminTo), "MMM d, yyyy") : "…"}`
+                  : ""}
             </span>
             <span className="text-xs text-muted-foreground">
               ({(records as AttendanceRecord[]).length})
@@ -873,20 +970,40 @@ export default function AttendancePage() {
 
                     return (
                       <React.Fragment key={r.id}>
-                        {showDateHeader && (
-                          <tr className="bg-muted/30 border-y border-border/30">
-                            <td colSpan={isAdmin ? 11 : 10} className="px-4 py-2 text-xs font-semibold text-muted-foreground">
-                              <div className="flex justify-between items-center">
-                                <span>{format(recordDate, "EEEE, MMMM d, yyyy")}</span>
-                                {isToday(recordDate) && (
-                                  <Badge variant="secondary" className="text-[10px] py-0 px-1.5 h-auto">
-                                    Today
-                                  </Badge>
-                                )}
-                              </div>
-                            </td>
-                          </tr>
-                        )}
+                        {showDateHeader && (() => {
+                          const dateRecords = records.filter(
+                            (rec) => (rec.date ? rec.date.split("T")[0] : "") === recordDateStr
+                          );
+                          const presentCount = dateRecords.filter(
+                            (rec) =>
+                              rec.status === "present" ||
+                              rec.status === "half_day" ||
+                              rec.status === "on_break" ||
+                              (Boolean(rec.clock_in) && rec.status !== "absent")
+                          ).length;
+                          const isTodayDate = isToday(recordDate) || recordDateStr === format(now, "yyyy-MM-dd");
+
+                          return (
+                            <tr className="bg-muted/30 border-y border-border/30">
+                              <td colSpan={isAdmin ? 11 : 10} className="px-4 py-2 text-xs font-semibold text-muted-foreground">
+                                <div className="flex items-center justify-between">
+                                  <div className="flex items-center gap-2.5">
+                                    <span className="text-foreground/90 font-medium">
+                                      {format(recordDate, "EEEE, MMMM d, yyyy")}
+                                    </span>
+
+                                    <Badge
+                                      variant="outline"
+                                      className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/30 text-[11px] font-semibold px-2 py-0.5"
+                                    >
+                                      {presentCount} {isTodayDate ? "Present " : "Present"}
+                                    </Badge>
+                                  </div>
+                                </div>
+                              </td>
+                            </tr>
+                          );
+                        })()}
                         <tr
                           className={cn(
                             "hover:bg-muted/30 transition-colors",
@@ -899,7 +1016,7 @@ export default function AttendancePage() {
                                 {r.avatar_url && (
                                   <AvatarImage src={r.avatar_url} alt={r.employee_name} />
                                 )}
-                                <AvatarFallback className="text-[10px] bg-primary/10 text-primary">
+                                <AvatarFallback className="text-[10px] font-bold bg-secondary-foreground text-white dark:bg-primary dark:text-black">
                                   {getInitials(r.employee_name || "?")}
                                 </AvatarFallback>
                               </Avatar>
@@ -1061,21 +1178,7 @@ export default function AttendancePage() {
           </p>
         </div>
         <div className="flex items-center gap-3">
-          {/* <Button
-            size="sm"
-            variant="outline"
-            onClick={() => syncMutation.mutate()}
-            disabled={syncMutation.isPending}
-            className="gap-1.5 h-8 text-xs"
-          >
-            <RefreshCw
-              className={cn(
-                "h-3.5 w-3.5",
-                syncMutation.isPending && "animate-spin",
-              )}
-            />
-            {syncMutation.isPending ? "Syncing..." : "Sync"}
-          </Button> */}
+
           <div className="text-right">
             <p className="text-2xl font-bold tabular-nums">
               {format(now, "HH:mm:ss")}
@@ -1489,11 +1592,10 @@ export default function AttendancePage() {
           <div className="space-y-4 py-3">
             <div className="space-y-1.5">
               <Label>Select Month & Year</Label>
-              <input
-                type="month"
+              <MonthPicker
                 value={reportMonth}
-                onChange={(e) => setReportMonth(e.target.value)}
-                className="w-full h-10 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                onChange={setReportMonth}
+                className="w-full h-10"
               />
             </div>
           </div>

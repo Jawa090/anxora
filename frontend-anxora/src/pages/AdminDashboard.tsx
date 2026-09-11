@@ -14,7 +14,7 @@ export default function AdminDashboard() {
   const [filterRole, setFilterRole] = useState('all')
   const [filterStatus, setFilterStatus] = useState('all')
   const [filterDept, setFilterDept] = useState('all')
-  
+
   // Dialog / Edit / Create states
   const [isInviteOpen, setIsInviteOpen] = useState(false)
   const [isEditOpen, setIsEditOpen] = useState(false)
@@ -25,7 +25,7 @@ export default function AdminDashboard() {
   const [isEditRoleOpen, setIsEditRoleOpen] = useState(false)
   const [isDeleteOpen, setIsDeleteOpen] = useState(false)
   const [userToDelete, setUserToDelete] = useState<string | null>(null)
-  
+
   // Form fields
   const [formData, setFormData] = useState({
     fullName: '',
@@ -49,7 +49,7 @@ export default function AdminDashboard() {
     try {
       setLoading(true)
       const token = localStorage.getItem('token')
-      
+
       const queryParams = new URLSearchParams()
       if (searchTerm) queryParams.append('search', searchTerm)
       if (filterRole !== 'all') queryParams.append('role', filterRole)
@@ -108,7 +108,7 @@ export default function AdminDashboard() {
         },
         body: JSON.stringify(formData)
       })
-      
+
       if (response.ok) {
         setIsInviteOpen(false)
         setFormData({ fullName: '', email: '', role: 'employee', department: '', position: '', phone: '' })
@@ -135,7 +135,7 @@ export default function AdminDashboard() {
         },
         body: JSON.stringify(editFormData)
       })
-      
+
       if (response.ok) {
         setIsEditOpen(false)
         fetchUsers()
@@ -429,18 +429,17 @@ export default function AdminDashboard() {
                     </td>
                     <td className="px-6 py-3.5 font-medium text-foreground">{member.department || '—'}</td>
                     <td className="px-6 py-3.5">
-                      <span className={`inline-flex items-center gap-1 text-[10px] font-bold ${
-                        member.invite_status === 'pending'
+                      <span className={`inline-flex items-center gap-1 text-[10px] font-bold ${member.invite_status === 'pending'
                           ? 'text-amber-500'
                           : member.is_active
-                          ? 'text-emerald-500'
-                          : 'text-rose-500'
-                      }`}>
+                            ? 'text-emerald-500'
+                            : 'text-rose-500'
+                        }`}>
                         {member.invite_status === 'pending'
                           ? '○ Pending'
                           : member.is_active
-                          ? '● Active'
-                          : '○ Inactive'}
+                            ? '● Active'
+                            : '○ Inactive'}
                       </span>
                     </td>
                     <td className="px-6 py-3.5 font-medium text-foreground">

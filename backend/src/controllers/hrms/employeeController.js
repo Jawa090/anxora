@@ -127,16 +127,30 @@ const getAll = async (req, res, next) => {
     const { page = 1, limit = 50, search, department, status, includeAdmins } = req.query;
     const offset = (page - 1) * limit;
 
+    // Sync department from users table into employees table for any mismatched rows
+    await db.query(
+      `UPDATE public.employees e
+       SET department = u.department
+       FROM public.users u
+       WHERE (e.user_id = u.id OR LOWER(e.email) = LOWER(u.email))
+         AND u.department IS NOT NULL
+         AND TRIM(u.department) != ''
+         AND (e.department IS NULL OR e.department != u.department)`
+    ).catch(() => {});
+
     let query = `
       SELECT 
         e.*,
-        CONCAT(e.first_name, ' ', e.last_name) as name,
+        COALESCE(NULLIF(TRIM(u.department), ''), e.department) as department,
+        COALESCE(u.role, 'employee') as role,
+        COALESCE(u.is_active, e.status = 'active') as is_active,
+        COALESCE(u.full_name, CONCAT(e.first_name, ' ', e.last_name)) as name,
         CONCAT(m.first_name, ' ', m.last_name) as manager_name,
-        e."position",
-        u.avatar_url as profile_picture
+        COALESCE(u."position", e."position", e.job_title) as "position",
+        COALESCE(u.avatar_url, e.profile_picture) as profile_picture
       FROM public.employees e
       LEFT JOIN public.employees m ON e.manager_id = m.id
-      LEFT JOIN public.users u ON LOWER(u.email) = LOWER(e.email)
+      LEFT JOIN public.users u ON (e.user_id = u.id OR LOWER(u.email) = LOWER(e.email))
       WHERE e.org_id = $1
     `;
     
@@ -159,21 +173,31 @@ const getAll = async (req, res, next) => {
     let paramIndex = 2;
 
     if (search) {
-      query += ` AND (CONCAT(e.first_name, ' ', e.last_name) ILIKE $${paramIndex} OR e.email ILIKE $${paramIndex} OR e.department ILIKE $${paramIndex})`;
+      query += ` AND (CONCAT(e.first_name, ' ', e.last_name) ILIKE $${paramIndex} OR e.email ILIKE $${paramIndex} OR COALESCE(u.department, e.department) ILIKE $${paramIndex})`;
       params.push(`%${search}%`);
       paramIndex++;
     }
 
     if (department && department !== 'all') {
-      query += ` AND LOWER(e.department) = LOWER($${paramIndex})`;
-      params.push(department);
-      paramIndex++;
+      if (department.toLowerCase() === 'none') {
+        query += ` AND (COALESCE(u.department, e.department) IS NULL OR TRIM(COALESCE(u.department, e.department)) = '')`;
+      } else {
+        query += ` AND LOWER(COALESCE(u.department, e.department)) = LOWER($${paramIndex})`;
+        params.push(department);
+        paramIndex++;
+      }
     }
 
-    if (status && status !== 'all') {
+    if (status === 'all') {
+      // return all
+    } else if (status === 'inactive') {
+      query += ` AND e.status = 'inactive'`;
+    } else if (status) {
       query += ` AND e.status = $${paramIndex}`;
       params.push(status);
       paramIndex++;
+    } else {
+      query += ` AND (e.status = 'active' OR e.status IS NULL)`;
     }
 
     query += ` ORDER BY e.created_at DESC LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`;
@@ -203,10 +227,16 @@ const getAll = async (req, res, next) => {
       countParamIndex++;
     }
 
-    if (status && status !== 'all') {
+    if (status === 'all') {
+      // count all
+    } else if (status === 'inactive') {
+      countQuery += ` AND status = 'inactive'`;
+    } else if (status) {
       countQuery += ` AND status = $${countParamIndex}`;
       countParams.push(status);
       countParamIndex++;
+    } else {
+      countQuery += ` AND (status = 'active' OR status IS NULL)`;
     }
 
     const countResult = await db.query(countQuery, countParams);
@@ -360,7 +390,7 @@ const create = async (req, res, next) => {
           defaultPasswordHash, 
           fullName || 'Employee', 
           'employee', 
-          value.department ? value.department.trim().toLowerCase() : null,
+          value.department ? value.department.trim().replace(/\b\w/g, (c) => c.toUpperCase()) : null,
           value.phone || null,
           value.position || null,
           req.user.orgId
@@ -409,7 +439,7 @@ const update = async (req, res, next) => {
     Object.entries(value).forEach(([key, val]) => {
       if (key === 'attendance_machine_id') return;
       const fieldName = key === 'position' ? '"position"' : key;
-      const finalVal = key === 'department' ? val.trim().toLowerCase() : val;
+      const finalVal = (key === 'department' && typeof val === 'string') ? val.trim().replace(/\b\w/g, (c) => c.toUpperCase()) : val;
       fields.push(`${fieldName} = $${paramIndex++}`);
       values.push(finalVal);
     });
@@ -501,77 +531,36 @@ const remove = async (req, res, next) => {
 
     await client.query('BEGIN');
 
-    if (userId) {
-      // Step 1: Find foreign key constraints pointing to users table
-      const fkQuery = `
-        SELECT 
-          tc.table_name, 
-          kcu.column_name
-        FROM information_schema.table_constraints tc
-        JOIN information_schema.key_column_usage kcu 
-          ON tc.constraint_name = kcu.constraint_name
-        JOIN information_schema.constraint_column_usage ccu 
-          ON tc.constraint_name = ccu.constraint_name
-        WHERE tc.constraint_type = 'FOREIGN KEY'
-          AND ccu.table_name = 'users'
-          AND ccu.column_name = 'id'
-          AND tc.table_schema = 'public'
-      `;
-      const fkResult = await client.query(fkQuery);
-      
-      const deleteTargets = [
-        'attendance', 'leave_requests', 'salary_slips', 'employee_documents',
-        'crm_activities', 'workgroup_posts', 'workgroup_post_reads',
-        'workgroup_files', 'workgroup_members', 'workgroup_notifications',
-        'workgroup_activities', 'connected_mailboxes', 'calendar_connections',
-        'calendar_event_attendees', 'profiles', 'push_subscriptions',
-        'fcm_tokens', 'user_settings'
-      ];
-
-      for (const fk of fkResult.rows) {
-        const tableName = fk.table_name;
-        const columnName = fk.column_name;
-        if (tableName === 'users') continue;
-        
-        try {
-          if (deleteTargets.includes(tableName)) {
-            await client.query(`DELETE FROM public."${tableName}" WHERE "${columnName}" = $1`, [userId]);
-          } else {
-            try {
-              await client.query(`UPDATE public."${tableName}" SET "${columnName}" = $2 WHERE "${columnName}" = $1`, [userId, req.user.id]);
-            } catch (updateErr) {
-              try {
-                await client.query(`UPDATE public."${tableName}" SET "${columnName}" = NULL WHERE "${columnName}" = $1`, [userId]);
-              } catch (nullErr) {
-                await client.query(`DELETE FROM public."${tableName}" WHERE "${columnName}" = $1`, [userId]);
-              }
-            }
-          }
-        } catch (e) {
-          console.log(`Cleanup: skipping ${tableName}.${columnName} - ${e.message}`);
-        }
-      }
-
-      await client.query('DELETE FROM public.leads WHERE assigned_to = $1', [userId]);
-      await client.query('DELETE FROM public.deals WHERE assigned_to = $1', [userId]);
-      await client.query('DELETE FROM public.tasks WHERE assigned_to = $1 OR created_by = $1', [userId]);
-      await client.query('DELETE FROM public.users WHERE id = $1 AND org_id = $2', [userId, req.user.orgId]);
-    }
-
-    // Delete related employee records first to avoid foreign key constraints
-    await client.query('DELETE FROM employee_leave_balances WHERE employee_id = $1', [id]);
-    await client.query('DELETE FROM employee_documents WHERE employee_id = $1', [id]);
-    await client.query('DELETE FROM attendance WHERE employee_id = $1', [id]);
-    await client.query('DELETE FROM leave_requests WHERE employee_id = $1', [id]);
-
-    // Now delete the employee
+    // 1. Unlink manager references from other employees
     await client.query(
-      'DELETE FROM public.employees WHERE id = $1 AND org_id = $2',
+      `UPDATE public.employees SET reporting_manager_id = NULL WHERE reporting_manager_id = $1`,
+      [id]
+    );
+    await client.query(
+      `UPDATE public.employees SET manager_id = NULL WHERE manager_id = $1`,
+      [id]
+    );
+
+    // 2. Delete employee record (cascading attendance, leaves, shifts, payroll, documents)
+    await client.query(
+      `DELETE FROM public.employees WHERE id = $1 AND org_id = $2`,
       [id, req.user.orgId]
     );
 
+    // 3. If linked user exists, clean up user references & delete user
+    if (userId) {
+      const safeRequester = req.user.id;
+      await client.query(`UPDATE public.tasks SET assigned_to = NULL WHERE assigned_to = $1`, [userId]).catch(() => {});
+      await client.query(`UPDATE public.tasks SET created_by = $1 WHERE created_by = $2`, [safeRequester, userId]).catch(() => {});
+      await client.query(`UPDATE public.independent_tasks SET assigned_to = NULL WHERE assigned_to = $1`, [userId]).catch(() => {});
+      await client.query(`UPDATE public.project_tasks SET assigned_to = NULL WHERE assigned_to = $1`, [userId]).catch(() => {});
+      await client.query(`UPDATE public.projects SET manager_id = NULL WHERE manager_id = $1`, [userId]).catch(() => {});
+      await client.query(`DELETE FROM public.profiles WHERE id = $1`, [userId]).catch(() => {});
+      await client.query(`DELETE FROM public.users WHERE id = $1 AND org_id = $2`, [userId, req.user.orgId]).catch(() => {});
+    }
+
     await client.query('COMMIT');
-    res.json({ message: 'Employee and linked user deleted successfully' });
+    res.json({ message: 'Employee permanently deleted successfully' });
   } catch (err) {
     await client.query('ROLLBACK').catch(() => {});
     next(err);

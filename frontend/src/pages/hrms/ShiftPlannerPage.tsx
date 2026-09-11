@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { shiftsApi } from "@/lib/api";
+import { shiftsApi, usersApi } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -122,6 +122,12 @@ export default function ShiftPlannerPage() {
   });
   const assignments: EmployeeAssignment[] = assignmentsResp?.data || [];
 
+  const { data: dbDepartments = [] } = useQuery({
+    queryKey: ["admin-users-departments"],
+    queryFn: () => usersApi.getDepartments(),
+    refetchInterval: 10000,
+  });
+
   // Mutations
   const saveShiftMutation = useMutation({
     mutationFn: (data: any) =>
@@ -221,24 +227,34 @@ export default function ShiftPlannerPage() {
     });
   };
 
-  // Start with global preset departments, then add any extra from assignments
+  // Dynamically derive departments strictly from DB users and assignments (Title Case normalized)
   const departments = (() => {
-    const seen = new Map<string, string>(
-      ["General", ...DEPARTMENTS].map((d) => [d.toLowerCase(), d])
-    );
-    assignments.forEach((a) => {
-      const dept = (a.department || "General").trim();
-      const key = dept.toLowerCase();
-      if (!seen.has(key)) {
-        seen.set(key, dept.replace(/\b\w/g, (c) => c.toUpperCase()));
+    const seen = new Map<string, string>();
+    (dbDepartments || []).forEach((d: string) => {
+      if (d && d.trim()) {
+        seen.set(
+          d.trim().toLowerCase(),
+          d.trim().replace(/\b\w/g, (c) => c.toUpperCase())
+        );
       }
     });
-    return [...seen.values()];
+    assignments.forEach((a) => {
+      if (a.department && a.department.trim()) {
+        const key = a.department.trim().toLowerCase();
+        if (!seen.has(key)) {
+          seen.set(
+            key,
+            a.department.trim().replace(/\b\w/g, (c) => c.toUpperCase())
+          );
+        }
+      }
+    });
+    return [...seen.values()].sort((a, b) => a.localeCompare(b));
   })();
 
   const filteredAssignments = assignments.filter((a) => {
     const q = searchEmployee.toLowerCase();
-    const dept = (a.department || "General").trim();
+    const dept = (a.department || "").trim();
     const matchesSearch =
       !q ||
       a.employee_name.toLowerCase().includes(q) ||
@@ -246,7 +262,9 @@ export default function ShiftPlannerPage() {
       dept.toLowerCase().includes(q);
     const matchesDept =
       deptFilter === "all" ||
-      dept.toLowerCase() === deptFilter.toLowerCase();
+      (deptFilter === "none"
+        ? !a.department || a.department.trim() === ""
+        : dept.toLowerCase() === deptFilter.toLowerCase());
     return matchesSearch && matchesDept;
   });
 
@@ -399,7 +417,7 @@ export default function ShiftPlannerPage() {
                 <SelectTrigger className="w-44 h-9 text-xs">
                   <SelectValue placeholder="All Departments" />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="max-h-[190px] overflow-y-auto">
                   <SelectItem value="all">All Departments</SelectItem>
                   {departments.map((d) => (
                     <SelectItem key={d} value={d}>
@@ -528,7 +546,7 @@ export default function ShiftPlannerPage() {
                                 {emp.profile_picture && (
                                   <AvatarImage src={emp.profile_picture} alt={emp.employee_name} />
                                 )}
-                                <AvatarFallback className="text-xs bg-primary/10 text-primary">
+                                <AvatarFallback className="text-xs font-bold  bg-secondary-foreground dark:bg-primary text-white dark:text-black">
                                   {getInitials(emp.employee_name)}
                                 </AvatarFallback>
                               </Avatar>
@@ -540,7 +558,7 @@ export default function ShiftPlannerPage() {
                           </td>
 
                           <td className="py-3 px-4 whitespace-nowrap capitalize text-muted-foreground">
-                            {emp.department || "General"}
+                            {emp.department ? emp.department : <span className="italic text-muted-foreground/60">None</span>}
                           </td>
 
                           <td className="py-3 px-4 whitespace-nowrap">

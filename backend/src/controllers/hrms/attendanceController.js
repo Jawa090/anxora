@@ -85,9 +85,6 @@ const getAll = async (req, res, next) => {
     const { page = 1, limit = 500, date, from, to, search, employee_id, status } = req.query;
     const offset = (page - 1) * limit;
 
-    // For today's quick view, only get today's attendance
-    const queryDate = date || new Date().toISOString().split('T')[0];
-
     let query = `
       SELECT 
         a.*,
@@ -97,13 +94,25 @@ const getAll = async (req, res, next) => {
       FROM public.attendance a
       LEFT JOIN public.employees e ON a.employee_id = e.id
       LEFT JOIN public.users u ON a.user_id = u.id
-      WHERE a.org_id = $1 AND DATE(a.date) = $2
+      WHERE a.org_id = $1
     `;
-    const params = [req.user.orgId, queryDate];
-    let paramIndex = 3;
+    const params = [req.user.orgId];
+    let paramIndex = 2;
 
-    if (from && from !== date) {
-      query = query.replace(`DATE(a.date) = $2`, `DATE(a.date) >= $2`);
+    if (from) {
+      query += ` AND DATE(a.date) >= $${paramIndex}`;
+      params.push(from);
+      paramIndex++;
+    } else if (date) {
+      query += ` AND DATE(a.date) = $${paramIndex}`;
+      params.push(date);
+      paramIndex++;
+    } else if (!to) {
+      // Default to today only if neither from nor to nor date is specified
+      const today = new Date().toISOString().split('T')[0];
+      query += ` AND DATE(a.date) = $${paramIndex}`;
+      params.push(today);
+      paramIndex++;
     }
 
     if (to) {

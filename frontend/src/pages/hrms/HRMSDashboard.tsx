@@ -569,7 +569,7 @@ export default function HRMSDashboard() {
                           <div className="flex items-center gap-2.5 min-w-0">
                             <Avatar className="h-8 w-8 shrink-0">
                               {record.avatar_url && <AvatarImage src={record.avatar_url} alt={record.employee_name} />}
-                              <AvatarFallback className="text-[10px] bg-primary/10 text-primary font-semibold">
+                              <AvatarFallback className="text-[10px] font-bold bg-secondary-foreground text-white dark:bg-primary dark:text-black">
                                 {getInitials(record.employee_name || "?")}
                               </AvatarFallback>
                             </Avatar>

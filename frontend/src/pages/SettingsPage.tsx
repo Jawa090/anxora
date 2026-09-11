@@ -39,6 +39,7 @@ import {
   Users,
   Copy,
   Plug,
+  Trash2,
 } from "lucide-react";
 import InstantlyIntegrationPanel from "@/components/admin/InstantlyIntegrationPanel";
 import { useQuery } from "@tanstack/react-query";
@@ -137,6 +138,7 @@ function ProfileSettings() {
     (profile as any)?.department || "",
   );
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  const [removingAvatar, setRemovingAvatar] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [currentPassword, setCurrentPassword] = useState("");
@@ -226,6 +228,19 @@ function ProfileSettings() {
     }
   };
 
+  const handleRemoveAvatar = async () => {
+    setRemovingAvatar(true);
+    try {
+      await api.delete("/auth/avatar");
+      toast.success("Profile photo removed");
+      await refreshProfile();
+    } catch (err: any) {
+      toast.error(err.response?.data?.error || "Failed to remove photo");
+    } finally {
+      setRemovingAvatar(false);
+    }
+  };
+
   const initials =
     profile?.full_name
       ?.split(" ")
@@ -290,10 +305,26 @@ function ProfileSettings() {
                   size="sm"
                   className="h-7 text-xs bg-secondary-foreground hover:bg-secondary-foreground/80 text-white hover:text-white dark:bg-primary dark:hover:bg-primary/80"
                   onClick={() => fileInputRef.current?.click()}
-                  disabled={uploadingAvatar}
+                  disabled={uploadingAvatar || removingAvatar}
                 >
-                  Change Photo
+                  Change
                 </Button>
+                {profile?.avatar_url && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-7 text-xs border-destructive/40 text-destructive hover:bg-destructive hover:text-white transition-colors"
+                    onClick={handleRemoveAvatar}
+                    disabled={uploadingAvatar || removingAvatar}
+                  >
+                    {removingAvatar ? (
+                      <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" />
+                    ) : (
+                      <Trash2 className="h-3.5 w-3.5 mr-1" />
+                    )}
+                    Remove
+                  </Button>
+                )}
               </div>
             </div>
           </div>

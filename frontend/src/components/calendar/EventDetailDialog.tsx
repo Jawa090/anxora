@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { DatePicker } from "@/components/ui/date-picker";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -184,18 +185,20 @@ export function EventDetailDialog({ open, onOpenChange, event, onBackToList }: E
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-2">
                 <Label className="flex items-center gap-1"><Clock className="h-3.5 w-3.5" /> Start</Label>
-                <Input
-                  type={isAllDay ? "date" : "datetime-local"}
+                <DatePicker
+                  showTime={!isAllDay}
                   value={isAllDay ? startTime.split('T')[0] : startTime}
-                  onChange={e => setStartTime(isAllDay ? e.target.value + 'T00:00' : e.target.value)}
+                  onChange={val => setStartTime(isAllDay ? val + 'T00:00' : val)}
+                  className="h-10"
                 />
               </div>
               <div className="space-y-2">
                 <Label className="flex items-center gap-1"><Clock className="h-3.5 w-3.5" /> End</Label>
-                <Input
-                  type={isAllDay ? "date" : "datetime-local"}
+                <DatePicker
+                  showTime={!isAllDay}
                   value={isAllDay ? endTime.split('T')[0] : endTime}
-                  onChange={e => setEndTime(isAllDay ? e.target.value + 'T23:59' : e.target.value)}
+                  onChange={val => setEndTime(isAllDay ? val + 'T23:59' : val)}
+                  className="h-10"
                 />
               </div>
             </div>

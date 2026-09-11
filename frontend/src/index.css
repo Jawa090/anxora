@@ -6,7 +6,7 @@
 
 @layer base {
   :root {
-    accent-color: hsl(174 100% 42%);
+    accent-color: hsl(186 89% 20%);
     /* ══ ELINA Deep Teal Luxury palette (Light Mode) — From frontend-ELINA ══ */
     --background: 180 20% 96%;
     /* #F1F6F6 */
@@ -434,11 +434,38 @@
   }
 }
 
+input[type="date"],
+input[type="datetime-local"],
+input[type="month"],
+input[type="time"] {
+  accent-color: hsl(186 89% 20%);
+  color-scheme: light;
+}
+
+.dark input[type="date"],
+.dark input[type="datetime-local"],
+.dark input[type="month"],
+.dark input[type="time"] {
+  accent-color: hsl(174 100% 42%);
+  color-scheme: dark;
+}
+
 input[type="date"]::-webkit-calendar-picker-indicator,
 input[type="datetime-local"]::-webkit-calendar-picker-indicator,
+input[type="month"]::-webkit-calendar-picker-indicator,
 input[type="time"]::-webkit-calendar-picker-indicator {
   cursor: pointer;
-  /* Filter to match primary color — teal accent */
+  /* Light mode: secondary-foreground (#053B3F / Deep Teal) */
+  filter: invert(18%) sepia(45%) saturate(1600%) hue-rotate(145deg) brightness(90%) contrast(98%);
+  transition: filter 0.2s ease;
+}
+
+.dark input[type="date"]::-webkit-calendar-picker-indicator,
+.dark input[type="datetime-local"]::-webkit-calendar-picker-indicator,
+.dark input[type="month"]::-webkit-calendar-picker-indicator,
+.dark input[type="time"]::-webkit-calendar-picker-indicator {
+  cursor: pointer;
+  /* Dark mode: primary (#2DD4BF / Mint Teal) */
   filter: invert(70%) sepia(80%) saturate(500%) hue-rotate(130deg) brightness(95%) contrast(90%);
 }
 

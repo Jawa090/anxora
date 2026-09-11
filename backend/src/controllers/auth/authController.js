@@ -4,6 +4,7 @@ const { v4: uuidv4 } = require('uuid');
 const db = require('../../config/database');
 const Joi = require('joi');
 const emailService = require('../../services/emailService');
+const realtimeService = require('../../services/realtimeService');
 
 const registerSchema = Joi.object({
   email: Joi.string().email().required(),
@@ -257,12 +258,70 @@ const uploadAvatar = async (req, res, next) => {
     // Path where the file is accessible (assuming /uploads is statically served)
     const avatarUrl = `/uploads/profiles/${req.file.filename}`;
 
-    await db.query(
-      'UPDATE users SET avatar_url = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2',
+    const updateResult = await db.query(
+      'UPDATE users SET avatar_url = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2 RETURNING id, full_name, email, org_id, avatar_url',
       [avatarUrl, req.user.id]
     );
 
+    await db.query(
+      'UPDATE public.employees SET profile_picture = $1, updated_at = CURRENT_TIMESTAMP WHERE user_id = $2',
+      [avatarUrl, req.user.id]
+    ).catch(() => {});
+
+    const updatedUser = updateResult.rows[0];
+    const orgId = updatedUser?.org_id || req.user.orgId;
+    if (realtimeService) {
+      realtimeService.emitUserUpdated(req.user.id, {
+        id: req.user.id,
+        avatar_url: avatarUrl,
+        full_name: updatedUser?.full_name,
+        email: updatedUser?.email,
+        org_id: orgId
+      }, orgId);
+    }
+
     res.json({ avatarUrl });
+  } catch (err) {
+    next(err);
+  }
+};
+
+const removeAvatar = async (req, res, next) => {
+  try {
+    const userResult = await db.query('SELECT avatar_url FROM users WHERE id = $1', [req.user.id]);
+    const oldAvatar = userResult.rows[0]?.avatar_url;
+    if (oldAvatar && oldAvatar.startsWith('/uploads/')) {
+      const fs = require('fs');
+      const path = require('path');
+      const fullPath = path.join(__dirname, '../../../', oldAvatar);
+      if (fs.existsSync(fullPath)) {
+        try { fs.unlinkSync(fullPath); } catch (_) {}
+      }
+    }
+
+    const updateResult = await db.query(
+      'UPDATE users SET avatar_url = NULL, updated_at = CURRENT_TIMESTAMP WHERE id = $1 RETURNING id, full_name, email, org_id, avatar_url',
+      [req.user.id]
+    );
+
+    await db.query(
+      'UPDATE public.employees SET profile_picture = NULL, updated_at = CURRENT_TIMESTAMP WHERE user_id = $1',
+      [req.user.id]
+    ).catch(() => {});
+
+    const updatedUser = updateResult.rows[0];
+    const orgId = updatedUser?.org_id || req.user.orgId;
+    if (realtimeService) {
+      realtimeService.emitUserUpdated(req.user.id, {
+        id: req.user.id,
+        avatar_url: null,
+        full_name: updatedUser?.full_name,
+        email: updatedUser?.email,
+        org_id: orgId
+      }, orgId);
+    }
+
+    res.json({ message: 'Profile photo removed successfully', avatarUrl: null });
   } catch (err) {
     next(err);
   }
@@ -418,6 +477,23 @@ const acceptInvite = async (req, res, next) => {
       [userId, invite.org_id, invite.full_name, invite.email, invite.phone, invite.position, invite.department]
     );
 
+    // 3b. Create or link employee record in public.employees
+    const nameParts = (invite.full_name || '').trim().split(/\s+/);
+    const firstName = nameParts[0] || 'Employee';
+    const lastName = nameParts.slice(1).join(' ') || '';
+    await client.query(
+      `INSERT INTO public.employees 
+       (org_id, user_id, first_name, last_name, email, phone, department, "position", job_title, status)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $8, 'active')
+       ON CONFLICT (email) DO UPDATE 
+       SET user_id = EXCLUDED.user_id,
+           department = EXCLUDED.department,
+           "position" = EXCLUDED."position",
+           job_title = EXCLUDED.job_title,
+           status = 'active'`,
+      [invite.org_id, userId, firstName, lastName, invite.email, invite.phone || null, invite.department || null, invite.position || null]
+    ).catch((e) => console.error('Auto create employee error on acceptInvite:', e.message));
+
     // 4. Delete the invitation
     await client.query('DELETE FROM invites WHERE id = $1', [invite.id]);
 
@@ -450,4 +526,5 @@ module.exports = {
   verifyInvite,
   updateNotificationSettings,
   uploadAvatar,
+  removeAvatar,
 };

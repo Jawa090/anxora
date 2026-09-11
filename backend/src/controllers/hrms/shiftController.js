@@ -106,7 +106,7 @@ const getAssignments = async (req, res, next) => {
         e.id as employee_id,
         CONCAT(e.first_name, ' ', e.last_name) as employee_name,
         e.email,
-        COALESCE(NULLIF(TRIM(e.department), ''), NULLIF(TRIM(u.department), ''), 'General') as department,
+        COALESCE(NULLIF(TRIM(u.department), ''), NULLIF(TRIM(e.department), '')) as department,
         COALESCE(e.position, u.position) as position,
         COALESCE(e.profile_picture, u.avatar_url) as profile_picture,
         es.id as assignment_id,

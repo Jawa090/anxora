@@ -16,5 +16,7 @@ router.post('/logout', auth, authController.logout);
 router.post('/change-password', auth, authController.changePassword);
 router.patch('/notification-settings', auth, authController.updateNotificationSettings);
 router.post('/upload-avatar', auth, multerConfig.profiles.single('avatar'), authController.uploadAvatar);
+router.delete('/avatar', auth, authController.removeAvatar);
+router.post('/remove-avatar', auth, authController.removeAvatar);
 
 module.exports = router;

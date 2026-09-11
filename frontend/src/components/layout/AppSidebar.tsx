@@ -923,10 +923,10 @@ export function AppSidebar({
               {child.title}
               {totalWorkgroupUnread + totalBroadcastUnread + totalDMUnread >
                 0 && (
-                <span className="inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-red-600 px-1 text-[8px] font-bold text-white ml-auto flex-shrink-0">
-                  {totalWorkgroupUnread + totalBroadcastUnread + totalDMUnread}
-                </span>
-              )}
+                  <span className="inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-red-600 px-1 text-[8px] font-bold text-white ml-auto flex-shrink-0">
+                    {totalWorkgroupUnread + totalBroadcastUnread + totalDMUnread}
+                  </span>
+                )}
               {isActive(child.href) && (
                 <ChevronRight className="ml-auto h-3.5 w-3.5 text-sidebar-primary flex-shrink-0" />
               )}
@@ -996,8 +996,8 @@ export function AppSidebar({
                               src={
                                 getAvatarUrl(
                                   dm.avatar_url ||
-                                    dm.direct_peer_avatar_url ||
-                                    dm.avatar,
+                                  dm.direct_peer_avatar_url ||
+                                  dm.avatar,
                                 ) || undefined
                               }
                             />
@@ -1287,7 +1287,7 @@ export function AppSidebar({
                 )}
 
                 <NavLink
-                  to="/collaboration/broadcast"
+                  to="/collaboration/workgroups"
                   onClick={() => isMobile && onClose?.()}
                   className={cn(
                     "flex items-center gap-2 rounded-lg py-2 pl-9 pr-3 mt-1 text-[12px] transition-all duration-200",
@@ -1560,7 +1560,7 @@ export function AppSidebar({
         className={cn(
           "p-4 border-b border-sidebar-primary/20",
           isCollapsed &&
-            "px-2 py-3 flex flex-col items-center justify-center ml-5",
+          "px-2 py-3 flex flex-col items-center justify-center ml-5",
         )}
       >
         <div className="flex items-center justify-between w-full">
@@ -1617,7 +1617,7 @@ export function AppSidebar({
             className={cn(
               "w-full justify-start gap-2 mb-2  bg-transparent border-2 border-sidebar-primary text-white hover:bg-sidebar-accent/30 hover:border-sidebar-primary rounded-full px-3 py-2",
               isCollapsed &&
-                "w-10 h-10 ml-5 p-0 justify-center rounded-lg mb-1 border-sidebar-primary bg-transparent",
+              "w-10 h-10 ml-5 p-0 justify-center rounded-lg mb-1 border-sidebar-primary bg-transparent",
             )}
             onClick={() => {
               navigate("/");
@@ -1676,7 +1676,7 @@ export function AppSidebar({
                           className={cn(
                             "flex items-center justify-between rounded-full border-2 border-sidebar-primary px-3 py-2 bg-sidebar-primary text-sidebar-primary-foreground shadow-md light:border-[#2DD4BF]",
                             isCollapsed &&
-                              "px-2 py-1.5 justify-center rounded-lg",
+                            "px-2 py-1.5 justify-center rounded-lg",
                           )}
                         >
                           <div

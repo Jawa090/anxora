@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import {
   Dialog,
   DialogContent,
@@ -46,8 +47,9 @@ import {
   LayoutList,
   Kanban as KanbanIcon,
 } from "lucide-react";
-import { format, isPast, isToday } from "date-fns";
+import { format, isPast, isToday, parseISO } from "date-fns";
 import { cn } from "@/lib/utils";
+import { DatePicker } from "@/components/ui/date-picker";
 import { MemberSearchSelect } from "@/components/tasks/MemberSearchSelect";
 import {
   useIndependentTasks,
@@ -814,9 +816,31 @@ export default function IndependentTasksPage() {
                                   ) : <span />}
 
                                   {task.assigned_to_name ? (
-                                    <div className="h-5 w-5 rounded-full border border-slate-700 bg-blue-500/15 text-blue-400 text-[7px] font-black flex items-center justify-center">
-                                      {task.assigned_to_name[0].toUpperCase()}
-                                    </div>
+                                    (() => {
+                                      const avatarUrl =
+                                        task.assigned_to_avatar ||
+                                        (task as any).assigned_to_avatar_url ||
+                                        (task as any).avatar_url ||
+                                        members.find(
+                                          (m: any) => m.id === task.assigned_to
+                                        )?.avatar_url;
+                                      return (
+                                        <Avatar
+                                          className="h-5 w-5 shrink-0"
+                                          title={`Assigned to: ${task.assigned_to_name}`}
+                                        >
+                                          {avatarUrl && (
+                                            <AvatarImage
+                                              src={avatarUrl}
+                                              alt={task.assigned_to_name}
+                                            />
+                                          )}
+                                          <AvatarFallback className="border border-slate-700 bg-blue-500/15 text-blue-400 text-[8px] font-black">
+                                            {task.assigned_to_name[0].toUpperCase()}
+                                          </AvatarFallback>
+                                        </Avatar>
+                                      );
+                                    })()
                                   ) : (
                                     <div className="h-5 w-5 rounded-full border border-dashed border-slate-700" />
                                   )}
@@ -1052,11 +1076,30 @@ export default function IndependentTasksPage() {
                           <td className="py-3 px-4">
                             {task.assigned_to_name ? (
                               <div className="flex items-center gap-2">
-                                <div className="h-6 w-6 rounded-full bg-secondary-foreground text-white dark:bg-primary dark:text-primary-foreground flex items-center justify-center text-[10px] font-bold">
-                                  {task.assigned_to_name
-                                    .slice(0, 2)
-                                    .toUpperCase()}
-                                </div>
+                                {(() => {
+                                  const avatarUrl =
+                                    task.assigned_to_avatar ||
+                                    (task as any).assigned_to_avatar_url ||
+                                    (task as any).avatar_url ||
+                                    members.find(
+                                      (m: any) => m.id === task.assigned_to
+                                    )?.avatar_url;
+                                  return (
+                                    <Avatar className="h-6 w-6 border border-border/40 shrink-0">
+                                      {avatarUrl && (
+                                        <AvatarImage
+                                          src={avatarUrl}
+                                          alt={task.assigned_to_name}
+                                        />
+                                      )}
+                                      <AvatarFallback className="bg-secondary-foreground text-white dark:bg-primary dark:text-primary-foreground text-[10px] font-bold">
+                                        {task.assigned_to_name
+                                          .slice(0, 2)
+                                          .toUpperCase()}
+                                      </AvatarFallback>
+                                    </Avatar>
+                                  );
+                                })()}
                                 <span className="font-semibold text-foreground/80">
                                   {task.assigned_to_name}
                                 </span>
@@ -1070,11 +1113,29 @@ export default function IndependentTasksPage() {
                           <td className="py-3 px-4">
                             {task.created_by_name ? (
                               <div className="flex items-center gap-2">
-                                <div className="h-6 w-6 rounded-full bg-muted border border-border text-muted-foreground flex items-center justify-center text-[10px] font-bold">
-                                  {task.created_by_name
-                                    .slice(0, 2)
-                                    .toUpperCase()}
-                                </div>
+                                {(() => {
+                                  const avatarUrl =
+                                    task.created_by_avatar ||
+                                    (task as any).created_by_avatar_url ||
+                                    members.find(
+                                      (m: any) => m.id === task.created_by
+                                    )?.avatar_url;
+                                  return (
+                                    <Avatar className="h-6 w-6 border border-border/40 shrink-0">
+                                      {avatarUrl && (
+                                        <AvatarImage
+                                          src={avatarUrl}
+                                          alt={task.created_by_name}
+                                        />
+                                      )}
+                                      <AvatarFallback className="bg-muted border border-border text-muted-foreground text-[10px] font-bold">
+                                        {task.created_by_name
+                                          .slice(0, 2)
+                                          .toUpperCase()}
+                                      </AvatarFallback>
+                                    </Avatar>
+                                  );
+                                })()}
                                 <span className="font-semibold text-muted-foreground">
                                   {task.created_by_name}
                                 </span>
@@ -1248,34 +1309,22 @@ export default function IndependentTasksPage() {
                 <Label className="text-xs font-semibold flex items-center gap-1.5">
                   <CalendarIcon className="h-3.5 w-3.5" /> Due Date
                 </Label>
-                <Popover open={isCalendarOpen} onOpenChange={setIsCalendarOpen}>
-                  <PopoverTrigger asChild>
-                    <Button
-                      variant="outline"
-                      className={cn(
-                        "w-full h-9 justify-start text-left font-normal text-xs",
-                        !formData.due_date && "text-muted-foreground",
-                      )}
-                      disabled={!isEditable}
-                    >
-                      <CalendarIcon className="mr-2 h-3.5 w-3.5" />
-                      {formData.due_date
-                        ? format(formData.due_date, "PPP")
-                        : "Pick date"}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="start">
-                    <Calendar
-                      mode="single"
-                      selected={formData.due_date}
-                      onSelect={(date) => {
-                        setFormData({ ...formData, due_date: date });
-                        setIsCalendarOpen(false);
-                      }}
-                      initialFocus
-                    />
-                  </PopoverContent>
-                </Popover>
+                <DatePicker
+                  value={
+                    formData.due_date
+                      ? format(formData.due_date, "yyyy-MM-dd")
+                      : ""
+                  }
+                  onChange={(val) => {
+                    setFormData({
+                      ...formData,
+                      due_date: val ? parseISO(val) : undefined,
+                    });
+                  }}
+                  placeholder="Pick due date"
+                  className="w-full h-9"
+                  disabled={!isEditable}
+                />
               </div>
             </div>
 
@@ -1463,11 +1512,30 @@ export default function IndependentTasksPage() {
                     <div className="flex items-center gap-2 mt-1">
                       {selectedTask.assigned_to_name ? (
                         <>
-                          <div className="h-5 w-5 rounded-full bg-primary/20 text-primary flex items-center justify-center text-[9px] font-bold">
-                            {selectedTask.assigned_to_name
-                              .slice(0, 2)
-                              .toUpperCase()}
-                          </div>
+                          {(() => {
+                            const avatarUrl =
+                              selectedTask.assigned_to_avatar ||
+                              (selectedTask as any).assigned_to_avatar_url ||
+                              (selectedTask as any).avatar_url ||
+                              members.find(
+                                (m: any) => m.id === selectedTask.assigned_to
+                              )?.avatar_url;
+                            return (
+                              <Avatar className="h-6 w-6 border border-border/50 shrink-0">
+                                {avatarUrl && (
+                                  <AvatarImage
+                                    src={avatarUrl}
+                                    alt={selectedTask.assigned_to_name}
+                                  />
+                                )}
+                                <AvatarFallback className="bg-secondary-foreground text-white dark:bg-primary dark:text-black text-[9px] font-bold">
+                                  {selectedTask.assigned_to_name
+                                    .slice(0, 2)
+                                    .toUpperCase()}
+                                </AvatarFallback>
+                              </Avatar>
+                            );
+                          })()}
                           <span className="text-xs font-semibold text-foreground/90">
                             {selectedTask.assigned_to_name}
                           </span>

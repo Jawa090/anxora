@@ -689,8 +689,13 @@ class RealtimeService {
     }
   }
 
-  emitUserUpdated(userId, payload) {
-    this.io.to(`user:${userId}`).emit('user:updated', payload);
+  emitUserUpdated(userId, payload, orgId) {
+    if (this.io) {
+      this.io.to(`user:${userId}`).emit('user:updated', payload);
+      if (orgId) {
+        this.io.to(`org:${orgId}`).emit('user:updated', payload);
+      }
+    }
   }
 
   emitWorkgroupPostSeen(workgroupId, payload) {
