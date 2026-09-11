@@ -19,48 +19,98 @@ const getStats = async (req, res, next) => {
         break;
     }
 
-    // Get employee statistics
-    const employeeStats = await db.query(`
-      SELECT
-        (
-          SELECT COUNT(DISTINCT e2.id) FROM employees e2
-          WHERE e2.org_id = $1
-            AND NOT EXISTS (SELECT 1 FROM users u2 WHERE LOWER(u2.email) = LOWER(e2.email) AND u2.role IN ('super_admin', 'admin'))
-        ) + (
-          SELECT COUNT(DISTINCT u3.id) FROM users u3
-          WHERE u3.org_id = $1
-            AND u3.role NOT IN ('super_admin', 'admin')
-            AND NOT EXISTS (SELECT 1 FROM employees e3 WHERE LOWER(e3.email) = LOWER(u3.email) AND e3.org_id = $1)
-        ) as total_employees,
-        COUNT(DISTINCT CASE WHEN a.status = 'present' OR a.status = 'late' THEN e.id END) as present_today,
-        COUNT(DISTINCT CASE WHEN a.status = 'absent' THEN e.id END) as absent_today,
-        COUNT(DISTINCT CASE WHEN a.status = 'late' THEN e.id END) as late_today,
-        AVG(a.total_hours) as average_work_hours,
-        SUM(a.total_hours) as total_hours_today
+    // 1. Total active employees in the organization (excluding super_admin)
+    const empCountRes = await db.query(`
+      SELECT COUNT(DISTINCT e.id) as total
       FROM employees e
-      LEFT JOIN attendance a ON e.id = a.employee_id ${dateFilter}
-      WHERE e.org_id = $1
-        AND NOT EXISTS (SELECT 1 FROM public.users u WHERE LOWER(u.email) = LOWER(e.email) AND u.role IN ('super_admin', 'admin'))
+      LEFT JOIN users u ON e.user_id = u.id OR LOWER(u.email) = LOWER(e.email)
+      WHERE e.org_id = $1 
+        AND e.status = 'active'
+        AND (u.role IS NULL OR u.role != 'super_admin')
     `, [req.user.orgId]);
 
-    // Get leave statistics
+    const totalEmployees = parseInt(empCountRes.rows[0]?.total, 10) || 0;
+
+    // 2. Attendance metrics for eligible employees
+    const attendanceStats = await db.query(`
+      SELECT
+        COUNT(DISTINCT CASE WHEN a.status = 'present' THEN e.id END) as present_count,
+        COUNT(DISTINCT CASE WHEN a.status = 'half_day' THEN e.id END) as half_day_count,
+        COUNT(DISTINCT CASE WHEN a.punctuality = 'on_time' THEN e.id END) as on_time_count,
+        COUNT(DISTINCT CASE WHEN a.punctuality = 'late' OR a.status = 'late' THEN e.id END) as late_count,
+        COUNT(DISTINCT CASE WHEN a.status = 'absent' THEN e.id END) as explicit_absent_count,
+        COUNT(DISTINCT CASE WHEN a.clock_in IS NOT NULL THEN e.id END) as clocked_in_count,
+        AVG(COALESCE(a.total_hours_worked, a.total_hours, 0)) as average_work_hours,
+        SUM(COALESCE(a.total_hours_worked, a.total_hours, 0)) as total_hours_today
+      FROM employees e
+      JOIN attendance a ON e.id = a.employee_id ${dateFilter}
+      LEFT JOIN users u ON e.user_id = u.id OR LOWER(u.email) = LOWER(e.email)
+      WHERE e.org_id = $1
+        AND e.status = 'active'
+        AND (u.role IS NULL OR u.role != 'super_admin')
+    `, [req.user.orgId]);
+
+    // 3. Approved leaves today
+    const approvedLeavesTodayRes = await db.query(`
+      SELECT COUNT(DISTINCT lr.employee_id) as on_leave_count
+      FROM leave_requests lr
+      JOIN employees e ON lr.employee_id = e.id
+      LEFT JOIN users u ON e.user_id = u.id OR LOWER(u.email) = LOWER(e.email)
+      WHERE lr.org_id = $1 AND lr.status = 'approved'
+        AND (u.role IS NULL OR u.role != 'super_admin')
+        AND CURRENT_DATE BETWEEN DATE(lr.start_date) AND DATE(lr.end_date)
+    `, [req.user.orgId]);
+
+    const onLeaveToday = parseInt(approvedLeavesTodayRes.rows[0]?.on_leave_count, 10) || 0;
+
+    // 4. Overall and today's leave request counts
     const leaveStats = await db.query(`
       SELECT 
         COUNT(CASE WHEN status = 'pending' THEN 1 END) as pending_leaves,
-        COUNT(CASE WHEN status = 'approved' THEN 1 END) as approved_leaves
+        COUNT(CASE WHEN status = 'pending' AND DATE(created_at) = CURRENT_DATE THEN 1 END) as today_pending_leaves,
+        COUNT(CASE WHEN status = 'approved' THEN 1 END) as approved_leaves,
+        COUNT(CASE WHEN status = 'approved' AND (DATE(updated_at) = CURRENT_DATE OR DATE(start_date) = CURRENT_DATE) THEN 1 END) as today_approved_leaves,
+        COUNT(CASE WHEN status != 'cancelled' THEN 1 END) as total_leave_requests,
+        COUNT(CASE WHEN status != 'cancelled' AND DATE(created_at) = CURRENT_DATE THEN 1 END) as today_leave_requests
       FROM leave_requests
       WHERE org_id = $1
     `, [req.user.orgId]);
 
+    const row = attendanceStats.rows[0] || {};
+    const presentToday = parseInt(row.present_count, 10) || 0;
+    const halfDayToday = parseInt(row.half_day_count, 10) || 0;
+    const onTimeToday = parseInt(row.on_time_count, 10) || 0;
+    const lateToday = parseInt(row.late_count, 10) || 0;
+    const clockedInCount = parseInt(row.clocked_in_count, 10) || 0;
+    const onTimeRate = clockedInCount > 0 ? Math.round((onTimeToday / clockedInCount) * 100) : 0;
+
+    // In 'today' period: Anyone who hasn't clocked in and is not on approved leave is ABSENT
+    let absentToday = 0;
+    if (period === 'today') {
+      absentToday = Math.max(0, totalEmployees - clockedInCount - onLeaveToday);
+    } else {
+      absentToday = parseInt(row.explicit_absent_count, 10) || 0;
+    }
+
+    const lRow = leaveStats.rows[0] || {};
+
     const stats = {
-      totalEmployees: parseInt(employeeStats.rows[0].total_employees) || 0,
-      presentToday: parseInt(employeeStats.rows[0].present_today) || 0,
-      absentToday: parseInt(employeeStats.rows[0].absent_today) || 0,
-      lateToday: parseInt(employeeStats.rows[0].late_today) || 0,
-      pendingLeaves: parseInt(leaveStats.rows[0].pending_leaves) || 0,
-      approvedLeaves: parseInt(leaveStats.rows[0].approved_leaves) || 0,
-      totalHoursToday: parseFloat(employeeStats.rows[0].total_hours_today) || 0,
-      averageWorkHours: parseFloat(employeeStats.rows[0].average_work_hours) || 0,
+      totalEmployees,
+      presentToday,
+      halfDayToday,
+      absentToday,
+      lateToday,
+      onTimeToday,
+      onTimeRate,
+      onLeaveToday,
+      pendingLeaves: parseInt(lRow.pending_leaves, 10) || 0,
+      todayPendingLeaves: parseInt(lRow.today_pending_leaves, 10) || 0,
+      approvedLeaves: parseInt(lRow.approved_leaves, 10) || 0,
+      todayApprovedLeaves: parseInt(lRow.today_approved_leaves, 10) || 0,
+      totalLeaveRequests: parseInt(lRow.total_leave_requests, 10) || 0,
+      todayLeaveRequests: parseInt(lRow.today_leave_requests, 10) || 0,
+      totalHoursToday: Math.round((parseFloat(row.total_hours_today) || 0) * 100) / 100,
+      averageWorkHours: Math.round((parseFloat(row.average_work_hours) || 0) * 10) / 10,
     };
 
     res.json(stats);
@@ -211,7 +261,8 @@ const getTodayAttendance = async (req, res, next) => {
       JOIN employees e ON a.employee_id = e.id
       LEFT JOIN users u ON e.user_id = u.id
       WHERE a.org_id = $1 AND DATE(a.date) = CURRENT_DATE
-      ORDER BY a.clock_in DESC
+      ORDER BY COALESCE(a.updated_at, a.clock_out, a.clock_in, a.created_at) DESC
+      LIMIT 10
     `;
 
     const result = await db.query(query, [req.user.orgId]);
@@ -360,18 +411,17 @@ const clockIn = async (req, res, next) => {
       return res.status(400).json({ error: 'Already clocked in today' });
     }
 
-    // Determine status (late if after 9:30 AM)
-    const clockInHour = now.getHours();
-    const clockInMinute = now.getMinutes();
-    const isLate = clockInHour > 9 || (clockInHour === 9 && clockInMinute > 30);
-    const status = isLate ? 'late' : 'present';
+    // Determine punctuality and shift based on shift planner
+    const { calculatePunctuality } = require('../../utils/shiftHelper');
+    const { punctuality, shiftId } = await calculatePunctuality(employeeId, req.user.orgId, now);
+    const status = 'present';
 
     console.log('Creating attendance record for employee:', employeeId);
     const result = await db.query(
       `INSERT INTO attendance (
-        org_id, user_id, employee_id, date, clock_in, status, notes, 
+        org_id, user_id, employee_id, date, clock_in, status, punctuality, shift_id, notes, 
         location_lat, location_lng, ip_address, device_info
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
       RETURNING *`,
       [
         req.user.orgId,
@@ -380,6 +430,8 @@ const clockIn = async (req, res, next) => {
         today,
         now,
         status,
+        punctuality,
+        shiftId,
         notes,
         location?.lat || null,
         location?.lng || null,
@@ -396,7 +448,7 @@ const clockIn = async (req, res, next) => {
       'clock_in',
       'Clocked In',
       `${req.user.full_name || req.user.email} clocked in at ${now.toLocaleTimeString()}`,
-      { status, location }
+      { status, punctuality, location }
     );
 
     console.log('Clock-in successful for employee:', employeeId);
@@ -436,32 +488,24 @@ const clockOut = async (req, res, next) => {
     }
 
     const attendance = attendanceResult.rows[0];
-    const clockIn = new Date(attendance.clock_in);
 
-    // Calculate total hours
-    let totalHours = (now - clockIn) / (1000 * 60 * 60); // Convert to hours
-
-    // Subtract break time if any
-    if (attendance.break_start && attendance.break_end) {
-      const breakStart = new Date(attendance.break_start);
-      const breakEnd = new Date(attendance.break_end);
-      const breakHours = (breakEnd - breakStart) / (1000 * 60 * 60);
-      totalHours -= breakHours;
-    }
-
-    // Calculate overtime (over 8 hours)
-    const overtimeHours = Math.max(0, totalHours - 8);
+    const { calculateShiftHours } = require('../../utils/shiftHelper');
+    const { workedHours, extraTime, lessTime, status } = await calculateShiftHours(attendance, now, req.user.orgId);
 
     const result = await db.query(
       `UPDATE attendance SET 
         clock_out = $1, 
-        total_hours = $2, 
-        overtime_hours = $3,
-        notes = COALESCE(notes, '') || CASE WHEN notes IS NOT NULL THEN E'\n' ELSE '' END || $4,
+        status = $2,
+        total_hours = $3, 
+        total_hours_worked = $3,
+        overtime_hours = $4,
+        extra_time = $4,
+        less_time = $5,
+        notes = COALESCE(notes, '') || CASE WHEN notes IS NOT NULL THEN E'\n' ELSE '' END || $6,
         updated_at = CURRENT_TIMESTAMP
-      WHERE id = $5
+      WHERE id = $7
       RETURNING *`,
-      [now, totalHours.toFixed(2), overtimeHours.toFixed(2), notes || '', attendance.id]
+      [now, status, workedHours, extraTime, lessTime, notes || '', attendance.id]
     );
 
     // Create notification
@@ -471,8 +515,8 @@ const clockOut = async (req, res, next) => {
       employeeId,
       'clock_out',
       'Clocked Out',
-      `${req.user.full_name || req.user.email} clocked out at ${now.toLocaleTimeString()} (${totalHours.toFixed(1)}h worked)`,
-      { totalHours: totalHours.toFixed(2), overtimeHours: overtimeHours.toFixed(2) }
+      `${req.user.full_name || req.user.email} clocked out at ${now.toLocaleTimeString()} (${workedHours.toFixed(1)}h worked)`,
+      { totalHours: workedHours.toFixed(2), overtimeHours: (extraTime || 0).toFixed(2) }
     );
 
     res.json(result.rows[0]);

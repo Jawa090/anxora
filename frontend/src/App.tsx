@@ -69,6 +69,7 @@ import CommunicationsPage from "./pages/crm/CommunicationsPage";
 // HRMS
 import HRMSDashboard from "@/pages/hrms/HRMSDashboard";
 import AttendancePage from "@/pages/hrms/AttendancePage";
+import ShiftPlannerPage from "./pages/hrms/ShiftPlannerPage";
 import EmployeesPage from "./pages/hrms/EmployeesPage";
 import CreateEmployeePage from "./pages/hrms/CreateEmployeePage";
 import EditEmployeePage from "./pages/hrms/EditEmployeePage";
@@ -265,6 +266,7 @@ const App = () => (
                         <Route path="/hrms" element={<HRMSDashboard />} />
                         <Route path="/hrms/dashboard" element={<HRMSDashboard />} />
                         <Route path="/hrms/attendance" element={<AttendancePage />} />
+                        <Route path="/hrms/shifts" element={<RoleProtectedRoute allowedRoles={["super_admin", "admin", "manager"]}><ShiftPlannerPage /></RoleProtectedRoute>} />
                         <Route path="/hrms/employees" element={<RoleProtectedRoute allowedRoles={["super_admin", "admin", "manager"]}><EmployeesPage /></RoleProtectedRoute>} />
                         <Route path="/hrms/employees/create" element={<RoleProtectedRoute allowedRoles={["super_admin", "admin", "manager"]}><CreateEmployeePage /></RoleProtectedRoute>} />
                         <Route path="/hrms/employees/:id/edit" element={<RoleProtectedRoute allowedRoles={["super_admin", "admin", "manager"]}><EditEmployeePage /></RoleProtectedRoute>} />

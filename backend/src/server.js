@@ -28,7 +28,40 @@ app.use(cors({
 }));
 
 morgan.token('user-email', (req) => req.user ? req.user.email : 'anonymous');
-app.use(morgan('[:user-email] :method :url :status :response-time ms - :res[content-length]'));
+
+
+const getColorCode = (method, status) => {
+  let methodColor = '\x1b[0m'; // Reset
+  let statusColor = '\x1b[0m'; // Reset
+  
+  // Method colors
+  if (method === 'GET') methodColor = '\x1b[36m'; // Cyan
+  else if (method === 'POST') methodColor = '\x1b[32m'; // Green
+  else if (method === 'PUT') methodColor = '\x1b[33m'; // Yellow
+  else if (method === 'PATCH') methodColor = '\x1b[35m'; // Magenta
+  else if (method === 'DELETE') methodColor = '\x1b[31m'; // Red
+  else if (method === 'UPDATE') methodColor = '\x1b[33m'; // Yellow
+  
+  // Status colors
+  if (status >= 200 && status < 300) statusColor = '\x1b[32m'; // Green (Success)
+  else if (status >= 300 && status < 400) statusColor = '\x1b[36m'; // Cyan (Redirect)
+  else if (status >= 400 && status < 500) statusColor = '\x1b[33m'; // Yellow (Client error)
+  else if (status >= 500) statusColor = '\x1b[31m'; // Red (Server error)
+  
+  return { methodColor, statusColor, reset: '\x1b[0m' };
+};
+
+morgan.token('colored-method', (req) => {
+  const { methodColor, reset } = getColorCode(req.method);
+  return `${methodColor}${req.method}${reset}`;
+});
+
+morgan.token('colored-status', (req, res) => {
+  const { statusColor, reset } = getColorCode(req.method, res.statusCode);
+  return `${statusColor}${res.statusCode}${reset}`;
+});
+
+app.use(morgan('[:user-email] :colored-method :url :colored-status :response-time ms - :res[content-length]'));
 app.use(cookieParser());
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));

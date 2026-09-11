@@ -967,3 +967,13 @@ export const recruitmentApi = {
   getRecruitmentAnalytics: (params?: { dateRange?: string; department?: string }) =>
     api.get<any>('/recruitment/analytics', params),
 };
+
+export const shiftsApi = {
+  getAll: () => api.get<{ data: any[] }>('/hrms/shifts'),
+  create: (data: any) => api.post<any>('/hrms/shifts', data),
+  update: (id: string, data: any) => api.put<any>(`/hrms/shifts/${id}`, data),
+  delete: (id: string) => api.delete<any>(`/hrms/shifts/${id}`),
+  getAssignments: () => api.get<{ data: any[] }>('/hrms/shifts/assignments'),
+  assign: (data: { employee_id?: string; employee_ids?: string[]; shift_id: string | null }) =>
+    api.post<any>('/hrms/shifts/assign', data),
+};

@@ -95,9 +95,9 @@ export default function EmployeesPage() {
         const result: any = await api.post("/employees", {
           first_name: fullName,
           email: emp.email,
-          phone: emp.phone,
-          department: emp.department,
-          position: emp.position,
+          phone: emp.phone || undefined,
+          department: emp.department || undefined,
+          position: emp.position || undefined,
           status: 'active',
         });
         const newId = result?.id || result?.data?.id;

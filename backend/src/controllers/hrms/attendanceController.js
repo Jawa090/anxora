@@ -67,7 +67,7 @@ const createAttendanceSchema = Joi.object({
   date: Joi.date().required(),
   clock_in: Joi.date().optional(),
   clock_out: Joi.date().optional(),
-  status: Joi.string().valid('present', 'absent', 'late', 'leave').default('present'),
+  status: Joi.string().valid('present', 'absent', 'half_day', 'leave').default('present'),
   notes: Joi.string().optional().allow(''),
 });
 
@@ -76,7 +76,7 @@ const updateAttendanceSchema = Joi.object({
   clock_out:   Joi.date().optional().allow(null),
   break_start: Joi.date().optional().allow(null),
   break_end:   Joi.date().optional().allow(null),
-  status: Joi.string().valid('present', 'absent', 'late', 'leave', 'half_day', 'on_break').optional(),
+  status: Joi.string().valid('present', 'absent', 'half_day', 'on_break', 'leave').optional(),
   notes: Joi.string().optional().allow('', null),
 }).min(1);
 
@@ -85,28 +85,25 @@ const getAll = async (req, res, next) => {
     const { page = 1, limit = 500, date, from, to, search, employee_id, status } = req.query;
     const offset = (page - 1) * limit;
 
+    // For today's quick view, only get today's attendance
+    const queryDate = date || new Date().toISOString().split('T')[0];
+
     let query = `
       SELECT 
         a.*,
-        CONCAT(e.first_name, ' ', e.last_name) as employee_name,
-        e.employee_id as emp_id
+        COALESCE(NULLIF(TRIM(CONCAT(e.first_name, ' ', e.last_name)), ''), u.full_name, 'Unknown') as employee_name,
+        e.employee_id as emp_id,
+        COALESCE(e.profile_picture, u.avatar_url) as avatar_url
       FROM public.attendance a
       LEFT JOIN public.employees e ON a.employee_id = e.id
-      WHERE a.org_id = $1
+      LEFT JOIN public.users u ON a.user_id = u.id
+      WHERE a.org_id = $1 AND DATE(a.date) = $2
     `;
-    const params = [req.user.orgId];
-    let paramIndex = 2;
+    const params = [req.user.orgId, queryDate];
+    let paramIndex = 3;
 
-    if (date) {
-      query += ` AND DATE(a.date) = $${paramIndex}`;
-      params.push(date);
-      paramIndex++;
-    }
-
-    if (from) {
-      query += ` AND DATE(a.date) >= $${paramIndex}`;
-      params.push(from);
-      paramIndex++;
+    if (from && from !== date) {
+      query = query.replace(`DATE(a.date) = $2`, `DATE(a.date) >= $2`);
     }
 
     if (to) {
@@ -116,7 +113,7 @@ const getAll = async (req, res, next) => {
     }
 
     if (search) {
-      query += ` AND (CONCAT(e.first_name, ' ', e.last_name) ILIKE $${paramIndex} OR e.employee_id ILIKE $${paramIndex})`;
+      query += ` AND (CONCAT(e.first_name, ' ', e.last_name) ILIKE $${paramIndex} OR u.full_name ILIKE $${paramIndex} OR e.employee_id ILIKE $${paramIndex})`;
       params.push(`%${search}%`);
       paramIndex++;
     }
@@ -133,62 +130,20 @@ const getAll = async (req, res, next) => {
       paramIndex++;
     }
 
+    query += ` ORDER BY a.clock_in DESC, a.date DESC`;
+
     if (limit !== 'all' && limit !== '0') {
-      query += ` ORDER BY a.date DESC, a.clock_in DESC LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`;
+      query += ` LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`;
       params.push(parseInt(limit), offset);
-    } else {
-      query += ` ORDER BY a.date DESC, a.clock_in DESC`;
     }
 
     const result = await db.query(query, params);
 
-    // Get total count
-    let countQuery = `
-      SELECT COUNT(*) 
-      FROM public.attendance a
-      LEFT JOIN public.employees e ON a.employee_id = e.id
-      WHERE a.org_id = $1
-    `;
-    const countParams = [req.user.orgId];
-    let countParamIndex = 2;
-
-    if (date) {
-      countQuery += ` AND DATE(a.date) = $${countParamIndex}`;
-      countParams.push(date);
-      countParamIndex++;
-    }
-
-    if (from) {
-      countQuery += ` AND DATE(a.date) >= $${countParamIndex}`;
-      countParams.push(from);
-      countParamIndex++;
-    }
-
-    if (to) {
-      countQuery += ` AND DATE(a.date) <= $${countParamIndex}`;
-      countParams.push(to);
-      countParamIndex++;
-    }
-
-    if (search) {
-      countQuery += ` AND (CONCAT(e.first_name, ' ', e.last_name) ILIKE $${countParamIndex} OR e.employee_id ILIKE $${countParamIndex})`;
-      countParams.push(`%${search}%`);
-      countParamIndex++;
-    }
-
-    if (employee_id) {
-      countQuery += ` AND a.employee_id = $${countParamIndex}`;
-      countParams.push(employee_id);
-      countParamIndex++;
-    }
-
-    if (status && status !== 'all') {
-      countQuery += ` AND a.status = $${countParamIndex}`;
-      countParams.push(status);
-      countParamIndex++;
-    }
-
-    const countResult = await db.query(countQuery, countParams);
+    // Simple count for pagination (only if needed)
+    const countResult = await db.query(
+      `SELECT COUNT(*) FROM public.attendance WHERE org_id = $1 AND DATE(date) = $2`,
+      [req.user.orgId, queryDate]
+    );
 
     res.json({
       data: result.rows,
@@ -269,6 +224,49 @@ const update = async (req, res, next) => {
       return res.status(400).json({ error: error.details[0].message });
     }
 
+    // 1. Fetch current record
+    const currRes = await db.query(
+      'SELECT * FROM public.attendance WHERE id = $1 AND org_id = $2',
+      [id, req.user.orgId]
+    );
+    if (currRes.rows.length === 0) {
+      return res.status(404).json({ error: 'Attendance record not found' });
+    }
+    const current = currRes.rows[0];
+
+    // 2. Merge values
+    const merged = {
+      ...current,
+      ...value,
+    };
+
+    const { calculateShiftHours, calculatePunctuality } = require('../../utils/shiftHelper');
+
+    // 3. Recalculate shift calculations if clock_in is present
+    if (merged.clock_in) {
+      const punctualityData = await calculatePunctuality(merged.employee_id, req.user.orgId, new Date(merged.clock_in));
+      value.punctuality = punctualityData.punctuality;
+      if (punctualityData.shiftId) {
+        value.shift_id = punctualityData.shiftId;
+      }
+    }
+
+    if (merged.clock_in && merged.clock_out) {
+      const shiftHours = await calculateShiftHours(merged, new Date(merged.clock_out), req.user.orgId);
+      value.total_hours_worked = shiftHours.workedHours;
+      value.total_hours = shiftHours.workedHours;
+      value.extra_time = shiftHours.extraTime;
+      value.less_time = shiftHours.lessTime;
+      if (!req.body.status) {
+        value.status = shiftHours.status;
+      }
+    } else if (merged.clock_in && !merged.clock_out) {
+      value.total_hours_worked = null;
+      value.total_hours = null;
+      value.extra_time = 0;
+      value.less_time = 0;
+    }
+
     const fields = [];
     const values = [];
     let paramIndex = 1;
@@ -292,9 +290,11 @@ const update = async (req, res, next) => {
       values
     );
 
-    if (result.rows.length === 0) {
-      return res.status(404).json({ error: 'Attendance record not found' });
-    }
+    // Emit real-time update to admin/super admin
+    try {
+      const realtimeService = require('../../services/realtimeService');
+      realtimeService.emitAttendanceUpdated(req.user.orgId, result.rows[0]);
+    } catch (e) {}
 
     res.json(result.rows[0]);
   } catch (err) {
@@ -392,17 +392,33 @@ const clockIn = async (req, res, next) => {
       return res.status(400).json({ error: 'Already clocked in today' });
     }
 
-    // Determine status based on time (late if after 9 AM)
-    const clockInHour = now.getHours();
-    const status = clockInHour >= 9 ? 'late' : 'present';
+    // Determine punctuality and shift based on shift planner
+    const { calculatePunctuality } = require('../../utils/shiftHelper');
+    const { punctuality, shiftId } = await calculatePunctuality(employeeId, req.user.orgId, now);
+    const status = 'present';
 
     const result = await db.query(
       `INSERT INTO public.attendance (
-        org_id, user_id, employee_id, date, clock_in, status
-      ) VALUES ($1, $2, $3, $4, $5, $6)
+        org_id, user_id, employee_id, date, clock_in, status, punctuality, shift_id
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
       RETURNING *`,
-      [req.user.orgId, req.user.id, employeeId, today, now, status]
+      [req.user.orgId, req.user.id, employeeId, today, now, status, punctuality, shiftId]
     );
+
+    // Get employee name for real-time update
+    const empNameResult = await db.query(
+      'SELECT CONCAT(first_name, \' \', last_name) as employee_name FROM public.employees WHERE id = $1',
+      [employeeId]
+    );
+
+    const attendanceWithName = {
+      ...result.rows[0],
+      employee_name: empNameResult.rows[0]?.employee_name || 'Unknown'
+    };
+
+    // Emit real-time update to admin/super admin
+    const realtimeService = require('../../services/realtimeService');
+    realtimeService.emitAttendanceUpdated(req.user.orgId, attendanceWithName);
 
     res.status(201).json(result.rows[0]);
   } catch (err) {
@@ -481,6 +497,11 @@ const breakStart = async (req, res, next) => {
       'UPDATE public.attendance SET break_start=$1, status=$2, updated_at=NOW() WHERE id=$3 RETURNING *',
       [now, 'on_break', rows[0].id]
     );
+    
+    // Emit real-time update to admin/super admin
+    const realtimeService = require('../../services/realtimeService');
+    realtimeService.emitAttendanceUpdated(req.user.orgId, result.rows[0]);
+    
     res.json(result.rows[0]);
   } catch (err) { next(err); }
 };
@@ -502,6 +523,11 @@ const breakEnd = async (req, res, next) => {
       'UPDATE public.attendance SET break_end=$1, status=$2, updated_at=NOW() WHERE id=$3 RETURNING *',
       [now, 'present', rows[0].id]
     );
+    
+    // Emit real-time update to admin/super admin
+    const realtimeService = require('../../services/realtimeService');
+    realtimeService.emitAttendanceUpdated(req.user.orgId, result.rows[0]);
+    
     res.json(result.rows[0]);
   } catch (err) { next(err); }
 };
@@ -535,10 +561,20 @@ const clockOut = async (req, res, next) => {
       return res.status(400).json({ error: 'Already clocked out today' });
     }
 
+    // Calculate shift hours, extra time, less time, and status
+    const { calculateShiftHours } = require('../../utils/shiftHelper');
+    const { workedHours, extraTime, lessTime, status } = await calculateShiftHours(record, now, req.user.orgId);
+
     const result = await db.query(
-      'UPDATE public.attendance SET clock_out = $1, updated_at = NOW() WHERE id = $2 RETURNING *',
-      [now, record.id]
+      `UPDATE public.attendance 
+       SET clock_out = $1, status = $2, total_hours_worked = $3, extra_time = $4, less_time = $5, updated_at = NOW() 
+       WHERE id = $6 RETURNING *`,
+      [now, status, workedHours, extraTime, lessTime, record.id]
     );
+
+    // Emit real-time update to admin/super admin
+    const realtimeService = require('../../services/realtimeService');
+    realtimeService.emitAttendanceUpdated(req.user.orgId, result.rows[0]);
 
     res.json(result.rows[0]);
   } catch (err) {
@@ -805,7 +841,7 @@ const getStats = async (req, res, next) => {
       `SELECT 
         COUNT(*) as total,
         COUNT(*) FILTER (WHERE status = 'present') as present,
-        COUNT(*) FILTER (WHERE status = 'late') as late,
+        COUNT(*) FILTER (WHERE status = 'half_day') as half_day,
         COUNT(*) FILTER (WHERE status = 'absent') as absent,
         COUNT(*) FILTER (WHERE status = 'leave') as on_leave
       FROM public.attendance 

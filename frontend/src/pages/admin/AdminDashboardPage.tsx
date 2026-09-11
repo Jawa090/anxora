@@ -348,14 +348,14 @@ export default function AdminDashboardPage() {
     <div className=" space-y-6 max-w-8xl mx-auto">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-4xl font-bold tracking-tight">
+          <h1 className="text-3xl font-bold tracking-tight">
             Employee Management
           </h1>
           <p className="text-muted-foreground  mt-1">
             Manage organization employees and system access.
           </p>
         </div>
-        <Button onClick={handleCreateNew} className="gap-2 h-10 bg-secondary-foreground text-[20px]">
+        <Button onClick={handleCreateNew} className="gap-2 h-8 bg-secondary-foreground text-[15px]">
           <UserPlus className="h-10 w-10" />
           New Employee
         </Button>
@@ -500,7 +500,7 @@ export default function AdminDashboardPage() {
                 Employees
               </CardTitle>
               <div className="flex items-center gap-6 flex-wrap ml-5">
-                <div className="relative w-80">
+                <div className="relative w-72">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <Input
                     placeholder="Search users..."

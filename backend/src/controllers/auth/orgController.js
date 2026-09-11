@@ -90,6 +90,10 @@ const createInvite = async (req, res, next) => {
 
     await db.query('DELETE FROM public.invites WHERE email = $1', [email]);
 
+    // Get organization name
+    const orgResult = await db.query('SELECT name FROM public.organizations WHERE id = $1', [req.user.orgId]);
+    const orgName = orgResult.rows[0]?.name || 'Our Organization';
+
     const inviteId = uuidv4();
     const inviteToken = uuidv4();
     const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
@@ -102,7 +106,7 @@ const createInvite = async (req, res, next) => {
     );
 
     try {
-      await systemEmailService.sendInvite(email, fullName || email, inviteToken);
+      await systemEmailService.sendInvite(email, fullName || email, inviteToken, orgName);
     } catch (emailErr) {
       console.error('Failed to send invite email:', emailErr.message);
     }

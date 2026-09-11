@@ -161,6 +161,10 @@ const create = async (req, res, next) => {
     // Normalize department (lowercase and trimmed)
     const normalizedDept = department ? department.trim().toLowerCase() : department;
 
+    // Get organization name
+    const orgResult = await client.query('SELECT name FROM public.organizations WHERE id = $1', [orgId]);
+    const orgName = orgResult.rows[0]?.name || 'Our Organization';
+
     await client.query(
       `INSERT INTO public.invites
        (id, email, full_name, role, phone, "position", department, module_permissions, invite_token, expires_at, org_id)
@@ -170,7 +174,7 @@ const create = async (req, res, next) => {
 
     try {
       const systemEmailService = require('../../services/systemEmailService');
-      await systemEmailService.sendInvite(email, fullName, inviteToken);
+      await systemEmailService.sendInvite(email, fullName, inviteToken, orgName);
     } catch (emailErr) {
       console.error('Failed to send invite email:', emailErr.message);
     }

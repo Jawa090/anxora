@@ -705,6 +705,11 @@ class RealtimeService {
     });
   }
 
+  emitAttendanceUpdated(orgId, attendanceRecord) {
+    console.log(`[Attendance] Emitting real-time update for org ${orgId}:`, attendanceRecord);
+    this.io.to(`org:${orgId}`).emit('attendance:updated', attendanceRecord);
+  }
+
   // Check if user is connected (has at least one open tab/socket)
   isUserConnected(userId) {
     const sockets = this.userSockets.get(userId);

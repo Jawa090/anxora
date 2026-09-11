@@ -6,6 +6,7 @@
 
 @layer base {
   :root {
+    accent-color: hsl(174 100% 42%);
     /* ══ ELINA Deep Teal Luxury palette (Light Mode) — From frontend-ELINA ══ */
     --background: 180 20% 96%;
     /* #F1F6F6 */
@@ -124,6 +125,7 @@
   }
 
   .dark {
+    accent-color: hsl(174 100% 42%);
     /* ══ ELINA Deep Teal Dark Mode — From frontend-ELINA ══ */
     --background: 181 88% 10%;
     /* #021B1D */

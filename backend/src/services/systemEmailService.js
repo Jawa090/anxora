@@ -14,21 +14,21 @@ class SystemEmailService {
     });
   }
 
-  async sendInvite(email, fullName, inviteToken) {
+  async sendInvite(email, fullName, inviteToken, orgName = 'Our Organization') {
     const inviteUrl = `${process.env.APP_URL}/accept-invite?token=${inviteToken}`;
 
     const mailOptions = {
-      from: `"ELINA" <${process.env.SMTP_USER}>`,
+      from: `"${orgName}" <${process.env.SMTP_USER}>`,
       to: email,
-      subject: 'You have been invited to join ELINA',
+      subject: `You have been invited to join ${orgName}`,
       html: `
             <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e1e1e1; border-radius: 10px;">
-                <h2 style="color: #4f46e5;">Welcome to ELINA!</h2>
+                <h2 style="color: #032F30;">Welcome to ${orgName}!</h2>
                 <p>Hello ${fullName},</p>
-                <p>An administrator has invited you to join their team on ELINA.</p>
+                <p>An administrator has invited you to join their team on ${orgName}.</p>
                 <p>To get started and set your password, please click the button below:</p>
                 <div style="text-align: center; margin: 30px 0;">
-                    <a href="${inviteUrl}" style="background-color: #4f46e5; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; font-weight: bold;">Accept Invitation & Set Password</a>
+                    <a href="${inviteUrl}" style="background-color: #032F30; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; font-weight: bold;">Accept Invitation & Set Password</a>
                 </div>
                 <p>If the button doesn't work, you can copy and paste this link into your browser:</p>
                 <p style="word-break: break-all; color: #6b7280; font-size: 12px;">${inviteUrl}</p>

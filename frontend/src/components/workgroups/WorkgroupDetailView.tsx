@@ -2073,7 +2073,7 @@ export default function WorkgroupDetailView({ workgroupId, onBack }: Props) {
                   {!isDirectChat && canDeleteTeam && (
                     <DropdownMenuItem
                       onClick={handleRemoveTeam}
-                      className="text-red-600 dark:text-red-400"
+                      className="text-destructive hover:bg-red-400/50 dark:hover:bg-red-400/10 "
                     >
                       <Trash2 className="h-4 w-4 mr-2" /> Remove Team
                     </DropdownMenuItem>

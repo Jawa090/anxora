@@ -6,7 +6,7 @@ const createAttendanceSchema = Joi.object({
   date: Joi.date().required(),
   check_in: Joi.string().optional(),
   check_out: Joi.string().optional(),
-  status: Joi.string().valid('present', 'absent', 'half_day', 'late', 'on_leave').default('present'),
+  status: Joi.string().valid('present', 'absent', 'half_day', 'on_break', 'on_leave').default('present'),
   notes: Joi.string().optional().allow(''),
   location_lat: Joi.number().optional(),
   location_lng: Joi.number().optional(),
@@ -17,7 +17,7 @@ const createAttendanceSchema = Joi.object({
 const updateAttendanceSchema = Joi.object({
   check_in: Joi.string().optional(),
   check_out: Joi.string().optional(),
-  status: Joi.string().valid('present', 'absent', 'half_day', 'late', 'on_leave').optional(),
+  status: Joi.string().valid('present', 'absent', 'half_day', 'on_break', 'on_leave').optional(),
   notes: Joi.string().optional().allow(''),
   break_start: Joi.string().optional(),
   break_end: Joi.string().optional(),

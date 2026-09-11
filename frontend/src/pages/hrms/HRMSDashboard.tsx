@@ -21,9 +21,22 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useOrganization } from "@/contexts/OrganizationContext";
 
 interface HRMSStats {
-  totalEmployees: number; presentToday: number; absentToday: number;
-  lateToday: number; pendingLeaves: number; approvedLeaves: number;
-  totalHoursToday: number; averageWorkHours: number;
+  totalEmployees: number;
+  presentToday: number;
+  halfDayToday: number;
+  absentToday: number;
+  lateToday: number;
+  onTimeToday?: number;
+  onTimeRate?: number;
+  onLeaveToday?: number;
+  pendingLeaves: number;
+  todayPendingLeaves?: number;
+  approvedLeaves: number;
+  todayApprovedLeaves?: number;
+  totalLeaveRequests?: number;
+  todayLeaveRequests?: number;
+  totalHoursToday: number;
+  averageWorkHours: number;
 }
 interface RecentActivity {
   id: string; type: string; employee_name: string; message: string; timestamp: string; status?: string;
@@ -32,25 +45,28 @@ interface AttendanceRecord {
   id: string; employee_id: string; employee_name: string; date: string;
   clock_in: string | null; clock_out: string | null;
   break_start: string | null; break_end: string | null;
-  total_hours: number | null; status: string;
+  total_hours: number | string | null;
+  total_hours_worked?: number | string | null;
+  punctuality?: string;
+  status: string;
   avatar_url?: string | null;
 }
 
 const STATUS_COLORS: Record<string, string> = {
-  present:  "bg-emerald-50 text-emerald-700 border-emerald-200",
-  absent:   "bg-red-50 text-red-700 border-red-200",
-  late:     "bg-orange-50 text-orange-700 border-orange-200",
+  present: "bg-emerald-50 text-emerald-700 border-emerald-200",
+  absent: "bg-red-50 text-red-700 border-red-200",
+  late: "bg-orange-50 text-orange-700 border-orange-200",
   on_leave: "bg-blue-50 text-blue-700 border-blue-200",
   on_break: "bg-yellow-50 text-yellow-700 border-yellow-200",
   half_day: "bg-blue-50 text-blue-700 border-blue-200",
 };
 
 const ACTIVITY_ICONS: Record<string, { icon: React.ElementType; color: string }> = {
-  clock_in:       { icon: UserCheck,   color: "text-emerald-500" },
-  clock_out:      { icon: Clock,       color: "text-blue-500" },
-  leave_request:  { icon: Calendar,    color: "text-orange-500" },
+  clock_in: { icon: UserCheck, color: "text-emerald-500" },
+  clock_out: { icon: Clock, color: "text-blue-500" },
+  leave_request: { icon: Calendar, color: "text-orange-500" },
   leave_approved: { icon: CheckCircle, color: "text-emerald-500" },
-  late_arrival:   { icon: AlertCircle, color: "text-red-500" },
+  late_arrival: { icon: AlertCircle, color: "text-red-500" },
 };
 
 function getInitials(name: string) {
@@ -62,11 +78,13 @@ function fmt(iso: string | null) {
   try { return format(new Date(iso), "HH:mm"); } catch { return "—"; }
 }
 
-function formatHours(decimal: number | null | undefined): string {
-  if (decimal == null) return "—";
-  const totalMinutes = Math.round(decimal * 60);
-  const hours = Math.floor(totalMinutes / 60);
-  const minutes = totalMinutes % 60;
+function formatHours(decimal: number | string | null | undefined): string {
+  if (decimal == null || decimal === "") return "—";
+  const num = typeof decimal === "string" ? parseFloat(decimal) : decimal;
+  if (isNaN(num)) return "—";
+  const absMinutes = Math.round(Math.abs(num) * 60);
+  const hours = Math.floor(absMinutes / 60);
+  const minutes = absMinutes % 60;
   if (hours === 0) return `${minutes}m`;
   if (minutes === 0) return `${hours}h`;
   return `${hours}h ${minutes}m`;
@@ -100,6 +118,7 @@ export default function HRMSDashboard() {
   const navigate = useNavigate();
   const { userRole } = useAuth();
   const isAdmin = userRole?.role === "super_admin" || userRole?.role === "admin" || userRole?.role === "manager";
+  const isSuperAdmin = userRole?.role === "super_admin";
 
   // Admin queries — org-wide data
   const { data: stats } = useQuery({
@@ -171,13 +190,13 @@ export default function HRMSDashboard() {
   const { data: weekSummary } = useQuery({
     queryKey: ["my-attendance-summary", "week", weekStart, weekEnd],
     queryFn: () => api.get<any>("/hrms/attendance/my-summary", { from: weekStart, to: weekEnd }),
-    enabled: !isAdmin,
+    enabled: !isSuperAdmin,
   });
 
   const { data: monthSummary } = useQuery({
     queryKey: ["my-attendance-summary", "month", monthStart, monthEnd],
     queryFn: () => api.get<any>("/hrms/attendance/my-summary", { from: monthStart, to: monthEnd }),
-    enabled: !isAdmin,
+    enabled: !isSuperAdmin,
   });
 
   const workingHoursPerDay = parseFloat((organization as any)?.working_hours_per_day || 9.0);
@@ -191,10 +210,9 @@ export default function HRMSDashboard() {
   const monthDiff = monthActual - monthExpected;
 
   const leaveStats = (leaveAnalytics as any)?.data?.stats || {};
+  const activeCount = (stats?.presentToday || 0) + (stats?.halfDayToday || 0);
   const attendanceRate = stats?.totalEmployees
-    ? Math.round(((stats.presentToday || 0) / stats.totalEmployees) * 100) : 0;
-  const productivityScore = stats?.averageWorkHours
-    ? Math.min(Math.round((stats.averageWorkHours / 8) * 100), 100) : 0;
+    ? Math.round((activeCount / stats.totalEmployees) * 100) : 0;
 
   // ── EMPLOYEE VIEW ──────────────────────────────────────────────
   if (!isAdmin) {
@@ -293,12 +311,12 @@ export default function HRMSDashboard() {
         <Card>
           <CardHeader><CardTitle>Quick Actions</CardTitle></CardHeader>
           <CardContent>
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
               {[
-                { label: "Attendance",       sub: "Clock in/out",        icon: Clock,     href: "/hrms/attendance",    color: "bg-emerald-500" },
-                { label: "Leave Management", sub: "Apply for leave",      icon: Calendar,  href: "/hrms/leave",         color: "bg-orange-500" },
-                { label: "Public Holidays",  sub: "View holidays",        icon: Palmtree,  href: "/hrms/leave?tab=holidays", color: "bg-teal-500" },
-                { label: "Notifications",    sub: "Alerts & updates",     icon: Bell,      href: "/hrms/notifications", color: "bg-violet-500" },
+                { label: "Attendance", sub: "Clock in/out", icon: Clock, href: "/hrms/attendance", color: "bg-emerald-500" },
+                { label: "Leave Management", sub: "Apply for leave", icon: Calendar, href: "/hrms/leave", color: "bg-orange-500" },
+                { label: "Public Holidays", sub: "View holidays", icon: Palmtree, href: "/hrms/leave?tab=holidays", color: "bg-teal-500" },
+                { label: "Notifications", sub: "Alerts & updates", icon: Bell, href: "/hrms/notifications", color: "bg-violet-500" },
               ].map((item) => (
                 <button key={item.label} onClick={() => navigate(item.href)}
                   className="flex flex-col items-center gap-3 p-6 rounded-xl border border-border hover:shadow-lg hover:border-primary/30 transition-all group">
@@ -315,6 +333,30 @@ export default function HRMSDashboard() {
             </div>
           </CardContent>
         </Card>
+
+        {/* Leave Overview Cards (4 in one row at the bottom) */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-4 gap-3">
+          {[
+            { label: "Pending Leaves", value: stats?.pendingLeaves ?? 0, color: "bg-amber-500", icon: Calendar },
+            { label: "On Leave", value: stats?.onLeaveToday ?? stats?.approvedLeaves ?? 0, color: "bg-blue-500", icon: Palmtree },
+            { label: "Approved", value: leaveStats.approved ?? 0, color: "bg-emerald-500", icon: CheckCircle },
+            { label: "Leave Requests", value: leaveStats.total_requests ?? 0, color: "bg-violet-500", icon: Briefcase },
+          ].map((stat) => (
+            <Card key={stat.label} className="hover:shadow-md transition-shadow">
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-muted-foreground">{stat.label}</p>
+                    <p className="text-3xl font-bold">{stat.value}</p>
+                  </div>
+                  <div className={`h-10 w-10 rounded-full ${stat.color} flex items-center justify-center`}>
+                    <stat.icon className="h-5 w-5 text-white" />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
       </div>
     );
   }
@@ -336,12 +378,15 @@ export default function HRMSDashboard() {
               <SelectItem value="month">This Month</SelectItem>
             </SelectContent>
           </Select>
-          <Button onClick={() => navigate("/hrms/employees")} className="gap-2 py-5">
+          <Button onClick={() => navigate("/hrms/employees")} className="gap-2 h-8 rounded-md">
             <Users className="h-4 w-4 " /> Manage Employees
           </Button>
         </div>
       </div>
 
+
+
+      {/* Top Overview Cards (4 cards) */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
         <Card className="hover:shadow-lg transition-shadow h-[110px]">
           <CardContent className="p-4">
@@ -370,7 +415,7 @@ export default function HRMSDashboard() {
               </div>
             </div>
             <Progress value={attendanceRate} className="h-2" />
-            <p className="text-xs text-muted-foreground">{stats?.presentToday ?? 0} present today</p>
+            <p className="text-xs text-muted-foreground">{activeCount} of {stats?.totalEmployees ?? 0} active today</p>
           </CardContent>
         </Card>
 
@@ -378,19 +423,17 @@ export default function HRMSDashboard() {
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-muted-foreground">Pending Leaves</p>
-                <p className="text-3xl font-bold">{stats?.pendingLeaves ?? 0}</p>
-                <p className="text-xs text-muted-foreground mt-1">Awaiting approval</p>
+                <p className="text-sm font-medium text-muted-foreground">On Time Rate</p>
+                <p className="text-3xl font-bold">{stats?.onTimeRate ?? 0}%</p>
               </div>
-              <div className="h-10 w-10 rounded-full bg-yellow-100 flex items-center justify-center">
-                <Calendar className="h-5 w-5 text-yellow-600" />
+              <div className="h-10 w-10 rounded-full bg-emerald-100 flex items-center justify-center">
+                <Timer className="h-5 w-5 text-emerald-600" />
               </div>
             </div>
-            {/* {stats?.pendingLeaves && stats.pendingLeaves > 0 && (
-              <Button variant="link" size="sm" className="mt-2 p-0 h-auto text-xs" onClick={() => navigate("/hrms/leave?tab=team-leaves")}>
-                Review requests →
-              </Button>
-            )} */}
+            <Progress value={stats?.onTimeRate ?? 0} className="h-2" />
+            <p className="text-xs text-muted-foreground mt-1">
+              {stats?.onTimeToday ?? 0} on time today
+            </p>
           </CardContent>
         </Card>
 
@@ -398,29 +441,25 @@ export default function HRMSDashboard() {
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-muted-foreground">Productivity</p>
-                <p className="text-3xl font-bold">{productivityScore}%</p>
+                <p className="text-sm font-medium text-muted-foreground">All Employees Hours</p>
+                <p className="text-3xl font-bold">{stats?.totalHoursToday ? formatHours(stats.totalHoursToday) : "0h"}</p>
+                <p className="text-xs text-muted-foreground mt-1">Avg {stats?.averageWorkHours ? formatHours(stats.averageWorkHours) : "0h"} daily</p>
               </div>
-              <div className="h-10 w-10 rounded-full bg-purple-100 flex items-center justify-center">
-                <TrendingUp className="h-5 w-5 text-purple-600" />
+              <div className="h-10 w-10 rounded-full bg-cyan-100 flex items-center justify-center">
+                <Clock className="h-5 w-5 text-cyan-600" />
               </div>
             </div>
-            <Progress value={productivityScore} className="h-2" />
-            <p className="text-xs text-muted-foreground mt-1">{stats?.averageWorkHours?.toFixed(1) ?? 0}h avg daily</p>
           </CardContent>
         </Card>
       </div>
 
+      {/* Attendance Breakdown (4 cards) */}
       <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-4 gap-3">
         {[
-          { label: "Present",       value: stats?.presentToday ?? 0,                          color: "bg-emerald-500", icon: UserCheck },
-          { label: "Absent",        value: stats?.absentToday ?? 0,                           color: "bg-red-500",     icon: UserX },
-          { label: "Late",          value: stats?.lateToday ?? 0,                             color: "bg-orange-500",  icon: AlertCircle },
-          { label: "On Leave",      value: stats?.approvedLeaves ?? 0,                        color: "bg-blue-500",    icon: Calendar },
-          { label: "Total Hours",   value: `${stats?.totalHoursToday ?? 0}h`,                 color: "bg-cyan-500",    icon: Timer },
-          { label: "Avg Hours",     value: `${stats?.averageWorkHours?.toFixed(1) ?? 0}h`,   color: "bg-slate-500",   icon: TrendingUp },
-          { label: "Leave Requests",value: leaveStats.total_requests ?? 0,                    color: "bg-violet-500",  icon: Briefcase },
-          { label: "Approved",      value: leaveStats.approved ?? 0,                          color: "bg-teal-500",    icon: CheckCircle },
+          { label: "Present", value: stats?.presentToday ?? 0, color: "bg-emerald-500", icon: UserCheck },
+          { label: "Absent", value: stats?.absentToday ?? 0, color: "bg-red-500", icon: UserX },
+          { label: "Half Day", value: stats?.halfDayToday ?? 0, color: "bg-blue-500", icon: Clock },
+          { label: "Late", value: stats?.lateToday ?? 0, color: "bg-orange-500", icon: AlertCircle },
         ].map((stat) => (
           <Card key={stat.label} className="hover:shadow-md transition-shadow">
             <CardContent className="p-4">
@@ -438,7 +477,56 @@ export default function HRMSDashboard() {
         ))}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      {/* Leave Overview Cards (4 cards) */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-4 gap-3">
+        {[
+          {
+            label: "Pending Leaves",
+            value: stats?.pendingLeaves ?? 0,
+            sub: `${stats?.todayPendingLeaves ?? 0} today pending`,
+            color: "bg-amber-500",
+            icon: Calendar,
+          },
+          {
+            label: "On Leave",
+            value: stats?.onLeaveToday ?? 0,
+            sub: "Today on leave",
+            color: "bg-blue-500",
+            icon: Palmtree,
+          },
+          {
+            label: "Approved",
+            value: stats?.approvedLeaves ?? 0,
+            sub: `${stats?.todayApprovedLeaves ?? 0} today approved`,
+            color: "bg-emerald-500",
+            icon: CheckCircle,
+          },
+          {
+            label: "Total Leaves",
+            value: stats?.totalLeaveRequests ?? leaveStats.total_requests ?? 0,
+            sub: `${stats?.todayLeaveRequests ?? leaveStats.today_requests ?? 0} today leaves`,
+            color: "bg-violet-500",
+            icon: Briefcase,
+          },
+        ].map((stat) => (
+          <Card key={stat.label} className="hover:shadow-md transition-shadow">
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">{stat.label}</p>
+                  <p className="text-3xl font-bold">{stat.value}</p>
+                  <p className="text-xs text-muted-foreground mt-1 font-medium">{stat.sub}</p>
+                </div>
+                <div className={`h-10 w-10 rounded-full ${stat.color} flex items-center justify-center shrink-0`}>
+                  <stat.icon className="h-5 w-5 text-white" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
         <Card className="lg:col-span-2">
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
@@ -451,45 +539,85 @@ export default function HRMSDashboard() {
               </Button>
             </div>
           </CardHeader>
-          <CardContent>
-            <div className="flex items-center gap-3 px-4 py-2 text-xs font-medium text-muted-foreground uppercase tracking-wider border-b bg-muted/30 rounded-t-lg">
-              <span className="flex-1">Employee</span>
-              <span className="w-20 text-center hidden sm:block">Clock In</span>
-              <span className="w-20 text-center hidden sm:block">Clock Out</span>
-              <span className="w-16 text-center hidden md:block">Hours</span>
-              <span className="w-24 text-center">Status</span>
-            </div>
-            <div className="divide-y">
-              {(todayAttendance as AttendanceRecord[]).length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-12 gap-2">
-                  <Clock className="h-12 w-12 text-muted-foreground/20" />
-                  <p className="text-sm text-muted-foreground">No attendance records yet</p>
-                </div>
-              ) : (todayAttendance as AttendanceRecord[]).slice(0, 8).map((record) => (
-                <div key={record.id} className="flex items-center gap-3 px-4 py-3 hover:bg-muted/50 transition-colors">
-                  <div className="flex items-center gap-3 flex-1 min-w-0">
-                    <Avatar className="h-9 w-9 shrink-0">
-                      {record.avatar_url && <AvatarImage src={record.avatar_url} alt={record.employee_name} />}
-                      <AvatarFallback className="text-xs bg-primary/10 text-primary font-semibold">
-                        {getInitials(record.employee_name || "?")}
-                      </AvatarFallback>
-                    </Avatar>
-                    <span className="text-sm font-medium truncate">{record.employee_name || "Unknown"}</span>
-                  </div>
-                  <span className="w-20 text-center text-sm text-muted-foreground hidden sm:block">{fmt(record.clock_in)}</span>
-                  <span className="w-20 text-center text-sm text-muted-foreground hidden sm:block">
-                    {record.clock_out ? fmt(record.clock_out) : <span className="text-emerald-600 text-xs font-medium">Active</span>}
-                  </span>
-                  <span className="w-16 text-center text-sm text-muted-foreground hidden md:block">
-                    {record.total_hours ? `${record.total_hours}h` : "—"}
-                  </span>
-                  <div className="w-24 flex justify-center">
-                    <Badge variant="outline" className={cn("text-xs capitalize", STATUS_COLORS[record.status] ?? "bg-muted text-muted-foreground")}>
-                      {record.status.replace("_", " ")}
-                    </Badge>
-                  </div>
-                </div>
-              ))}
+          <CardContent className="p-0">
+            <div className="overflow-x-auto scrollbar-thin">
+              <table className="w-full min-w-[620px] border-collapse text-left">
+                <thead>
+                  <tr className="border-b border-border/30 bg-muted/20 text-[10px] font-medium text-muted-foreground uppercase tracking-wider">
+                    <th className="py-2.5 px-4 font-medium whitespace-nowrap min-w-[170px]">Employee</th>
+                    <th className="py-2.5 px-3 text-center font-medium whitespace-nowrap">Check-In</th>
+                    <th className="py-2.5 px-3 text-center font-medium whitespace-nowrap">Check-Out</th>
+                    <th className="py-2.5 px-3 text-center font-medium whitespace-nowrap">Duration</th>
+                    <th className="py-2.5 px-3 text-center font-medium whitespace-nowrap">Punctuality</th>
+                    <th className="py-2.5 px-3 text-center font-medium whitespace-nowrap">Status</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border/40 text-xs">
+                  {(todayAttendance as AttendanceRecord[]).length === 0 ? (
+                    <tr>
+                      <td colSpan={6} className="py-12 text-center text-muted-foreground">
+                        <div className="flex flex-col items-center justify-center gap-2">
+                          <Clock className="h-10 w-10 text-muted-foreground/20" />
+                          <p className="text-sm">No attendance records yet</p>
+                        </div>
+                      </td>
+                    </tr>
+                  ) : (
+                    (todayAttendance as AttendanceRecord[]).slice(0, 10).map((record) => (
+                      <tr key={record.id} className="hover:bg-muted/30 transition-colors">
+                        <td className="py-2.5 px-4 whitespace-nowrap min-w-[170px]">
+                          <div className="flex items-center gap-2.5 min-w-0">
+                            <Avatar className="h-8 w-8 shrink-0">
+                              {record.avatar_url && <AvatarImage src={record.avatar_url} alt={record.employee_name} />}
+                              <AvatarFallback className="text-[10px] bg-primary/10 text-primary font-semibold">
+                                {getInitials(record.employee_name || "?")}
+                              </AvatarFallback>
+                            </Avatar>
+                            <span className="text-sm font-medium truncate">{record.employee_name || "Unknown"}</span>
+                          </div>
+                        </td>
+                        <td className="py-2.5 px-3 text-center text-muted-foreground whitespace-nowrap">
+                          {fmt(record.clock_in)}
+                        </td>
+                        <td className="py-2.5 px-3 text-center whitespace-nowrap">
+                          {record.clock_out ? (
+                            <span className="text-muted-foreground">{fmt(record.clock_out)}</span>
+                          ) : (
+                            <span className="text-emerald-500 font-semibold text-[11px]">Active</span>
+                          )}
+                        </td>
+                        <td className="py-2.5 px-3 text-center font-medium whitespace-nowrap">
+                          {formatHours(record.total_hours_worked ?? record.total_hours)}
+                        </td>
+                        <td className="py-2.5 px-3 text-center whitespace-nowrap">
+                          <Badge
+                            variant="outline"
+                            className={cn(
+                              "text-[10px] font-medium capitalize",
+                              record.punctuality === "late"
+                                ? "bg-red-50 text-red-700 border-red-200"
+                                : "bg-emerald-50 text-emerald-700 border-emerald-200"
+                            )}
+                          >
+                            {record.punctuality === "late" ? "Late" : "On Time"}
+                          </Badge>
+                        </td>
+                        <td className="py-2.5 px-3 text-center whitespace-nowrap">
+                          <Badge
+                            variant="outline"
+                            className={cn(
+                              "text-[10px] capitalize",
+                              STATUS_COLORS[record.status] ?? "bg-muted text-muted-foreground"
+                            )}
+                          >
+                            {record.status.replace("_", " ")}
+                          </Badge>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
             </div>
           </CardContent>
         </Card>
@@ -502,7 +630,7 @@ export default function HRMSDashboard() {
             </div>
           </CardHeader>
           <CardContent>
-            <div className="space-y-3">
+            <div className="space-y-2">
               {(activities as RecentActivity[]).length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-12 gap-2">
                   <Activity className="h-12 w-12 text-muted-foreground/20" />
@@ -512,14 +640,13 @@ export default function HRMSDashboard() {
                 const info = ACTIVITY_ICONS[activity.type] ?? { icon: Activity, color: "text-muted-foreground" };
                 const Icon = info.icon;
                 return (
-                  <div key={activity.id} className="flex items-start gap-3 p-3 rounded-lg hover:bg-muted/50 transition-colors">
+                  <div key={activity.id} className="flex items-start gap-1 p-1 rounded-lg hover:bg-muted/50 transition-colors">
                     <div className={cn("mt-0.5 shrink-0 p-2 rounded-full bg-muted", info.color)}>
                       <Icon className="h-4 w-4" />
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium truncate">{activity.employee_name}</p>
                       <p className="text-xs text-muted-foreground truncate">{activity.message}</p>
-                      <p className="text-xs text-muted-foreground/60 mt-1">{format(new Date(activity.timestamp), "HH:mm")}</p>
                     </div>
                   </div>
                 );
@@ -528,6 +655,8 @@ export default function HRMSDashboard() {
           </CardContent>
         </Card>
       </div>
+
+
 
       {/* Pending Leave Requests */}
       <Card>
@@ -610,11 +739,11 @@ export default function HRMSDashboard() {
         <CardContent>
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4">
             {[
-              { label: "Manage Employees", sub: "View & edit staff",      icon: Users,    href: "/hrms/employees",    color: "bg-blue-500" },
-              { label: "Attendance",       sub: "Clock in/out records",   icon: Clock,    href: "/hrms/attendance",   color: "bg-emerald-500" },
-              { label: "Leave Management", sub: "Requests & approvals",   icon: Calendar, href: "/hrms/leave",        color: "bg-orange-500" },
-              { label: "Public Holidays",  sub: "Official holidays",      icon: Palmtree, href: "/hrms/leave?tab=holidays", color: "bg-teal-500" },
-              { label: "Notifications",    sub: "Alerts & updates",       icon: Bell,     href: "/hrms/notifications",color: "bg-violet-500" },
+              { label: "Manage Employees", sub: "View & edit staff", icon: Users, href: "/hrms/employees", color: "bg-blue-500" },
+              { label: "Attendance", sub: "Clock in/out records", icon: Clock, href: "/hrms/attendance", color: "bg-emerald-500" },
+              { label: "Leave Management", sub: "Requests & approvals", icon: Calendar, href: "/hrms/leave", color: "bg-orange-500" },
+              { label: "Public Holidays", sub: "Official holidays", icon: Palmtree, href: "/hrms/leave?tab=holidays", color: "bg-teal-500" },
+              { label: "Notifications", sub: "Alerts & updates", icon: Bell, href: "/hrms/notifications", color: "bg-violet-500" },
             ].map((item) => (
               <button key={item.label} onClick={() => navigate(item.href)}
                 className="flex flex-col items-center gap-3 p-2 rounded-xl border border-border hover:shadow-lg hover:border-primary/30 transition-all group relative">

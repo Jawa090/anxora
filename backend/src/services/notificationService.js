@@ -15,7 +15,7 @@ const CATEGORY_MAP = {
   deal_won: 'crm',
   deal_lost: 'crm',
   // HRMS
-  attendance_late: 'hrms',
+  attendance_half_day: 'hrms',
   attendance_clock_in: 'hrms',
   attendance_clock_out: 'hrms',
   leave_requested: 'hrms',

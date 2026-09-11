@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import {
   useQuery,
   useMutation,
@@ -49,16 +49,36 @@ import {
   ChevronLeft,
   ChevronRight,
   RefreshCw,
+  CalendarRange,
+  CalendarDays,
+  Minus,
+  TrendingUp,
+  TrendingDown,
+  Users,
 } from "lucide-react";
 import { api, API_BASE_URL } from "@/lib/api";
 import { toast } from "sonner";
-import { format, isToday, parseISO } from "date-fns";
+import {
+  format,
+  isToday,
+  parseISO,
+  startOfWeek,
+  endOfWeek,
+  startOfMonth,
+  endOfMonth,
+  eachDayOfInterval,
+  getDay,
+} from "date-fns";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
 import { useOrganization } from "@/contexts/OrganizationContext";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { TimePicker } from "@/components/ui/time-picker";
 
 interface AttendanceRecord {
   id: string;
+  user_id?: string;
+  email?: string;
   employee_id: string;
   employee_name: string;
   date: string;
@@ -69,6 +89,7 @@ interface AttendanceRecord {
   total_hours_worked: number | null;
   extra_time: number | null;
   less_time: number | null;
+  punctuality?: string;
   status: string;
   notes: string | null;
   location_lat: number | null;
@@ -80,7 +101,7 @@ interface AttendanceRecord {
 const STATUS_COLORS: Record<string, string> = {
   present: "bg-emerald-50 text-emerald-700 border-emerald-200",
   absent: "bg-red-50 text-red-700 border-red-200",
-  late: "bg-orange-50 text-orange-700 border-orange-200",
+  // late: "bg-orange-50 text-orange-700 border-orange-200",
   on_break: "bg-yellow-50 text-yellow-700 border-yellow-200",
   half_day: "bg-blue-50 text-blue-700 border-blue-200",
 };
@@ -96,12 +117,30 @@ function getInitials(name: string) {
 
 function formatHours(decimal: number | null | undefined): string {
   if (decimal == null) return "—";
-  const totalMinutes = Math.round(decimal * 60);
-  const hours = Math.floor(totalMinutes / 60);
-  const minutes = totalMinutes % 60;
+  const absMinutes = Math.round(Math.abs(decimal) * 60);
+  const hours = Math.floor(absMinutes / 60);
+  const minutes = absMinutes % 60;
   if (hours === 0) return `${minutes}m`;
   if (minutes === 0) return `${hours}h`;
   return `${hours}h ${minutes}m`;
+}
+
+function countWeekdays(from: Date, to: Date): number {
+  const days = eachDayOfInterval({ start: from, end: to });
+  return days.filter((d) => {
+    const day = getDay(d);
+    return day !== 0 && day !== 6;
+  }).length;
+}
+
+function formatHoursSigned(decimal: number): string {
+  const totalMinutes = Math.round(Math.abs(decimal) * 60);
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+  const sign = decimal >= 0 ? "+" : "−";
+  if (hours === 0) return `${sign}${minutes}m`;
+  if (minutes === 0) return `${sign}${hours}h`;
+  return `${sign}${hours}h ${minutes}m`;
 }
 
 function toTimeInput(iso: string | null): string {
@@ -126,7 +165,7 @@ const endOfCurrentMonth = () => {
 };
 
 export default function AttendancePage() {
-  const { userRole } = useAuth();
+  const { userRole, user } = useAuth();
   const { organization } = useOrganization();
   const isAdmin =
     userRole?.role === "super_admin" ||
@@ -238,9 +277,39 @@ export default function AttendancePage() {
   useEffect(() => {
     navigator.geolocation?.getCurrentPosition(
       (p) => setLocation({ lat: p.coords.latitude, lng: p.coords.longitude }),
-      () => {},
+      () => { },
     );
   }, []);
+
+  const todayDate = new Date();
+  const weekStart = format(startOfWeek(todayDate, { weekStartsOn: 1 }), "yyyy-MM-dd");
+  const weekEnd = format(endOfWeek(todayDate, { weekStartsOn: 1 }), "yyyy-MM-dd");
+  const monthStart = format(startOfMonth(todayDate), "yyyy-MM-dd");
+  const monthEnd = format(endOfMonth(todayDate), "yyyy-MM-dd");
+
+  const { data: weekSummary } = useQuery({
+    queryKey: ["my-attendance-summary", "week", weekStart, weekEnd],
+    queryFn: () => api.get<any>("/hrms/attendance/my-summary", { from: weekStart, to: weekEnd }),
+    enabled: !isSuperAdmin,
+    refetchInterval: 30000,
+  });
+
+  const { data: monthSummary } = useQuery({
+    queryKey: ["my-attendance-summary", "month", monthStart, monthEnd],
+    queryFn: () => api.get<any>("/hrms/attendance/my-summary", { from: monthStart, to: monthEnd }),
+    enabled: !isSuperAdmin,
+    refetchInterval: 30000,
+  });
+
+  const workingHoursPerDay = parseFloat((organization as any)?.working_hours_per_day || 9.0);
+  const weekWorkingDays = countWeekdays(startOfWeek(todayDate, { weekStartsOn: 1 }), endOfWeek(todayDate, { weekStartsOn: 1 }));
+  const monthWorkingDays = countWeekdays(startOfMonth(todayDate), endOfMonth(todayDate));
+  const weekExpected = weekWorkingDays * workingHoursPerDay;
+  const monthExpected = monthWorkingDays * workingHoursPerDay;
+  const weekActual = weekSummary ? parseFloat(weekSummary.total_hours || 0) : 0;
+  const monthActual = monthSummary ? parseFloat(monthSummary.total_hours || 0) : 0;
+  const weekDiff = weekActual - weekExpected;
+  const monthDiff = monthActual - monthExpected;
 
   const { data: rawAttendanceData, isLoading } = useQuery({
     queryKey: ["attendance", adminFrom, adminTo, search],
@@ -251,15 +320,42 @@ export default function AttendancePage() {
         search,
         limit: "all",
       }),
+    enabled: isAdmin,
     refetchInterval: 30000,
     placeholderData: keepPreviousData,
   });
 
-  const records: AttendanceRecord[] = Array.isArray(rawAttendanceData)
+  const rawRecords: AttendanceRecord[] = Array.isArray(rawAttendanceData)
     ? rawAttendanceData
     : Array.isArray(rawAttendanceData?.data)
       ? rawAttendanceData.data
       : [];
+
+  const isSelfRecord = (r: AttendanceRecord) => {
+    if (!user) return false;
+    if (r.user_id && user.id && r.user_id === user.id) return true;
+    if ((r as any).email && user.email && (r as any).email.toLowerCase() === user.email.toLowerCase()) return true;
+    return false;
+  };
+
+  const records: AttendanceRecord[] = useMemo(() => {
+    if (!rawRecords.length) return [];
+    return [...rawRecords].sort((a, b) => {
+      const dateA = a.date ? a.date.split("T")[0] : "";
+      const dateB = b.date ? b.date.split("T")[0] : "";
+      if (dateA !== dateB) {
+        return dateB.localeCompare(dateA);
+      }
+      const selfA = isSelfRecord(a) ? 1 : 0;
+      const selfB = isSelfRecord(b) ? 1 : 0;
+      if (selfA !== selfB) {
+        return selfB - selfA; // Admin/Manager's own record comes at the very top!
+      }
+      const timeA = a.clock_in || "";
+      const timeB = b.clock_in || "";
+      return timeB.localeCompare(timeA);
+    });
+  }, [rawRecords, user]);
 
   const totalPages = Math.ceil(records.length / pageSize);
   const paginatedRecords = records.slice(
@@ -270,6 +366,7 @@ export default function AttendancePage() {
   const { data: myAttendance } = useQuery({
     queryKey: ["my-attendance-today"],
     queryFn: () => api.get<AttendanceRecord>("/hrms/attendance/my-today"),
+    enabled: !isSuperAdmin,
     refetchInterval: 10000,
   });
 
@@ -281,7 +378,7 @@ export default function AttendancePage() {
         ...(fromDate && { from: fromDate }),
         ...(toDate && { to: toDate }),
       }),
-    enabled: !isAdmin,
+    enabled: !isSuperAdmin,
     refetchInterval: 600000,
     refetchIntervalInBackground: true,
   });
@@ -304,6 +401,7 @@ export default function AttendancePage() {
       qc.invalidateQueries({ queryKey: ["attendance"] });
       qc.invalidateQueries({ queryKey: ["my-attendance-today"] });
       qc.invalidateQueries({ queryKey: ["my-attendance-history"] });
+      qc.invalidateQueries({ queryKey: ["my-attendance-summary"] });
       qc.invalidateQueries({ queryKey: ["hrms-stats"] });
       toast.success(`${type.replace(/_/g, " ")} recorded`);
       setClockDialog(false);
@@ -407,31 +505,551 @@ export default function AttendancePage() {
     icon: React.ElementType;
     cls: string;
   }[] = [
-    {
-      type: "clock_in",
-      label: "Clock In",
-      icon: Play,
-      cls: "bg-primary hover:bg-primary/80 text-white border-0",
-    },
-    {
-      type: "clock_out",
-      label: "Clock Out",
-      icon: Square,
-      cls: "bg-red-500 hover:bg-red-600 text-white border-0",
-    },
-    {
-      type: "break_start",
-      label: "Start Break",
-      icon: Coffee,
-      cls: "bg-orange-500 hover:bg-orange-600 text-white border-0",
-    },
-    {
-      type: "break_end",
-      label: "End Break",
-      icon: CheckCircle,
-      cls: "bg-blue-500 hover:bg-blue-600 text-white border-0",
-    },
-  ];
+      {
+        type: "clock_in",
+        label: "Clock In",
+        icon: Play,
+        cls: "bg-secondary-foreground hover:bg-secondary-foreground/80 dark:bg-primary dark:hover:bg-primary/80 text-white hover:text-white border-0",
+      },
+      {
+        type: "clock_out",
+        label: "Clock Out",
+        icon: Square,
+        cls: "bg-red-500 hover:bg-red-500/80 text-white hover:text-white border-0",
+      },
+      {
+        type: "break_start",
+        label: "Start Break",
+        icon: Coffee,
+        cls: "bg-orange-500 hover:bg-orange-500/80 text-white hover:text-white border-0",
+      },
+      {
+        type: "break_end",
+        label: "End Break",
+        icon: CheckCircle,
+        cls: "bg-red-500 hover:bg-red-500/80 text-white hover:text-white border-0",
+      },
+    ];
+
+  const renderMyHistoryTable = () => (
+    <div className="rounded-xl border border-border/50 bg-card overflow-hidden">
+      <div className="flex flex-wrap items-center justify-between gap-3 px-5 py-3.5 border-b border-border/40">
+        <div className="flex items-center gap-2">
+          <Clock className="h-4 w-4 text-muted-foreground" />
+          <span className="text-sm font-semibold">
+            My Attendance History
+          </span>
+          <span className="text-xs text-muted-foreground">
+            ({(myHistory as AttendanceRecord[]).length} records)
+          </span>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-xs text-muted-foreground">From</span>
+          <input
+            type="date"
+            value={fromDate}
+            onChange={(e) => setFromDate(e.target.value)}
+            className="h-8 text-xs rounded-md border border-border bg-background px-2 text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+          />
+          <span className="text-xs text-muted-foreground">To</span>
+          <input
+            type="date"
+            value={toDate}
+            onChange={(e) => setToDate(e.target.value)}
+            className="h-8 text-xs rounded-md border border-border bg-background px-2 text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+          />
+          {(fromDate || toDate) && (
+            <button
+              onClick={() => {
+                setFromDate("");
+                setToDate("");
+              }}
+              className="text-xs text-muted-foreground hover:text-destructive px-1 mr-2"
+            >
+              ✕ Clear
+            </button>
+          )}
+          <Button
+            size="sm"
+            onClick={() => setDownloadDialogOpen(true)}
+            className="h-8 text-xs font-semibold hover:text-white"
+          >
+            Download Excel
+          </Button>
+        </div>
+      </div>
+      <div className="overflow-x-auto scrollbar-thin">
+        <table className="w-full min-w-[950px] border-collapse text-left">
+          <thead>
+            <tr className="border-b border-border/30 bg-muted/20 text-[10px] font-medium text-muted-foreground uppercase tracking-wider">
+              <th className="py-2.5 px-4 font-medium whitespace-nowrap">Date</th>
+              <th className="py-2.5 px-3 text-center font-medium whitespace-nowrap">Clock In</th>
+              <th className="py-2.5 px-3 text-center font-medium whitespace-nowrap hidden sm:table-cell">Break-Out</th>
+              <th className="py-2.5 px-3 text-center font-medium whitespace-nowrap hidden sm:table-cell">Break-In</th>
+              <th className="py-2.5 px-3 text-center font-medium whitespace-nowrap">Clock Out</th>
+              <th className="py-2.5 px-3 text-center font-medium whitespace-nowrap hidden md:table-cell">Hours</th>
+              <th className="py-2.5 px-3 text-center font-medium whitespace-nowrap text-emerald-500 hidden md:table-cell">Extra</th>
+              <th className="py-2.5 px-3 text-center font-medium whitespace-nowrap text-red-500 hidden md:table-cell">Less</th>
+              <th className="py-2.5 px-3 text-center font-medium whitespace-nowrap">Punctuality</th>
+              <th className="py-2.5 px-3 text-center font-medium whitespace-nowrap">Status</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-border/40 text-xs">
+            {(() => {
+              let lastMonthStr = "";
+              return paginatedMyHistory.length === 0 ? (
+                <tr>
+                  <td colSpan={10} className="py-12 text-center text-muted-foreground">
+                    <div className="flex flex-col items-center justify-center gap-2">
+                      <Clock className="h-10 w-10 text-muted-foreground/20" />
+                      <p className="text-sm">No attendance records yet</p>
+                    </div>
+                  </td>
+                </tr>
+              ) : (
+                paginatedMyHistory.map((r) => {
+                  const dateStr = r.date.split("T")[0];
+                  const recordDate = parseISO(dateStr);
+                  const today = isToday(recordDate);
+                  const currentMonthStr = format(recordDate, "MMMM yyyy");
+                  const showMonthHeader = currentMonthStr !== lastMonthStr;
+                  lastMonthStr = currentMonthStr;
+
+                  return (
+                    <React.Fragment key={r.id}>
+                      {showMonthHeader && (
+                        <tr className="bg-muted/40 border-y border-border/30">
+                          <td colSpan={10} className="px-4 py-2 text-xs font-semibold text-muted-foreground">
+                            {currentMonthStr}
+                          </td>
+                        </tr>
+                      )}
+                      <tr
+                        className={cn(
+                          "transition-colors hover:bg-muted/30",
+                          today && "bg-primary/5 font-medium",
+                        )}
+                      >
+                        <td className="py-2.5 px-4 whitespace-nowrap">
+                          {today ? (
+                            <span className="text-primary font-semibold">Today</span>
+                          ) : (
+                            format(recordDate, "MMM d, yyyy")
+                          )}
+                        </td>
+                        <td className="py-2.5 px-3 text-center text-muted-foreground whitespace-nowrap">
+                          {r.clock_in ? format(new Date(r.clock_in), "HH:mm") : "—"}
+                        </td>
+                        <td className="py-2.5 px-3 text-center text-muted-foreground whitespace-nowrap hidden sm:table-cell">
+                          {r.break_start ? format(new Date(r.break_start), "HH:mm") : "—"}
+                        </td>
+                        <td className="py-2.5 px-3 text-center text-muted-foreground whitespace-nowrap hidden sm:table-cell">
+                          {r.break_end ? format(new Date(r.break_end), "HH:mm") : "—"}
+                        </td>
+                        <td className="py-2.5 px-3 text-center whitespace-nowrap">
+                          {r.clock_out ? (
+                            format(new Date(r.clock_out), "HH:mm")
+                          ) : (
+                            <span className="text-emerald-500 text-[10px]">Active</span>
+                          )}
+                        </td>
+                        <td className="py-2.5 px-3 text-center font-medium whitespace-nowrap hidden md:table-cell">
+                          {formatHours(r.total_hours_worked)}
+                        </td>
+                        <td className="py-2.5 px-3 text-center font-medium text-emerald-600 whitespace-nowrap hidden md:table-cell">
+                          {r.extra_time ? `+${formatHours(r.extra_time)}` : "—"}
+                        </td>
+                        <td className="py-2.5 px-3 text-center font-medium text-red-600 whitespace-nowrap hidden md:table-cell">
+                          {r.less_time ? `-${formatHours(r.less_time)}` : "—"}
+                        </td>
+                        <td className="py-2.5 px-3 text-center whitespace-nowrap">
+                          <Badge
+                            variant="outline"
+                            className={cn(
+                              "text-[10px] font-medium capitalize",
+                              r.punctuality === "late"
+                                ? "bg-red-50 text-red-700 border-red-200"
+                                : "bg-emerald-50 text-emerald-700 border-emerald-200",
+                            )}
+                          >
+                            {r.punctuality === "late" ? "Late" : "On Time"}
+                          </Badge>
+                        </td>
+                        <td className="py-2.5 px-3 text-center whitespace-nowrap">
+                          <Badge
+                            variant="outline"
+                            className={cn(
+                              "text-[10px] capitalize",
+                              STATUS_COLORS[r.status] ?? "bg-muted text-muted-foreground",
+                            )}
+                          >
+                            {r.status.replace("_", " ")}
+                          </Badge>
+                        </td>
+                      </tr>
+                    </React.Fragment>
+                  );
+                })
+              );
+            })()}
+          </tbody>
+        </table>
+      </div>
+
+      {/* Employee Pagination Controls */}
+      <div className="flex flex-col sm:flex-row items-center justify-between gap-4 px-5 py-4 border-t border-border/30">
+        <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+          <span>Show</span>
+          <Select
+            value={String(myPageSize)}
+            onValueChange={(val) => {
+              setMyPageSize(Number(val));
+              setMyCurrentPage(1);
+            }}
+          >
+            <SelectTrigger className="w-16 h-8 bg-secondary/50 border-none text-xs">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="15">15</SelectItem>
+              <SelectItem value="25">25</SelectItem>
+              <SelectItem value="50">50</SelectItem>
+              <SelectItem value="100">100</SelectItem>
+            </SelectContent>
+          </Select>
+          <span>entries</span>
+          <span className="ml-2 sm:ml-4">
+            Showing{" "}
+            {myHistory.length === 0
+              ? 0
+              : (myCurrentPage - 1) * myPageSize + 1}{" "}
+            to {Math.min(myCurrentPage * myPageSize, myHistory.length)} of{" "}
+            {myHistory.length} entries
+          </span>
+        </div>
+        <div className="flex items-center gap-1">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8"
+            onClick={() => setMyCurrentPage((p) => Math.max(1, p - 1))}
+            disabled={myCurrentPage === 1}
+          >
+            <ChevronLeft className="h-4 w-4" />
+          </Button>
+          <span className="text-sm px-2 select-none">
+            Page {myCurrentPage} of {myTotalPages || 1}
+          </span>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8"
+            onClick={() =>
+              setMyCurrentPage((p) => Math.min(myTotalPages, p + 1))
+            }
+            disabled={
+              myCurrentPage === myTotalPages || myTotalPages === 0
+            }
+          >
+            <ChevronRight className="h-4 w-4" />
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+
+  const renderAllRecordsTable = () => (
+    <div className="space-y-4">
+      <div className="flex flex-wrap items-center gap-3">
+        <div className="relative flex-1 max-w-xs">
+          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+          <Input
+            className="pl-8 h-8 text-sm"
+            placeholder="Search employees..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-muted-foreground">From</span>
+          <input
+            type="date"
+            value={adminFrom}
+            onChange={(e) => setAdminFrom(e.target.value)}
+            className="h-8 text-xs rounded-md border border-border bg-background px-2 text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+          />
+          <span className="text-xs text-muted-foreground">To</span>
+          <input
+            type="date"
+            value={adminTo}
+            onChange={(e) => setAdminTo(e.target.value)}
+            className="h-8 text-xs rounded-md border border-border bg-background px-2 text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+          />
+          {(adminFrom || adminTo) && (
+            <button
+              onClick={() => {
+                setAdminFrom("");
+                setAdminTo("");
+              }}
+              className="text-xs text-muted-foreground hover:text-destructive px-1"
+            >
+              ✕ Clear
+            </button>
+          )}
+        </div>
+      </div>
+
+      <div className="rounded-xl border border-border/50 bg-card overflow-hidden">
+        <div className="flex flex-wrap items-center justify-between gap-3 px-5 py-3.5 border-b border-border/40">
+          <div className="flex items-center gap-2">
+            <Clock className="h-4 w-4 text-muted-foreground" />
+            <span className="text-sm font-semibold">
+              Records
+              {adminFrom || adminTo
+                ? ` — ${adminFrom ? format(parseISO(adminFrom), "MMM d") : "…"} to ${adminTo ? format(parseISO(adminTo), "MMM d, yyyy") : "…"}`
+                : ""}
+            </span>
+            <span className="text-xs text-muted-foreground">
+              ({(records as AttendanceRecord[]).length})
+            </span>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button
+              size="sm"
+              onClick={() => setDownloadDialogOpen(true)}
+              className="h-8 text-xs font-semibold hover:text-white"
+            >
+              Download Monthly Excel
+            </Button>
+          </div>
+        </div>
+        <div className="overflow-x-auto scrollbar-thin">
+          <table className="w-full min-w-[1050px] border-collapse text-left">
+            <thead>
+              <tr className="border-b border-border/30 bg-muted/20 text-[10px] font-medium text-muted-foreground uppercase tracking-wider">
+                <th className="py-2.5 px-4 font-medium whitespace-nowrap min-w-[200px]">Employee</th>
+                <th className="py-2.5 px-3 text-center font-medium whitespace-nowrap">Check-In</th>
+                <th className="py-2.5 px-3 text-center font-medium whitespace-nowrap">Check-Out</th>
+                <th className="py-2.5 px-3 text-center font-medium whitespace-nowrap">Break-Out</th>
+                <th className="py-2.5 px-3 text-center font-medium whitespace-nowrap">Break-In</th>
+                <th className="py-2.5 px-3 text-center font-medium whitespace-nowrap">Duration</th>
+                <th className="py-2.5 px-3 text-center font-medium whitespace-nowrap text-emerald-600">Extra</th>
+                <th className="py-2.5 px-3 text-center font-medium whitespace-nowrap text-red-600">Less</th>
+                <th className="py-2.5 px-3 text-center font-medium whitespace-nowrap">Punctuality</th>
+                <th className="py-2.5 px-3 text-center font-medium whitespace-nowrap">Status</th>
+                {isAdmin && <th className="py-2.5 px-3 text-center font-medium whitespace-nowrap">Actions</th>}
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-border/40 text-xs">
+              {isLoading ? (
+                [...Array(5)].map((_, i) => (
+                  <tr key={i} className="animate-pulse">
+                    <td colSpan={isAdmin ? 11 : 10} className="py-3 px-4">
+                      <div className="flex items-center gap-3">
+                        <div className="h-7 w-7 rounded-full bg-muted" />
+                        <div className="flex-1 h-4 bg-muted rounded" />
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              ) : paginatedRecords.length === 0 ? (
+                <tr>
+                  <td colSpan={isAdmin ? 11 : 10} className="py-16 text-center text-muted-foreground">
+                    <div className="flex flex-col items-center justify-center gap-2">
+                      <Clock className="h-10 w-10 text-muted-foreground/20" />
+                      <p className="text-sm">No records for this date</p>
+                    </div>
+                  </td>
+                </tr>
+              ) : (
+                (() => {
+                  let lastDateStr = "";
+                  return paginatedRecords.map((r) => {
+                    const recordDateStr = r.date.split("T")[0];
+                    const recordDate = parseISO(recordDateStr);
+                    const showDateHeader = recordDateStr !== lastDateStr;
+                    lastDateStr = recordDateStr;
+                    const isSelf = isSelfRecord(r);
+
+                    return (
+                      <React.Fragment key={r.id}>
+                        {showDateHeader && (
+                          <tr className="bg-muted/30 border-y border-border/30">
+                            <td colSpan={isAdmin ? 11 : 10} className="px-4 py-2 text-xs font-semibold text-muted-foreground">
+                              <div className="flex justify-between items-center">
+                                <span>{format(recordDate, "EEEE, MMMM d, yyyy")}</span>
+                                {isToday(recordDate) && (
+                                  <Badge variant="secondary" className="text-[10px] py-0 px-1.5 h-auto">
+                                    Today
+                                  </Badge>
+                                )}
+                              </div>
+                            </td>
+                          </tr>
+                        )}
+                        <tr
+                          className={cn(
+                            "hover:bg-muted/30 transition-colors",
+                            isSelf && "bg-primary/5 font-medium",
+                          )}
+                        >
+                          <td className="py-2.5 px-4 whitespace-nowrap min-w-[200px]">
+                            <div className="flex items-center gap-2.5 min-w-0">
+                              <Avatar className="h-7 w-7 shrink-0">
+                                {r.avatar_url && (
+                                  <AvatarImage src={r.avatar_url} alt={r.employee_name} />
+                                )}
+                                <AvatarFallback className="text-[10px] bg-primary/10 text-primary">
+                                  {getInitials(r.employee_name || "?")}
+                                </AvatarFallback>
+                              </Avatar>
+                              <div className="min-w-0">
+                                <p className={cn("text-sm font-medium truncate", isSelf && "font-semibold text-primary")}>
+                                  {r.employee_name || "Unknown"}
+                                </p>
+                              </div>
+                            </div>
+                          </td>
+                          <td className="py-2.5 px-3 text-center whitespace-nowrap">
+                            {r.clock_in ? format(new Date(r.clock_in), "HH:mm") : "—"}
+                          </td>
+                          <td className="py-2.5 px-3 text-center whitespace-nowrap">
+                            {r.clock_out ? (
+                              format(new Date(r.clock_out), "HH:mm")
+                            ) : (
+                              <span className="text-emerald-500 text-[10px]">Active</span>
+                            )}
+                          </td>
+                          <td className="py-2.5 px-3 text-center  whitespace-nowrap">
+                            {r.break_start ? format(new Date(r.break_start), "HH:mm") : "—"}
+                          </td>
+                          <td className="py-2.5 px-3 text-center  whitespace-nowrap">
+                            {r.break_end ? format(new Date(r.break_end), "HH:mm") : "—"}
+                          </td>
+                          <td className="py-2.5 px-3 text-center font-medium whitespace-nowrap">
+                            {r.total_hours_worked ? `${formatHours(r.total_hours_worked)}` : "0m"}
+                          </td>
+                          <td className="py-2.5 px-3 text-center font-medium text-emerald-600 whitespace-nowrap">
+                            {r.extra_time ? `+${formatHours(r.extra_time)}` : "+0m"}
+                          </td>
+                          <td className="py-2.5 px-3 text-center font-medium text-red-600 whitespace-nowrap">
+                            {r.less_time ? `-${formatHours(r.less_time)}` : "-0m"}
+                          </td>
+                          <td className="py-2.5 px-3 text-center whitespace-nowrap">
+                            <Badge
+                              variant="outline"
+                              className={cn(
+                                "text-[10px] font-medium capitalize",
+                                r.punctuality === "late"
+                                  ? "bg-red-50 text-red-700 border-red-200"
+                                  : "bg-emerald-50 text-emerald-700 border-emerald-200",
+                              )}
+                            >
+                              {r.punctuality === "late" ? "Late" : "On Time"}
+                            </Badge>
+                          </td>
+                          <td className="py-2.5 px-3 text-center whitespace-nowrap">
+                            <Badge
+                              variant="outline"
+                              className={cn(
+                                "text-[10px] capitalize",
+                                STATUS_COLORS[r.status] ?? "bg-muted text-muted-foreground",
+                              )}
+                            >
+                              {r.status.replace("_", " ")}
+                            </Badge>
+                          </td>
+                          {isAdmin && (
+                            <td className="py-2.5 px-3 text-center whitespace-nowrap">
+                              <div className="flex items-center justify-center gap-1">
+                                <button
+                                  onClick={() => openEdit(r)}
+                                  className="p-1 rounded text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                                  title="Edit"
+                                >
+                                  <Edit className="h-3.5 w-3.5" />
+                                </button>
+                                <button
+                                  onClick={() => {
+                                    setDeleteRecord(r);
+                                    setDeleteDialog(true);
+                                  }}
+                                  className="p-1 rounded text-muted-foreground hover:text-destructive hover:bg-muted transition-colors"
+                                  title="Delete"
+                                >
+                                  <Trash2 className="h-3.5 w-3.5" />
+                                </button>
+                              </div>
+                            </td>
+                          )}
+                        </tr>
+                      </React.Fragment>
+                    );
+                  });
+                })()
+              )}
+            </tbody>
+          </table>
+        </div>
+
+        {/* Pagination Controls */}
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 px-5 py-4 border-t border-border/30">
+          <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+            <span>Show</span>
+            <Select
+              value={String(pageSize)}
+              onValueChange={(val) => {
+                setPageSize(Number(val));
+                setCurrentPage(1);
+              }}
+            >
+              <SelectTrigger className="w-16 h-8 bg-secondary/50 border-none text-xs">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="25">25</SelectItem>
+                <SelectItem value="50">50</SelectItem>
+                <SelectItem value="75">75</SelectItem>
+                <SelectItem value="100">100</SelectItem>
+              </SelectContent>
+            </Select>
+            <span>entries</span>
+            <span className="ml-2 sm:ml-4">
+              Showing{" "}
+              {records.length === 0 ? 0 : (currentPage - 1) * pageSize + 1} to{" "}
+              {Math.min(currentPage * pageSize, records.length)} of{" "}
+              {records.length} entries
+            </span>
+          </div>
+          <div className="flex items-center gap-1">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8"
+              onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+              disabled={currentPage === 1}
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            <span className="text-sm px-2 select-none">
+              Page {currentPage} of {totalPages || 1}
+            </span>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8"
+              onClick={() =>
+                setCurrentPage((p) => Math.min(totalPages, p + 1))
+              }
+              disabled={currentPage === totalPages || totalPages === 0}
+            >
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
 
   return (
     <div className="space-y-5">
@@ -551,518 +1169,127 @@ export default function AttendancePage() {
         </div>
       )}
 
-      {isAdmin && (
-        <div className="flex flex-wrap items-center gap-3">
-          <div className="relative flex-1 max-w-xs">
-            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-            <Input
-              className="pl-8 h-8 text-sm"
-              placeholder="Search employees..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-            />
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="text-xs text-muted-foreground">From</span>
-            <input
-              type="date"
-              value={adminFrom}
-              onChange={(e) => setAdminFrom(e.target.value)}
-              className="h-8 text-xs rounded-md border border-border bg-background px-2 text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
-            />
-            <span className="text-xs text-muted-foreground">To</span>
-            <input
-              type="date"
-              value={adminTo}
-              onChange={(e) => setAdminTo(e.target.value)}
-              className="h-8 text-xs rounded-md border border-border bg-background px-2 text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
-            />
-            {(adminFrom || adminTo) && (
-              <button
-                onClick={() => {
-                  setAdminFrom("");
-                  setAdminTo("");
-                }}
-                className="text-xs text-muted-foreground hover:text-destructive px-1"
-              >
-                ✕ Clear
-              </button>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* My Attendance History — non-admin employees, read-only */}
-      {!isAdmin && (
-        <div className="rounded-xl border border-border/50 bg-card overflow-hidden">
-          <div className="flex flex-wrap items-center justify-between gap-3 px-5 py-3.5 border-b border-border/40">
-            <div className="flex items-center gap-2">
-              <Clock className="h-4 w-4 text-muted-foreground" />
-              <span className="text-sm font-semibold">
-                My Attendance History
-              </span>
-              <span className="text-xs text-muted-foreground">
-                ({(myHistory as AttendanceRecord[]).length} records)
-              </span>
-            </div>
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="text-xs text-muted-foreground">From</span>
-              <input
-                type="date"
-                value={fromDate}
-                onChange={(e) => setFromDate(e.target.value)}
-                className="h-8 text-xs rounded-md border border-border bg-background px-2 text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
-              />
-              <span className="text-xs text-muted-foreground">To</span>
-              <input
-                type="date"
-                value={toDate}
-                onChange={(e) => setToDate(e.target.value)}
-                className="h-8 text-xs rounded-md border border-border bg-background px-2 text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
-              />
-              {(fromDate || toDate) && (
-                <button
-                  onClick={() => {
-                    setFromDate("");
-                    setToDate("");
-                  }}
-                  className="text-xs text-muted-foreground hover:text-destructive px-1 mr-2"
-                >
-                  ✕ Clear
-                </button>
-              )}
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => setDownloadDialogOpen(true)}
-                className="h-8 text-xs font-semibold hover:bg-gradient-to-r hover:from-blue-600 hover:to-indigo-600 hover:text-white"
-              >
-                Download Excel
-              </Button>
-            </div>
-          </div>
-          <div className="flex items-center gap-3 px-5 py-2 text-[10px] font-medium text-muted-foreground uppercase tracking-wider border-b border-border/30 bg-muted/20">
-            <span className="w-28">Date</span>
-            <span className="w-16 text-center">Clock In</span>
-            <span className="w-16 text-center hidden sm:block">Break-Out</span>
-            <span className="w-16 text-center hidden sm:block">Break-In</span>
-            <span className="w-16 text-center">Clock Out</span>
-            <span className="w-12 text-center hidden md:block">Hours</span>
-            <span className="w-12 text-center hidden md:block text-emerald-500">
-              Extra
-            </span>
-            <span className="w-12 text-center hidden md:block text-red-500">
-              Less
-            </span>
-            <span className="w-20 text-center">Status</span>
-          </div>
-          <div className="divide-y divide-border/40">
-            {(() => {
-              let lastMonthStr = "";
-              return paginatedMyHistory.length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-12 gap-2">
-                  <Clock className="h-10 w-10 text-muted-foreground/20" />
-                  <p className="text-sm text-muted-foreground">
-                    No attendance records yet
-                  </p>
+      {!isSuperAdmin && (
+        <div className="rounded-xl border border-border/50 bg-card p-5">
+          <p className="text-sm font-semibold mb-4 flex items-center gap-2">
+            <CalendarRange className="h-4 w-4 text-muted-foreground" />
+            My Attendance Summary
+          </p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {/* This Week */}
+            <div className="rounded-lg border border-border/40 p-4 space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+                  <CalendarDays className="h-3.5 w-3.5" />
+                  This Week
                 </div>
-              ) : (
-                paginatedMyHistory.map((r) => {
-                  const dateStr = r.date.split("T")[0];
-                  const recordDate = parseISO(dateStr);
-                  const today = isToday(recordDate);
-                  const currentMonthStr = format(recordDate, "MMMM yyyy");
-                  const showMonthHeader = currentMonthStr !== lastMonthStr;
-                  lastMonthStr = currentMonthStr;
-
-                  return (
-                    <div key={r.id}>
-                      {showMonthHeader && (
-                        <div className="bg-muted/40 px-5 py-2 text-xs font-semibold text-muted-foreground border-y border-border/30">
-                          {currentMonthStr}
-                        </div>
-                      )}
-                      <div
-                        className={cn(
-                          "flex items-center gap-3 px-5 py-2.5 transition-colors hover:bg-muted/30",
-                          today && "bg-primary/5",
-                        )}
-                      >
-                        <span className="w-28 text-xs font-medium">
-                          {today ? (
-                            <span className="text-primary font-semibold">
-                              Today
-                            </span>
-                          ) : (
-                            format(recordDate, "MMM d, yyyy")
-                          )}
-                        </span>
-                        <span className="w-16 text-center text-xs">
-                          {r.clock_in
-                            ? format(new Date(r.clock_in), "HH:mm")
-                            : "—"}
-                        </span>
-                        <span className="w-16 text-center text-xs text-muted-foreground hidden sm:block">
-                          {r.break_start
-                            ? format(new Date(r.break_start), "HH:mm")
-                            : "—"}
-                        </span>
-                        <span className="w-16 text-center text-xs text-muted-foreground hidden sm:block">
-                          {r.break_end
-                            ? format(new Date(r.break_end), "HH:mm")
-                            : "—"}
-                        </span>
-                        <span className="w-16 text-center text-xs">
-                          {r.clock_out ? (
-                            format(new Date(r.clock_out), "HH:mm")
-                          ) : (
-                            <span className="text-emerald-500 text-[10px]">
-                              Active
-                            </span>
-                          )}
-                        </span>
-                        <span
-                          className="w-12 text-center text-xs font-medium hidden md:block"
-                          title="Total Hours"
-                        >
-                          {formatHours(r.total_hours_worked)}
-                        </span>
-                        <span
-                          className="w-12 text-center text-xs font-medium text-emerald-600 hidden md:block"
-                          title="Extra Time"
-                        >
-                          {r.extra_time ? `+${formatHours(r.extra_time)}` : ""}
-                        </span>
-                        <span
-                          className="w-12 text-center text-xs font-medium text-red-600 hidden md:block"
-                          title="Less Time"
-                        >
-                          {r.less_time ? `-${formatHours(r.less_time)}` : ""}
-                        </span>
-                        <div className="w-20 flex justify-center">
-                          <Badge
-                            variant="outline"
-                            className={cn(
-                              "text-[10px] capitalize",
-                              STATUS_COLORS[r.status] ??
-                                "bg-muted text-muted-foreground",
-                            )}
-                          >
-                            {r.status.replace("_", " ")}
-                          </Badge>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })
-              );
-            })()}
-          </div>
-
-          {/* Employee Pagination Controls */}
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-4 px-5 py-4 border-t border-border/30">
-            <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
-              <span>Show</span>
-              <Select
-                value={String(myPageSize)}
-                onValueChange={(val) => {
-                  setMyPageSize(Number(val));
-                  setMyCurrentPage(1);
-                }}
-              >
-                <SelectTrigger className="w-16 h-8 bg-secondary/50 border-none text-xs">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="15">15</SelectItem>
-                  <SelectItem value="25">25</SelectItem>
-                  <SelectItem value="50">50</SelectItem>
-                  <SelectItem value="100">100</SelectItem>
-                </SelectContent>
-              </Select>
-              <span>entries</span>
-              <span className="ml-2 sm:ml-4">
-                Showing{" "}
-                {myHistory.length === 0
-                  ? 0
-                  : (myCurrentPage - 1) * myPageSize + 1}{" "}
-                to {Math.min(myCurrentPage * myPageSize, myHistory.length)} of{" "}
-                {myHistory.length} entries
-              </span>
-            </div>
-            <div className="flex items-center gap-1">
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-8 w-8"
-                onClick={() => setMyCurrentPage((p) => Math.max(1, p - 1))}
-                disabled={myCurrentPage === 1}
-              >
-                <ChevronLeft className="h-4 w-4" />
-              </Button>
-              <span className="text-sm px-2 select-none">
-                Page {myCurrentPage} of {myTotalPages || 1}
-              </span>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-8 w-8"
-                onClick={() =>
-                  setMyCurrentPage((p) => Math.min(myTotalPages, p + 1))
-                }
-                disabled={
-                  myCurrentPage === myTotalPages || myTotalPages === 0
-                }
-              >
-                <ChevronRight className="h-4 w-4" />
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {isAdmin && (
-        <div className="rounded-xl border border-border/50 bg-card overflow-hidden">
-          <div className="flex flex-wrap items-center justify-between gap-3 px-5 py-3.5 border-b border-border/40">
-            <div className="flex items-center gap-2">
-              <Clock className="h-4 w-4 text-muted-foreground" />
-              <span className="text-sm font-semibold">
-                Records
-                {adminFrom || adminTo
-                  ? ` — ${adminFrom ? format(parseISO(adminFrom), "MMM d") : "…"} to ${adminTo ? format(parseISO(adminTo), "MMM d, yyyy") : "…"}`
-                  : ""}
-              </span>
-              <span className="text-xs text-muted-foreground">
-                ({(records as AttendanceRecord[]).length})
-              </span>
-            </div>
-            <div className="flex items-center gap-2">
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => setDownloadDialogOpen(true)}
-                className="h-8 text-xs font-semibold hover:bg-gradient-to-r hover:from-blue-600 hover:to-indigo-600 hover:text-white"
-              >
-                Download Monthly Excel
-              </Button>
-            </div>
-          </div>
-          <div className="flex items-center gap-3 px-5 py-2 text-[10px] font-medium text-muted-foreground uppercase tracking-wider border-b border-border/30 bg-muted/20">
-            <span className="flex-1">Employee</span>
-            <span className="w-16 text-center hidden sm:block">Check-In</span>
-            <span className="w-16 text-center hidden sm:block">Check-Out</span>
-            <span className="w-16 text-center hidden sm:block">Break-Out</span>
-            <span className="w-16 text-center hidden sm:block">Break-In</span>
-            <span className="w-12 text-center hidden md:block">Hrs</span>
-            <span className="w-12 text-center hidden xl:block text-emerald-600">
-              Extra
-            </span>
-            <span className="w-12 text-center hidden xl:block text-red-600">
-              Less
-            </span>
-            <span className="w-20 text-center">Status</span>
-            {isAdmin && <span className="w-16 text-center">Actions</span>}
-          </div>
-          <div className="divide-y divide-border/40">
-            {isLoading ? (
-              [...Array(5)].map((_, i) => (
-                <div
-                  key={i}
-                  className="flex items-center gap-3 px-5 py-3 animate-pulse"
-                >
-                  <div className="h-7 w-7 rounded-full bg-muted" />
-                  <div className="flex-1 h-4 bg-muted rounded" />
-                </div>
-              ))
-            ) : paginatedRecords.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-16 gap-2">
-                <Clock className="h-10 w-10 text-muted-foreground/20" />
-                <p className="text-sm text-muted-foreground">
-                  No records for this date
-                </p>
+                <span className="text-[10px] text-muted-foreground">
+                  {weekWorkingDays} working days
+                </span>
               </div>
-            ) : (
-              (() => {
-                let lastDateStr = "";
-                return paginatedRecords.map((r) => {
-                  const recordDateStr = r.date.split("T")[0];
-                  const recordDate = parseISO(recordDateStr);
-                  const showDateHeader = recordDateStr !== lastDateStr;
-                  lastDateStr = recordDateStr;
+              <div className="space-y-2">
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-muted-foreground">Expected</span>
+                  <span className="font-medium">{formatHours(weekExpected)}</span>
+                </div>
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-muted-foreground">Worked</span>
+                  <span className="font-medium">{formatHours(weekActual)}</span>
+                </div>
+                <div className="border-t border-border/30 pt-2 flex items-center justify-between text-sm">
+                  <span className="text-muted-foreground">Balance</span>
+                  <span
+                    className={cn(
+                      "font-semibold flex items-center gap-1",
+                      weekDiff > 0.05
+                        ? "text-emerald-600"
+                        : weekDiff < -0.05
+                          ? "text-red-600"
+                          : "text-muted-foreground",
+                    )}
+                  >
+                    {Math.abs(weekDiff) < 0.05 ? (
+                      <>
+                        <Minus className="h-3.5 w-3.5" /> On track
+                      </>
+                    ) : weekDiff > 0 ? (
+                      <>
+                        <TrendingUp className="h-3.5 w-3.5" />{" "}
+                        {formatHoursSigned(weekDiff)}
+                      </>
+                    ) : (
+                      <>
+                        <TrendingDown className="h-3.5 w-3.5" />{" "}
+                        {formatHoursSigned(weekDiff)}
+                      </>
+                    )}
+                  </span>
+                </div>
+              </div>
+            </div>
 
-                  return (
-                    <div key={r.id}>
-                      {showDateHeader && (
-                        <div className="bg-muted/30 px-5 py-2 text-xs font-semibold text-muted-foreground border-y border-border/30 flex justify-between items-center">
-                          <span>
-                            {format(recordDate, "EEEE, MMMM d, yyyy")}
-                          </span>
-                          {isToday(recordDate) && (
-                            <Badge
-                              variant="secondary"
-                              className="text-[10px] py-0 px-1.5 h-auto"
-                            >
-                              Today
-                            </Badge>
-                          )}
-                        </div>
-                      )}
-                      <div className="flex items-center gap-3 px-5 py-2.5 hover:bg-muted/30 transition-colors">
-                        <div className="flex items-center gap-2.5 flex-1 min-w-0">
-                          <Avatar className="h-7 w-7 shrink-0">
-                            {r.avatar_url && (
-                              <AvatarImage
-                                src={r.avatar_url}
-                                alt={r.employee_name}
-                              />
-                            )}
-                            <AvatarFallback className="text-[10px] bg-primary/10 text-primary">
-                              {getInitials(r.employee_name || "?")}
-                            </AvatarFallback>
-                          </Avatar>
-                          <div className="min-w-0">
-                            <p className="text-sm font-medium truncate">
-                              {r.employee_name || "Unknown"}
-                            </p>
-                            {r.location_lat && (
-                              <p className="text-[10px] text-muted-foreground flex items-center gap-0.5">
-                                <MapPin className="h-2.5 w-2.5" />
-                                Tracked
-                              </p>
-                            )}
-                          </div>
-                        </div>
-                        <span className="w-16 text-center text-xs text-muted-foreground hidden sm:block">
-                          {r.clock_in
-                            ? format(new Date(r.clock_in), "HH:mm")
-                            : "—"}
-                        </span>
-                        <span className="w-16 text-center text-xs hidden sm:block">
-                          {r.clock_out ? (
-                            format(new Date(r.clock_out), "HH:mm")
-                          ) : (
-                            <span className="text-emerald-500 text-[10px]">
-                              Active
-                            </span>
-                          )}
-                        </span>
-                        <span className="w-16 text-center text-xs text-muted-foreground hidden sm:block">
-                          {r.break_start
-                            ? format(new Date(r.break_start), "HH:mm")
-                            : "—"}
-                        </span>
-                        <span className="w-16 text-center text-xs text-muted-foreground hidden sm:block">
-                          {r.break_end
-                            ? format(new Date(r.break_end), "HH:mm")
-                            : "—"}
-                        </span>
-                        <span className="w-12 text-center text-xs font-medium hidden md:block">
-                          {formatHours(r.total_hours_worked)}
-                        </span>
-                        <span className="w-12 text-center text-xs font-medium text-emerald-600 hidden xl:block">
-                          {r.extra_time ? `+${formatHours(r.extra_time)}` : ""}
-                        </span>
-                        <span className="w-12 text-center text-xs font-medium text-red-600 hidden xl:block">
-                          {r.less_time ? `-${formatHours(r.less_time)}` : ""}
-                        </span>
-                        <div className="w-20 flex justify-center">
-                          <Badge
-                            variant="outline"
-                            className={cn(
-                              "text-[10px] capitalize",
-                              STATUS_COLORS[r.status] ??
-                                "bg-muted text-muted-foreground",
-                            )}
-                          >
-                            {r.status.replace("_", " ")}
-                          </Badge>
-                        </div>
-                        {isAdmin && (
-                          <div className="w-16 flex justify-center gap-1">
-                            <button
-                              onClick={() => openEdit(r)}
-                              className="p-1 rounded text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-                              title="Edit"
-                            >
-                              <Edit className="h-3.5 w-3.5" />
-                            </button>
-                            <button
-                              onClick={() => {
-                                setDeleteRecord(r);
-                                setDeleteDialog(true);
-                              }}
-                              className="p-1 rounded text-muted-foreground hover:text-destructive hover:bg-muted transition-colors"
-                              title="Delete"
-                            >
-                              <Trash2 className="h-3.5 w-3.5" />
-                            </button>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  );
-                });
-              })()
-            )}
+            {/* This Month */}
+            <div className="rounded-lg border border-border/40 p-4 space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+                  <CalendarRange className="h-3.5 w-3.5" />
+                  This Month
+                </div>
+                <span className="text-[10px] text-muted-foreground">
+                  {monthWorkingDays} working days
+                </span>
+              </div>
+              <div className="space-y-2">
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-muted-foreground">Expected</span>
+                  <span className="font-medium">
+                    {formatHours(monthExpected)}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-muted-foreground">Worked</span>
+                  <span className="font-medium">{formatHours(monthActual)}</span>
+                </div>
+                <div className="border-t border-border/30 pt-2 flex items-center justify-between text-sm">
+                  <span className="text-muted-foreground">Balance</span>
+                  <span
+                    className={cn(
+                      "font-semibold flex items-center gap-1",
+                      monthDiff > 0.05
+                        ? "text-emerald-600"
+                        : monthDiff < -0.05
+                          ? "text-red-600"
+                          : "text-muted-foreground",
+                    )}
+                  >
+                    {Math.abs(monthDiff) < 0.05 ? (
+                      <>
+                        <Minus className="h-3.5 w-3.5" /> On track
+                      </>
+                    ) : monthDiff > 0 ? (
+                      <>
+                        <TrendingUp className="h-3.5 w-3.5" />{" "}
+                        {formatHoursSigned(monthDiff)}
+                      </>
+                    ) : (
+                      <>
+                        <TrendingDown className="h-3.5 w-3.5" />{" "}
+                        {formatHoursSigned(monthDiff)}
+                      </>
+                    )}
+                  </span>
+                </div>
+              </div>
+            </div>
           </div>
-
-          {/* Pagination Controls */}
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-4 px-5 py-4 border-t border-border/30">
-            <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
-              <span>Show</span>
-              <Select
-                value={String(pageSize)}
-                onValueChange={(val) => {
-                  setPageSize(Number(val));
-                  setCurrentPage(1);
-                }}
-              >
-                <SelectTrigger className="w-16 h-8 bg-secondary/50 border-none text-xs">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="25">25</SelectItem>
-                  <SelectItem value="50">50</SelectItem>
-                  <SelectItem value="75">75</SelectItem>
-                  <SelectItem value="100">100</SelectItem>
-                </SelectContent>
-              </Select>
-              <span>entries</span>
-              <span className="ml-2 sm:ml-4">
-                Showing{" "}
-                {records.length === 0 ? 0 : (currentPage - 1) * pageSize + 1} to{" "}
-                {Math.min(currentPage * pageSize, records.length)} of{" "}
-                {records.length} entries
-              </span>
-            </div>
-            <div className="flex items-center gap-1">
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-8 w-8"
-                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                disabled={currentPage === 1}
-              >
-                <ChevronLeft className="h-4 w-4" />
-              </Button>
-              <span className="text-sm px-2 select-none">
-                Page {currentPage} of {totalPages || 1}
-              </span>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-8 w-8"
-                onClick={() =>
-                  setCurrentPage((p) => Math.min(totalPages, p + 1))
-                }
-                disabled={currentPage === totalPages || totalPages === 0}
-              >
-                <ChevronRight className="h-4 w-4" />
-              </Button>
-            </div>
+          <div className="mt-3 text-[10px] text-muted-foreground text-center">
+            Expected daily hours: {formatHours(workingHoursPerDay)} · Weekdays only
           </div>
         </div>
       )}
+
+      {/* Tables Section */}
+      {isAdmin ? renderAllRecordsTable() : renderMyHistoryTable()}
 
       {/* Clock In/Out Dialog */}
       <Dialog open={clockDialog} onOpenChange={setClockDialog}>
@@ -1110,6 +1337,7 @@ export default function AttendancePage() {
               variant="outline"
               size="sm"
               onClick={() => setClockDialog(false)}
+              className="hover:bg-secondary-foreground dark:hover:bg-primary hover:text-white"
             >
               Cancel
             </Button>
@@ -1137,42 +1365,38 @@ export default function AttendancePage() {
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
                 <Label>Clock In</Label>
-                <Input
-                  type="time"
+                <TimePicker
                   value={editForm.clock_in}
-                  onChange={(e) =>
-                    setEditForm({ ...editForm, clock_in: e.target.value })
+                  onChange={(val) =>
+                    setEditForm({ ...editForm, clock_in: val })
                   }
                 />
               </div>
 
               <div className="space-y-1.5">
                 <Label>Break Start</Label>
-                <Input
-                  type="time"
+                <TimePicker
                   value={editForm.break_start}
-                  onChange={(e) =>
-                    setEditForm({ ...editForm, break_start: e.target.value })
+                  onChange={(val) =>
+                    setEditForm({ ...editForm, break_start: val })
                   }
                 />
               </div>
               <div className="space-y-1.5">
                 <Label>Break End</Label>
-                <Input
-                  type="time"
+                <TimePicker
                   value={editForm.break_end}
-                  onChange={(e) =>
-                    setEditForm({ ...editForm, break_end: e.target.value })
+                  onChange={(val) =>
+                    setEditForm({ ...editForm, break_end: val })
                   }
                 />
               </div>
               <div className="space-y-1.5">
                 <Label>Clock Out</Label>
-                <Input
-                  type="time"
+                <TimePicker
                   value={editForm.clock_out}
-                  onChange={(e) =>
-                    setEditForm({ ...editForm, clock_out: e.target.value })
+                  onChange={(val) =>
+                    setEditForm({ ...editForm, clock_out: val })
                   }
                 />
               </div>
@@ -1189,7 +1413,7 @@ export default function AttendancePage() {
                 <SelectContent>
                   <SelectItem value="present">Present</SelectItem>
                   <SelectItem value="absent">Absent</SelectItem>
-                  <SelectItem value="late">Late</SelectItem>
+                  {/* <SelectItem value="late">Late</SelectItem> */}
                   <SelectItem value="half_day">Half Day</SelectItem>
                   <SelectItem value="on_break">On Break</SelectItem>
                 </SelectContent>
@@ -1212,6 +1436,7 @@ export default function AttendancePage() {
               variant="outline"
               size="sm"
               onClick={() => setEditDialog(false)}
+              className="hover:bg-secondary-foreground dark:hover:bg-primary hover:text-white"
             >
               Cancel
             </Button>
@@ -1287,7 +1512,7 @@ export default function AttendancePage() {
                 await downloadAttendanceReport();
                 setDownloadDialogOpen(false);
               }}
-              className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-semibold"
+              className="bg- text-white font-semibold"
             >
               {downloadingReport ? "Generating..." : "Download Excel"}
             </Button>
