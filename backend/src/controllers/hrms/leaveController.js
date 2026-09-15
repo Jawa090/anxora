@@ -26,7 +26,7 @@ const createLeaveType = async (req, res, next) => {
       description: Joi.string().allow(''),
       color: Joi.string().default('#3B82F6'),
       days_allowed: Joi.number().required(),
-      max_consecutive_days: Joi.number().optional(),
+      max_consecutive_days: Joi.number().allow(null).optional(),
       min_days_notice: Joi.number().default(0),
       is_paid: Joi.boolean().default(true),
       requires_approval: Joi.boolean().default(true),
@@ -35,6 +35,7 @@ const createLeaveType = async (req, res, next) => {
       expires_after_months: Joi.number().optional(),
       applicable_to: Joi.string().valid('all', 'male', 'female').default('all'),
       min_service_months: Joi.number().default(0),
+      resets_monthly: Joi.boolean().default(false),
     });
 
     const { error, value } = schema.validate(req.body);
@@ -47,19 +48,38 @@ const createLeaveType = async (req, res, next) => {
         org_id, name, code, description, color, days_allowed,
         max_consecutive_days, min_days_notice, is_paid, requires_approval,
         can_carry_forward, max_carry_forward_days, expires_after_months,
-        applicable_to, min_service_months
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
+        applicable_to, min_service_months, resets_monthly
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
       RETURNING *`,
       [
         req.user.orgId, value.name, value.code, value.description, value.color,
-        value.days_allowed, value.max_consecutive_days, value.min_days_notice,
+        value.days_allowed, value.max_consecutive_days || null, value.min_days_notice,
         value.is_paid, value.requires_approval, value.can_carry_forward,
         value.max_carry_forward_days, value.expires_after_months,
-        value.applicable_to, value.min_service_months
+        value.applicable_to, value.min_service_months, value.resets_monthly || false
       ]
     );
 
-    res.status(201).json(result.rows[0]);
+    const createdLeaveType = result.rows[0];
+
+    // Auto-create balance row for all active employees for this new leave type
+    try {
+      const emps = await db.query(
+        "SELECT id FROM employees WHERE org_id = $1 AND status = 'active'",
+        [req.user.orgId]
+      );
+      const currentYear = new Date().getFullYear();
+      for (const emp of emps.rows) {
+        await db.query(
+          `INSERT INTO employee_leave_balances (employee_id, leave_type_id, org_id, year, total_allocated, used, pending)
+           VALUES ($1, $2, $3, $4, $5, 0, 0)
+           ON CONFLICT (employee_id, leave_type_id, year) DO NOTHING`,
+          [emp.id, createdLeaveType.id, req.user.orgId, currentYear, createdLeaveType.days_allowed || 0]
+        );
+      }
+    } catch (_) {}
+
+    res.status(201).json(createdLeaveType);
   } catch (err) {
     if (err.code === '23505') {
       return res.status(400).json({ error: 'Leave type code already exists' });
@@ -115,6 +135,22 @@ const getEmployeeBalance = async (req, res, next) => {
     const { employeeId } = req.params;
     const year = req.query.year || new Date().getFullYear();
 
+    // Ensure all active leave types have a balance record for this employee
+    try {
+      const activeTypes = await db.query(
+        'SELECT id, days_allowed FROM leave_types WHERE org_id = $1 AND is_active = true',
+        [req.user.orgId]
+      );
+      for (const lt of activeTypes.rows) {
+        await db.query(
+          `INSERT INTO employee_leave_balances (employee_id, leave_type_id, org_id, year, total_allocated, used, pending)
+           VALUES ($1, $2, $3, $4, $5, 0, 0)
+           ON CONFLICT (employee_id, leave_type_id, year) DO NOTHING`,
+          [employeeId, lt.id, req.user.orgId, year, lt.days_allowed || 0]
+        );
+      }
+    } catch (_) {}
+
     const result = await db.query(
       `SELECT 
         lb.id,
@@ -125,7 +161,7 @@ const getEmployeeBalance = async (req, res, next) => {
         lb.total_allocated,
         lb.used,
         lb.pending,
-        lb.available,
+        GREATEST(0, lb.total_allocated - lb.used) as available,
         lb.carried_forward,
         lt.name as leave_type_name,
         lt.code as leave_type_code,
@@ -252,6 +288,22 @@ const getMyBalance = async (req, res, next) => {
       }
     } catch (_) { /* columns not yet migrated — skip auto-reset */ }
 
+    // Ensure all active leave types have a balance record for this employee for the current year
+    try {
+      const activeTypes = await db.query(
+        'SELECT id, days_allowed FROM leave_types WHERE org_id = $1 AND is_active = true',
+        [req.user.orgId]
+      );
+      for (const lt of activeTypes.rows) {
+        await db.query(
+          `INSERT INTO employee_leave_balances (employee_id, leave_type_id, org_id, year, total_allocated, used, pending)
+           VALUES ($1, $2, $3, $4, $5, 0, 0)
+           ON CONFLICT (employee_id, leave_type_id, year) DO NOTHING`,
+          [employeeId, lt.id, req.user.orgId, year, lt.days_allowed || 0]
+        );
+      }
+    } catch (_) {}
+
     const result = await db.query(
       `SELECT
         lb.id,
@@ -262,7 +314,7 @@ const getMyBalance = async (req, res, next) => {
         lb.total_allocated,
         lb.used,
         lb.pending,
-        lb.available,
+        GREATEST(0, lb.total_allocated - lb.used) as available,
         lb.carried_forward,
         lb.last_monthly_reset,
         lt.name as leave_type_name,
@@ -410,12 +462,12 @@ const getLeaveRequests = async (req, res, next) => {
         lt.color as leave_type_color,
         lt.days_allowed as leave_type_days_allowed,
         lt.monthly_limit as leave_type_monthly_limit,
-        u.full_name as approver_name,
+        COALESCE(u.full_name, u.email) as approver_name,
         eu.avatar_url as avatar_url,
         elb.total_allocated as bal_total,
         elb.used as bal_used,
         elb.pending as bal_pending,
-        elb.available as bal_available,
+        GREATEST(0, elb.total_allocated - elb.used) as bal_available,
         elb.carried_forward as bal_carried_forward,
         COALESCE((
           SELECT SUM(lr2.days_requested)
@@ -431,7 +483,7 @@ const getLeaveRequests = async (req, res, next) => {
             'code', lt2.code,
             'name', lt2.name,
             'color', lt2.color,
-            'available', GREATEST(0, elb2.total_allocated - elb2.used - elb2.pending),
+            'available', GREATEST(0, elb2.total_allocated - elb2.used),
             'total', elb2.total_allocated
           ) ORDER BY lt2.name)
           FROM employee_leave_balances elb2
@@ -555,9 +607,16 @@ const createLeaveRequest = async (req, res, next) => {
       else if (available < value.days_requested) balanceWarning = 'insufficient_balance';
     }
 
-    // Get leave type monthly_limit
-    const ltResult = await db.query('SELECT monthly_limit FROM leave_types WHERE id = $1', [value.leave_type_id]);
-    const monthlyLimit = ltResult.rows[0]?.monthly_limit || null;
+    // Get leave type details: name, monthly_limit, max_consecutive_days
+    const ltResult = await db.query('SELECT name, monthly_limit, max_consecutive_days FROM leave_types WHERE id = $1', [value.leave_type_id]);
+    const ltRow = ltResult.rows[0];
+    if (ltRow?.max_consecutive_days && value.days_requested > ltRow.max_consecutive_days) {
+      return res.status(400).json({
+        error: `Maximum consecutive days allowed for ${ltRow.name || 'this leave type'} is ${ltRow.max_consecutive_days} days`
+      });
+    }
+
+    const monthlyLimit = ltRow?.monthly_limit || null;
     if (monthlyLimit && monthUsedDays + value.days_requested > monthlyLimit) {
       balanceWarning = 'monthly_limit_exceeded';
     }

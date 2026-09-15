@@ -15,10 +15,23 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { api } from "@/lib/api";
-import { format, startOfWeek, endOfWeek, startOfMonth, endOfMonth, eachDayOfInterval, getDay } from "date-fns";
+import { format, startOfWeek, endOfWeek, startOfMonth, endOfMonth, eachDayOfInterval, getDay, formatDistanceToNow } from "date-fns";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
 import { useOrganization } from "@/contexts/OrganizationContext";
+import WorkforceAttendanceTrendChart from "@/components/hrms/WorkforceAttendanceTrendChart";
+
+function fmtActivityTime(iso: string | null | undefined): string {
+  if (!iso) return "";
+  try {
+    const d = new Date(iso);
+    const diffMs = Date.now() - d.getTime();
+    if (diffMs < 60000 && diffMs >= 0) return "Just now";
+    return formatDistanceToNow(d, { addSuffix: true });
+  } catch {
+    return "";
+  }
+}
 
 interface HRMSStats {
   totalEmployees: number;
@@ -526,6 +539,7 @@ export default function HRMSDashboard() {
         ))}
       </div>
 
+      {/* Today's Attendance (2 cols) & Recent Activity (1 col) - Placed at top */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
         <Card className="lg:col-span-2">
           <CardHeader className="pb-3">
@@ -636,27 +650,38 @@ export default function HRMSDashboard() {
                   <Activity className="h-12 w-12 text-muted-foreground/20" />
                   <p className="text-sm text-muted-foreground">No recent activity</p>
                 </div>
-              ) : (activities as RecentActivity[]).slice(0, 10).map((activity) => {
-                const info = ACTIVITY_ICONS[activity.type] ?? { icon: Activity, color: "text-muted-foreground" };
-                const Icon = info.icon;
-                return (
-                  <div key={activity.id} className="flex items-start gap-1 p-1 rounded-lg hover:bg-muted/50 transition-colors">
-                    <div className={cn("mt-0.5 shrink-0 p-2 rounded-full bg-muted", info.color)}>
-                      <Icon className="h-4 w-4" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium truncate">{activity.employee_name}</p>
-                      <p className="text-xs text-muted-foreground truncate">{activity.message}</p>
-                    </div>
-                  </div>
-                );
-              })}
+              ) : (
+                [...(activities as RecentActivity[])]
+                  .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+                  .slice(0, 10)
+                  .map((activity) => {
+                    const info = ACTIVITY_ICONS[activity.type] ?? { icon: Activity, color: "text-muted-foreground" };
+                    const Icon = info.icon;
+                    return (
+                      <div key={activity.id || `${activity.type}-${activity.timestamp}`} className="flex items-start gap-1 p-1 rounded-lg hover:bg-muted/50 transition-colors">
+                        <div className={cn("mt-0.5 shrink-0 p-2 rounded-full bg-muted", info.color)}>
+                          <Icon className="h-4 w-4" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center justify-between gap-1">
+                            <p className="text-sm font-medium truncate">{activity.employee_name}</p>
+                            <span className="text-[10px] text-muted-foreground shrink-0 font-mono">
+                              {fmtActivityTime(activity.timestamp)}
+                            </span>
+                          </div>
+                          <p className="text-xs text-muted-foreground truncate">{activity.message}</p>
+                        </div>
+                      </div>
+                    );
+                  })
+              )}
             </div>
           </CardContent>
         </Card>
       </div>
 
-
+      {/* Workforce Attendance & Punctuality Trend Chart */}
+      <WorkforceAttendanceTrendChart />
 
       {/* Pending Leave Requests */}
       <Card>
@@ -666,7 +691,7 @@ export default function HRMSDashboard() {
               <Calendar className="h-5 w-5 text-muted-foreground" />
               <CardTitle>Today's Leave Requests</CardTitle>
               {pendingLeaves.length > 0 && (
-                <span className="inline-flex items-center justify-center h-5 min-w-5 px-1.5 rounded-full bg-yellow-500 text-white text-[10px] font-bold">
+                <span className="inline-flex items-center justify-center h-5 min-w-5 px-1.5 rounded-full bg-secondary-foreground dark:bg-primary text-white text-[10px] font-bold">
                   {pendingLeaves.length}
                 </span>
               )}
@@ -703,19 +728,31 @@ export default function HRMSDashboard() {
                       </p>
                     </div>
                     <div className="flex gap-1.5 shrink-0">
-                      <Button size="sm" variant="outline" disabled={isBusy}
-                        className="h-7 px-2 text-xs text-green-600 hover:bg-green-500"
-                        onClick={() => approvePaidMutation.mutate(req.id)}>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        disabled={isBusy}
+                        className="h-7 px-2 text-xs border-emerald-500/60 text-emerald-600 dark:text-emerald-400 hover:bg-secondary-foreground dark:hover:bg-primary hover:text-white dark:hover:text-white hover:border-emerald-600 transition-colors"
+                        onClick={() => approvePaidMutation.mutate(req.id)}
+                      >
                         <DollarSign className="h-3 w-3 mr-1" /> Paid
                       </Button>
-                      <Button size="sm" variant="outline" disabled={isBusy}
-                        className="h-7 px-2 text-xs text-orange-600 hover:bg-orange-500"
-                        onClick={() => approveUnpaidMutation.mutate(req.id)}>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        disabled={isBusy}
+                        className="h-7 px-2 text-xs border-orange-500/60 text-orange-600 dark:text-orange-400 hover:bg-secondary-foreground dark:hover:bg-primary hover:text-white dark:hover:text-white hover:border-none transition-colors"
+                        onClick={() => approveUnpaidMutation.mutate(req.id)}
+                      >
                         <Banknote className="h-3 w-3 mr-1" /> Unpaid
                       </Button>
-                      <Button size="sm" variant="outline" disabled={isBusy}
-                        className="h-7 px-2 text-xs text-red-600 hover:bg-red-500"
-                        onClick={() => rejectMutation.mutate(req.id)}>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        disabled={isBusy}
+                        className="h-7 px-2 text-xs border-destructive text-destructive hover:bg-destructive hover:text-white hover:border-destructive transition-colors"
+                        onClick={() => rejectMutation.mutate(req.id)}
+                      >
                         <XCircle className="h-3 w-3 mr-1" /> Reject
                       </Button>
                     </div>

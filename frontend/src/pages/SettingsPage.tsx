@@ -508,6 +508,7 @@ function OrganizationSettings() {
     userRole?.role === "admin" || userRole?.role === "super_admin";
 
   const [orgName, setOrgName] = useState(organization?.name || "");
+  const [orgAddress, setOrgAddress] = useState(organization?.address || "");
   const [attendanceMachineIp, setAttendanceMachineIp] = useState(
     (organization as any)?.attendance_machine_ip || "",
   );
@@ -522,6 +523,7 @@ function OrganizationSettings() {
   useEffect(() => {
     if (organization) {
       if (organization.name) setOrgName(organization.name);
+      setOrgAddress(organization.address || "");
       setAttendanceMachineIp((organization as any).attendance_machine_ip || "");
       setWorkingHoursPerDay((organization as any).working_hours_per_day || 9.0);
       setBreakTimeHours((organization as any).break_time_hours || 1.0);
@@ -541,6 +543,7 @@ function OrganizationSettings() {
     try {
       await api.put(`/organizations/${organization.id}`, {
         name: orgName,
+        address: orgAddress,
         attendance_machine_ip: attendanceMachineIp,
         working_hours_per_day: Number(workingHoursPerDay),
         break_time_hours: Number(breakTimeHours),
@@ -569,7 +572,7 @@ function OrganizationSettings() {
           </CardTitle>
           <CardDescription>
             {isSuperAdmin
-              ? "Only Super Admin can change organization name"
+              ? "Only Super Admin can change organization details"
               : "View your organization information"}
           </CardDescription>
         </CardHeader>
@@ -587,13 +590,16 @@ function OrganizationSettings() {
               />
             </div>
 
-            {/* Domain — always read-only */}
+            {/* Organization Address — editable by super_admin */}
             <div className="space-y-2">
-              <Label>Domain</Label>
+              <Label htmlFor="orgAddress">Organization Address</Label>
               <Input
-                value={organization?.domain || "—"}
-                disabled
-                className="bg-muted"
+                id="orgAddress"
+                placeholder="e.g. Office #101, Business Center, City"
+                value={orgAddress}
+                onChange={(e) => setOrgAddress(e.target.value)}
+                disabled={!isSuperAdmin}
+                className={!isSuperAdmin ? "bg-muted" : ""}
               />
             </div>
 

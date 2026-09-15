@@ -7,6 +7,7 @@ const {
   getAttendance,
   getTodayAttendance,
   getMyTodayAttendance,
+  getAttendanceTrend,
   clockIn,
   clockOut,
   startBreak,
@@ -24,6 +25,7 @@ router.get('/activities', getActivities);
 
 // Attendance routes
 router.get('/attendance', getAttendance);
+router.get('/attendance/trend', getAttendanceTrend);
 router.get('/attendance/today', getTodayAttendance);
 router.get('/attendance/my-today', getMyTodayAttendance);
 router.get('/attendance/my-history', myHistory);

@@ -129,12 +129,12 @@ const getActivities = async (req, res, next) => {
         'clock_in' as type,
         COALESCE(e.name, e.first_name || ' ' || e.last_name, e.first_name, 'Unknown') as employee_name,
         'Clocked in at ' || TO_CHAR(a.clock_in, 'HH24:MI') as message,
-        a.clock_in as timestamp,
+        COALESCE(a.created_at, a.clock_in)::timestamptz as timestamp,
         a.status
       FROM attendance a
       JOIN employees e ON a.employee_id = e.id
       WHERE a.org_id = $1 AND a.clock_in IS NOT NULL
-      AND a.clock_in >= CURRENT_DATE
+      AND a.date >= CURRENT_DATE - INTERVAL '7 days'
       
       UNION ALL
       
@@ -142,27 +142,30 @@ const getActivities = async (req, res, next) => {
         'clock_out' as type,
         COALESCE(e.name, e.first_name || ' ' || e.last_name, e.first_name, 'Unknown') as employee_name,
         'Clocked out at ' || TO_CHAR(a.clock_out, 'HH24:MI') as message,
-        a.clock_out as timestamp,
+        COALESCE(a.updated_at, a.created_at, a.clock_out)::timestamptz as timestamp,
         a.status
       FROM attendance a
       JOIN employees e ON a.employee_id = e.id
       WHERE a.org_id = $1 AND a.clock_out IS NOT NULL
-      AND a.clock_out >= CURRENT_DATE
+      AND a.date >= CURRENT_DATE - INTERVAL '7 days'
       
       UNION ALL
       
       SELECT 
-        'leave_request' as type,
+        CASE WHEN lr.status = 'approved' THEN 'leave_approved' ELSE 'leave_request' END as type,
         COALESCE(e.name, e.first_name || ' ' || e.last_name, e.first_name, 'Unknown') as employee_name,
-        'Requested ' || lt.name || ' from ' || TO_CHAR(lr.start_date, 'Mon DD') as message,
-        lr.created_at as timestamp,
+        CASE 
+          WHEN lr.status = 'approved' THEN 'Approved ' || lt.name || ' (' || TO_CHAR(lr.start_date, 'Mon DD') || ')'
+          ELSE 'Requested ' || lt.name || ' from ' || TO_CHAR(lr.start_date, 'Mon DD')
+        END as message,
+        COALESCE(lr.updated_at, lr.created_at)::timestamptz as timestamp,
         lr.status
       FROM leave_requests lr
       JOIN employees e ON lr.employee_id = e.id
       JOIN leave_types lt ON lr.leave_type_id = lt.id
       WHERE lr.org_id = $1
       AND lr.status != 'cancelled'
-      AND lr.created_at >= CURRENT_DATE
+      AND lr.created_at >= CURRENT_DATE - INTERVAL '7 days'
       
       ORDER BY timestamp DESC
       LIMIT $2
@@ -677,6 +680,95 @@ const getMyHistory = async (req, res, next) => {
   }
 };
 
+const getAttendanceTrend = async (req, res, next) => {
+  try {
+    const days = Math.min(30, Math.max(5, parseInt(req.query.days, 10) || 7));
+    const orgId = req.user.orgId;
+
+    // 1. Total active employees in org (excluding super_admin)
+    const empRes = await db.query(`
+      SELECT COUNT(DISTINCT e.id) as total
+      FROM employees e
+      LEFT JOIN users u ON e.user_id = u.id OR LOWER(u.email) = LOWER(e.email)
+      WHERE e.org_id = $1 
+        AND e.status = 'active'
+        AND (u.role IS NULL OR u.role != 'super_admin')
+    `, [orgId]);
+    const totalEmployees = parseInt(empRes.rows[0]?.total, 10) || 0;
+
+    // 2. Query attendance grouped by date for the last N days
+    const trendRes = await db.query(`
+      SELECT
+        TO_CHAR(a.date, 'YYYY-MM-DD') as full_date,
+        TO_CHAR(a.date, 'MM-DD') as date,
+        COUNT(DISTINCT CASE WHEN a.clock_in IS NOT NULL OR a.status IN ('present', 'half_day', 'late') THEN a.employee_id END) as present,
+        COUNT(DISTINCT CASE WHEN a.punctuality = 'late' OR a.status = 'late' THEN a.employee_id END) as late,
+        COUNT(DISTINCT CASE WHEN a.status = 'absent' THEN a.employee_id END) as explicit_absent
+      FROM attendance a
+      JOIN employees e ON a.employee_id = e.id
+      LEFT JOIN users u ON e.user_id = u.id OR LOWER(u.email) = LOWER(e.email)
+      WHERE a.org_id = $1
+        AND a.date >= CURRENT_DATE - ($2 || ' days')::INTERVAL
+        AND (u.role IS NULL OR u.role != 'super_admin')
+      GROUP BY a.date
+      ORDER BY a.date ASC
+    `, [orgId, days]);
+
+    // 3. Query approved leaves per date for absent calculation
+    const leavesRes = await db.query(`
+      SELECT
+        TO_CHAR(d::date, 'YYYY-MM-DD') as full_date,
+        COUNT(DISTINCT lr.employee_id) as on_leave
+      FROM generate_series(CURRENT_DATE - ($2 || ' days')::INTERVAL, CURRENT_DATE, '1 day'::interval) d
+      LEFT JOIN leave_requests lr
+        ON lr.org_id = $1 
+        AND lr.status = 'approved'
+        AND d::date BETWEEN lr.start_date AND lr.end_date
+      GROUP BY d::date
+    `, [orgId, days]);
+
+    const leavesMap = new Map(leavesRes.rows.map(r => [r.full_date, parseInt(r.on_leave, 10) || 0]));
+    const attMap = new Map(trendRes.rows.map(r => [r.full_date, r]));
+
+    // Generate continuous series for all days in range
+    const result = [];
+    for (let i = days - 1; i >= 0; i--) {
+      const d = new Date();
+      d.setDate(d.getDate() - i);
+      const fullDate = d.toISOString().split('T')[0];
+      const month = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      const dateLabel = `${month}-${day}`;
+
+      const att = attMap.get(fullDate);
+      const present = att ? parseInt(att.present, 10) || 0 : 0;
+      const late = att ? parseInt(att.late, 10) || 0 : 0;
+      const onLeave = leavesMap.get(fullDate) || 0;
+      const explicitAbsent = att ? parseInt(att.explicit_absent, 10) || 0 : 0;
+
+      const dayOfWeek = d.getDay(); // 0 is Sunday, 6 is Saturday
+      const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
+
+      let absent = explicitAbsent;
+      if (!isWeekend && totalEmployees > 0 && present > 0) {
+        absent = Math.max(0, totalEmployees - present - onLeave);
+      }
+
+      result.push({
+        full_date: fullDate,
+        date: dateLabel,
+        present,
+        late,
+        absent,
+      });
+    }
+
+    res.json(result);
+  } catch (err) {
+    next(err);
+  }
+};
+
 module.exports = {
   getStats,
   getActivities,
@@ -684,6 +776,7 @@ module.exports = {
   getTodayAttendance,
   getMyTodayAttendance,
   getMyHistory,
+  getAttendanceTrend,
   clockIn,
   clockOut,
   startBreak,

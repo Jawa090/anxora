@@ -6,8 +6,12 @@ interface Organization {
   id: string;
   name: string;
   domain: string | null;
+  address?: string | null;
   logo_url: string | null;
   settings: Record<string, unknown>;
+  attendance_machine_ip?: string | null;
+  working_hours_per_day?: number | null;
+  break_time_hours?: number | null;
 }
 
 interface RolePermission {

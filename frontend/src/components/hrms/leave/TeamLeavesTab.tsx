@@ -134,7 +134,7 @@ function YearPicker({ value, onChange, onClose }: { value: string; onChange: (v:
   );
 }
 
-const MONTH_ABBR = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+const MONTH_ABBR = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
 function MonthPicker({ value, onChange, onClose }: { value: string; onChange: (v: string) => void; onClose: () => void }) {
   return (
@@ -528,7 +528,7 @@ export default function TeamLeavesTab() {
                             <h3 className="font-semibold">
                               {request.employee_name}
                             </h3>
-                            <p className="text-sm text-gray-600">
+                            <p className="text-sm text-gray-400">
                               {request.department || "No Department"}
                             </p>
                           </div>
@@ -554,8 +554,8 @@ export default function TeamLeavesTab() {
                               <p className="font-medium whitespace-nowrap">
                                 {request.leave_type_name}
                               </p>
-                              <span className="flex items-center gap-1 text-gray-600 whitespace-nowrap">
-                                <Calendar className="h-3 w-3" />
+                              <span className="flex items-center gap-1 text-muted-foreground whitespace-nowrap">
+                                <Calendar className="h-3.5 w-3.5" />
                                 {format(new Date(request.start_date), "MMM d")} –{" "}
                                 {format(new Date(request.end_date), "MMM d, yyyy")}
                               </span>
@@ -563,16 +563,19 @@ export default function TeamLeavesTab() {
                                 {duration} day{duration > 1 ? "s" : ""}
                               </span>
                               {request.emergency && (
-                                <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200 whitespace-nowrap">
+                                <Badge variant="outline" className="bg-red-500/15 text-red-600 dark:text-red-400 border-red-500/30 whitespace-nowrap">
                                   <AlertCircle className="h-3 w-3 mr-1" />
                                   Emergency
                                 </Badge>
                               )}
-                              <p className="text-sm dark:text-white truncate flex-1">
-                                <span className="font-semibold text-blue-700">Reason:</span>{" "}
+                            </div>
+
+                            {request.reason && (
+                              <p className="text-sm text-foreground/90 mt-1">
+                                <span className="font-semibold text-primary">Reason:</span>{" "}
                                 {request.reason}
                               </p>
-                            </div>
+                            )}
 
                             {/* Leave Balance */}
                             {request.status === "pending" && request.all_balances && request.all_balances.length > 0 ? (
@@ -624,7 +627,7 @@ export default function TeamLeavesTab() {
                         <div className="flex flex-row gap-1.5 shrink-0 flex-wrap justify-end">
                           <Button
                             size="sm"
-                            className="h-7 text-xs bg-emerald-600 hover:bg-emerald-700 text-white px-2"
+                            className="h-7 text-xs px-2"
                             onClick={() => approvePaidMutation.mutate(request.id)}
                             disabled={approvePaidMutation.isPending || approveUnpaidMutation.isPending}
                           >
@@ -633,7 +636,7 @@ export default function TeamLeavesTab() {
                           </Button>
                           <Button
                             size="sm"
-                            className="h-7 text-xs bg-orange-500 hover:bg-orange-600 text-white px-2"
+                            className="h-7 text-xs px-2"
                             onClick={() => approveUnpaidMutation.mutate(request.id)}
                             disabled={approvePaidMutation.isPending || approveUnpaidMutation.isPending}
                           >
@@ -643,7 +646,7 @@ export default function TeamLeavesTab() {
                           <Button
                             size="sm"
                             variant="outline"
-                            className="h-7 text-xs text-red-600 border-red-300 hover:bg-red-50 px-2"
+                            className="h-7 text-xs text-destructive hover:text-destructive border-destructive hover:bg-destructive/30 px-2"
                             onClick={() => {
                               setSelectedRequest(request);
                               setRejectDialog(true);

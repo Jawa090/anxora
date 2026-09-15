@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
+import { DatePicker } from "@/components/ui/date-picker";
 import { api } from "@/lib/api";
 import { toast } from "sonner";
 import { differenceInDays } from "date-fns";
@@ -39,6 +40,7 @@ export default function RequestLeaveDialog({ open, onOpenChange, balances }: Req
   });
 
   const selectedBalance = balances.find((b) => b.leave_type_id === formData.leave_type_id) || null;
+  const selectedLeaveType = leaveTypes.find((lt: any) => lt.id === formData.leave_type_id) || null;
   const daysRequested =
     formData.start_date && formData.end_date
       ? differenceInDays(new Date(formData.end_date), new Date(formData.start_date)) + 1
@@ -82,17 +84,25 @@ export default function RequestLeaveDialog({ open, onOpenChange, balances }: Req
       return;
     }
 
+    const requestedDays = formData.half_day ? 0.5 : daysRequested;
+    if (selectedLeaveType?.max_consecutive_days && requestedDays > selectedLeaveType.max_consecutive_days) {
+      toast.error(
+        `Maximum consecutive days allowed for ${selectedLeaveType.name} is ${selectedLeaveType.max_consecutive_days} days`
+      );
+      return;
+    }
+
     // Don't block submit on zero balance — HR will decide paid/unpaid
 
     createMutation.mutate({
       ...formData,
-      days_requested: formData.half_day ? 0.5 : daysRequested,
+      days_requested: requestedDays,
     });
   };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Request Leave</DialogTitle>
           <DialogDescription>Submit a new leave request for approval</DialogDescription>
@@ -119,11 +129,11 @@ export default function RequestLeaveDialog({ open, onOpenChange, balances }: Req
                       <SelectItem key={lt.id} value={lt.id}>
                         <div className="flex items-center justify-between w-full">
                           <span>{lt.name}</span>
-                          {bal && (
+                          {/* {bal && (
                             <span className="text-xs text-gray-500 ml-4">
                               {bal.available} / {bal.total_allocated} days
                             </span>
-                          )}
+                          )} */}
                         </div>
                       </SelectItem>
                     );
@@ -156,36 +166,54 @@ export default function RequestLeaveDialog({ open, onOpenChange, balances }: Req
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label>Start Date *</Label>
-              <Input
-                type="date"
+              <DatePicker
                 value={formData.start_date}
-                onChange={(e) => setFormData({ ...formData, start_date: e.target.value })}
-                min={new Date().toISOString().split("T")[0]}
+                onChange={(val) => {
+                  setFormData((prev) => ({
+                    ...prev,
+                    start_date: val,
+                    end_date: prev.end_date && prev.end_date < val ? val : prev.end_date,
+                  }));
+                }}
+                placeholder="Select start date"
               />
             </div>
             <div className="space-y-2">
               <Label>End Date *</Label>
-              <Input
-                type="date"
+              <DatePicker
                 value={formData.end_date}
-                onChange={(e) => setFormData({ ...formData, end_date: e.target.value })}
-                min={formData.start_date || new Date().toISOString().split("T")[0]}
+                onChange={(val) => setFormData((prev) => ({ ...prev, end_date: val }))}
+                placeholder="Select end date"
               />
             </div>
           </div>
 
           {/* Duration Display */}
           {formData.start_date && formData.end_date && (
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-              <p className="text-sm text-blue-900">
-                <strong>Duration:</strong> {daysRequested} day{daysRequested > 1 ? "s" : ""}
-                {selectedBalance && daysRequested > selectedBalance.available && (
+            <div className=" border border-gray-200 rounded-lg p-3 space-y-1">
+              <p className="text-sm text-foreground">
+                <strong>Duration:</strong> {formData.half_day ? 0.5 : daysRequested} day{(formData.half_day ? 0.5 : daysRequested) > 1 ? "s" : ""}
+                {selectedBalance && (formData.half_day ? 0.5 : daysRequested) > selectedBalance.available && (
                   <span className="text-red-600 ml-2">
                     <AlertCircle className="h-3.5 w-3.5 inline mr-1" />
                     Exceeds available balance
                   </span>
                 )}
               </p>
+              {selectedLeaveType?.max_consecutive_days && (
+                <p className={cn(
+                  "text-xs flex items-center gap-1",
+                  (formData.half_day ? 0.5 : daysRequested) > selectedLeaveType.max_consecutive_days
+                    ? "text-red-600 font-semibold"
+                    : "text-foreground"
+                )}>
+                  <AlertCircle className="h-3.5 w-3.5 inline shrink-0" />
+                  Max consecutive limit: {selectedLeaveType.max_consecutive_days} days
+                  {(formData.half_day ? 0.5 : daysRequested) > selectedLeaveType.max_consecutive_days && (
+                    <span>(Exceeds limit by {(formData.half_day ? 0.5 : daysRequested) - selectedLeaveType.max_consecutive_days} days)</span>
+                  )}
+                </p>
+              )}
             </div>
           )}
 
@@ -239,8 +267,8 @@ export default function RequestLeaveDialog({ open, onOpenChange, balances }: Req
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
-          <Button 
-            onClick={handleSubmit} 
+          <Button
+            onClick={handleSubmit}
             disabled={createMutation.isPending || leaveTypes.length === 0}
           >
             {createMutation.isPending ? "Submitting..." : "Submit Request"}

@@ -6,7 +6,20 @@ import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Users, Clock } from "lucide-react";
 import { api } from "@/lib/api";
-import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isSameDay, addMonths, subMonths, isWithinInterval, parseISO, startOfWeek, endOfWeek } from "date-fns";
+import {
+  format,
+  startOfMonth,
+  endOfMonth,
+  eachDayOfInterval,
+  isSameMonth,
+  isSameDay,
+  addMonths,
+  subMonths,
+  isWithinInterval,
+  parseISO,
+  startOfWeek,
+  endOfWeek,
+} from "date-fns";
 
 function getInitials(name: string) {
   return name.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2);
@@ -15,10 +28,10 @@ function getInitials(name: string) {
 export default function LeaveCalendarTab() {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDay, setSelectedDay] = useState<Date | null>(null);
-  
+
   const monthStart = startOfMonth(currentDate);
   const monthEnd = endOfMonth(currentDate);
-  
+
   // Get calendar range (including days from prev/next month to fill grid)
   const calendarStart = startOfWeek(monthStart);
   const calendarEnd = endOfWeek(monthEnd);
@@ -27,10 +40,11 @@ export default function LeaveCalendarTab() {
   // Fetch calendar data
   const { data: calendarResp, isLoading } = useQuery({
     queryKey: ["leave-calendar", format(monthStart, "yyyy-MM-dd"), format(monthEnd, "yyyy-MM-dd")],
-    queryFn: () => api.get("/leave/calendar/view", {
-      startDate: format(monthStart, "yyyy-MM-dd"),
-      endDate: format(monthEnd, "yyyy-MM-dd"),
-    }),
+    queryFn: () =>
+      api.get("/leave/calendar/view", {
+        startDate: format(monthStart, "yyyy-MM-dd"),
+        endDate: format(monthEnd, "yyyy-MM-dd"),
+      }),
   });
 
   const leaves = (calendarResp as any)?.data || [];
@@ -62,26 +76,41 @@ export default function LeaveCalendarTab() {
     <div className="space-y-6">
       {/* Header with Stats */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        <Card className="lg:col-span-2">
+        <Card className="lg:col-span-2 border border-border/40 bg-card rounded-[22px] shadow-sm">
           <CardHeader className="pb-3">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div>
-                <CardTitle className="text-2xl font-bold">
+                <CardTitle className="text-xl sm:text-2xl font-bold text-foreground">
                   {format(currentDate, "MMMM yyyy")}
                 </CardTitle>
-                <p className="text-sm text-gray-600 mt-1">Team Leave Calendar</p>
+                <p className="text-sm text-muted-foreground mt-0.5">Team Leave Calendar</p>
               </div>
               <div className="flex items-center gap-2">
-                <Button variant="outline" size="sm" onClick={handleToday}>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleToday}
+                  className="px-4 rounded-lg border-primary/20 bg-primary hover:bg-primary/90 text-primary-foreground font-semibold shadow-md shadow-primary/20 transition-all"
+                >
                   <CalendarIcon className="h-4 w-4 mr-2" />
                   Today
                 </Button>
-                <div className="flex items-center border rounded-lg">
-                  <Button variant="ghost" size="icon" className="h-9 w-9" onClick={handlePrevMonth}>
+                <div className="flex items-center border border-border/40 rounded-lg overflow-hidden bg-muted/10">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-9 w-9 hover:bg-primary/10 hover:text-primary transition-colors"
+                    onClick={handlePrevMonth}
+                  >
                     <ChevronLeft className="h-4 w-4" />
                   </Button>
-                  <div className="w-px h-6 bg-gray-200" />
-                  <Button variant="ghost" size="icon" className="h-9 w-9" onClick={handleNextMonth}>
+                  <div className="w-px h-6 bg-border/40" />
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-9 w-9 hover:bg-primary/10 hover:text-primary transition-colors"
+                    onClick={handleNextMonth}
+                  >
                     <ChevronRight className="h-4 w-4" />
                   </Button>
                 </div>
@@ -90,15 +119,17 @@ export default function LeaveCalendarTab() {
           </CardHeader>
         </Card>
 
-        <Card>
+        <Card className="border border-border/40 bg-card rounded-[22px] shadow-sm">
           <CardContent className="p-6">
             <div className="flex items-center gap-4">
-              <div className="h-12 w-12 rounded-full bg-blue-100 flex items-center justify-center">
-                <Users className="h-6 w-6 text-blue-600" />
+              <div className="h-12 w-12 rounded-xl bg-primary/10 flex items-center justify-center text-primary shadow-sm">
+                <Users className="h-6 w-6" />
               </div>
               <div>
-                <p className="text-sm text-gray-600">On Leave Today</p>
-                <p className="text-2xl font-bold">{totalLeavesToday}</p>
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                  On Leave Today
+                </p>
+                <p className="text-3xl font-extrabold text-foreground">{totalLeavesToday}</p>
               </div>
             </div>
           </CardContent>
@@ -107,26 +138,29 @@ export default function LeaveCalendarTab() {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Calendar Grid */}
-        <Card className="lg:col-span-2">
-          <CardContent className="p-6">
+        <Card className="lg:col-span-2 border border-border/40 bg-card rounded-[22px] overflow-hidden shadow-sm">
+          <CardContent className="p-0">
             {isLoading ? (
-              <div className="text-center py-12">
-                <Clock className="h-12 w-12 text-gray-300 mx-auto mb-3 animate-spin" />
-                <p className="text-gray-500">Loading calendar...</p>
+              <div className="text-center py-24">
+                <Clock className="h-10 w-10 text-primary/60 mx-auto mb-3 animate-spin" />
+                <p className="text-sm text-muted-foreground">Loading calendar...</p>
               </div>
             ) : (
-              <div className="space-y-3">
+              <div>
                 {/* Weekday Headers */}
-                <div className="grid grid-cols-7 gap-2">
+                <div className="grid grid-cols-7 border-b border-border/40 bg-muted/20">
                   {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((day) => (
-                    <div key={day} className="text-center font-semibold text-sm text-gray-700 py-2">
+                    <div
+                      key={day}
+                      className="p-3 sm:p-4 text-center text-xs sm:text-sm font-semibold text-foreground/80 border-r border-border/40 last:border-r-0"
+                    >
                       {day}
                     </div>
                   ))}
                 </div>
 
                 {/* Calendar Days */}
-                <div className="grid grid-cols-7 gap-2">
+                <div className="grid grid-cols-7">
                   {calendarDays.map((day) => {
                     const dayLeaves = getLeavesForDay(day);
                     const isToday = isSameDay(day, new Date());
@@ -134,52 +168,67 @@ export default function LeaveCalendarTab() {
                     const isSelected = selectedDay && isSameDay(day, selectedDay);
 
                     return (
-                      <button
+                      <div
                         key={day.toISOString()}
                         onClick={() => setSelectedDay(day)}
                         className={`
-                          min-h-[100px] border rounded-lg p-2 text-left transition-all duration-200
-                          ${isSelected ? "ring-2 ring-blue-500 border-blue-500 bg-blue-50" : "border-gray-200"}
-                          ${isToday && !isSelected ? "border-blue-400 bg-blue-50/50" : ""}
-                          ${!isCurrentMonth ? "opacity-40 bg-gray-50" : "bg-white hover:bg-gray-50 hover:border-gray-300"}
-                          ${dayLeaves.length > 0 ? "hover:shadow-md" : ""}
+                          min-h-[110px] p-2.5 sm:p-3 border-r border-b border-border/40 last:border-r-0 cursor-pointer transition-all duration-200 text-left
+                          ${!isCurrentMonth ? "bg-muted/10 text-muted-foreground/40" : "hover:bg-muted/10"}
+                          ${isToday && isCurrentMonth ? "ring-2 ring-inset ring-primary/30 bg-primary/5" : ""}
+                          ${isSelected ? "ring-2 ring-inset ring-primary bg-primary/10" : ""}
                         `}
                       >
-                        <div className="h-full flex flex-col">
-                          <div className={`
-                            text-sm font-semibold mb-1.5 flex items-center justify-between
-                            ${isToday ? "text-blue-600" : isCurrentMonth ? "text-gray-900" : "text-gray-500"}
-                          `}>
-                            <span>{format(day, "d")}</span>
-                            {dayLeaves.length > 0 && (
-                              <span className="text-xs bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded-full font-medium">
-                                {dayLeaves.length}
-                              </span>
-                            )}
-                          </div>
-                          
-                          <div className="flex-1 space-y-1 overflow-hidden">
-                            {dayLeaves.slice(0, 2).map((leave: any) => (
-                              <div
-                                key={leave.id}
-                                className="text-xs px-2 py-1 rounded font-medium truncate shadow-sm"
-                                style={{ 
-                                  backgroundColor: leave.leave_type_color,
-                                  color: "white"
-                                }}
-                                title={`${leave.employee_name} - ${leave.leave_type_name}`}
-                              >
-                                {leave.employee_name.split(" ")[0]}
-                              </div>
-                            ))}
-                            {dayLeaves.length > 2 && (
-                              <div className="text-xs text-gray-600 px-2 py-1 bg-gray-100 rounded font-medium">
-                                +{dayLeaves.length - 2} more
-                              </div>
-                            )}
-                          </div>
+                        <div className="flex items-start justify-between mb-2">
+                          {/* Month indicator for days outside current month */}
+                          {!isCurrentMonth ? (
+                            <span className="text-[11px] text-muted-foreground/50 font-medium">
+                              {format(day, "MMM")}
+                            </span>
+                          ) : (
+                            <span />
+                          )}
+
+                          {/* Date number */}
+                          <span
+                            className={`
+                              text-sm font-semibold transition-all duration-200
+                              ${isToday
+                                ? "w-7 h-7 rounded-full bg-primary text-primary-foreground flex items-center justify-center font-bold shadow-md shadow-primary/20"
+                                : ""
+                              }
+                              ${!isCurrentMonth ? "text-muted-foreground/40" : "text-foreground"}
+                            `}
+                          >
+                            {format(day, "d")}
+                          </span>
                         </div>
-                      </button>
+
+                        {/* Leave pills */}
+                        <div className="space-y-1.5">
+                          {dayLeaves.slice(0, 2).map((leave: any) => (
+                            <div
+                              key={leave.id}
+                              className="text-xs leading-tight px-2 py-1 rounded-md text-white font-medium truncate shadow-sm transition-opacity hover:opacity-90 cursor-pointer"
+                              style={{
+                                backgroundColor: leave.leave_type_color || "#14858E",
+                              }}
+                              title={`${leave.employee_name} - ${leave.leave_type_name}`}
+                            >
+                              <div className="truncate font-semibold text-[11px]">
+                                {leave.employee_name}
+                              </div>
+                              <div className="truncate text-[9px] opacity-90 font-normal">
+                                {leave.leave_type_name}
+                              </div>
+                            </div>
+                          ))}
+                          {dayLeaves.length > 2 && (
+                            <span className="text-[11px] text-primary font-semibold hover:underline block pl-1 text-left w-full mt-1">
+                              +{dayLeaves.length - 2} more
+                            </span>
+                          )}
+                        </div>
+                      </div>
                     );
                   })}
                 </div>
@@ -189,72 +238,84 @@ export default function LeaveCalendarTab() {
         </Card>
 
         {/* Selected Day Details */}
-        <Card className="lg:col-span-1">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-lg">
+        <Card className="lg:col-span-1 border border-border/40 bg-card rounded-[22px] shadow-sm flex flex-col">
+          <CardHeader className="pb-3 border-b border-border/40">
+            <CardTitle className="text-lg font-bold text-foreground">
               {selectedDay ? format(selectedDay, "EEEE, MMMM d") : "Select a day"}
             </CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="p-5 flex-1">
             {!selectedDay ? (
-              <div className="text-center py-8">
-                <CalendarIcon className="h-12 w-12 text-gray-300 mx-auto mb-3" />
-                <p className="text-sm text-gray-500">Click on a day to view leave details</p>
+              <div className="text-center py-12">
+                <CalendarIcon className="h-10 w-10 text-muted-foreground/40 mx-auto mb-3" />
+                <p className="text-sm text-muted-foreground">Click on a day to view leave details</p>
               </div>
             ) : selectedDayLeaves.length === 0 ? (
-              <div className="text-center py-8">
-                <Users className="h-12 w-12 text-gray-300 mx-auto mb-3" />
-                <p className="text-sm text-gray-500">No leaves on this day</p>
+              <div className="text-center py-12">
+                <Users className="h-10 w-10 text-muted-foreground/40 mx-auto mb-3" />
+                <p className="text-sm text-muted-foreground">No leaves on this day</p>
               </div>
             ) : (
               <div className="space-y-3">
-                <div className="flex items-center gap-2 text-sm text-gray-600 mb-4">
-                  <Users className="h-4 w-4" />
-                  <span>{selectedDayLeaves.length} employee{selectedDayLeaves.length > 1 ? "s" : ""} on leave</span>
+                <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground mb-4">
+                  <Users className="h-4 w-4 text-primary" />
+                  <span>
+                    {selectedDayLeaves.length} employee
+                    {selectedDayLeaves.length > 1 ? "s" : ""} on leave
+                  </span>
                 </div>
-                
+
                 {selectedDayLeaves.map((leave: any) => (
                   <div
                     key={leave.id}
-                    className="p-3 border rounded-lg hover:shadow-md transition-shadow bg-white"
+                    className="p-3.5 border border-border/40 rounded-xl bg-card hover:border-primary/40 hover:bg-muted/10 transition-all shadow-sm"
                   >
                     <div className="flex items-start gap-3">
-                      <Avatar className="h-10 w-10 shrink-0">
-                        <AvatarFallback 
-                          className="text-white font-semibold text-sm"
-                          style={{ backgroundColor: leave.leave_type_color }}
+                      <Avatar className="h-9 w-9 shrink-0">
+                        <AvatarFallback
+                          className="text-white font-semibold text-xs shadow-sm"
+                          style={{ backgroundColor: leave.leave_type_color || "#14858E" }}
                         >
                           {getInitials(leave.employee_name)}
                         </AvatarFallback>
                       </Avatar>
-                      
+
                       <div className="flex-1 min-w-0">
-                        <p className="font-semibold text-sm mb-1">{leave.employee_name}</p>
-                        <Badge 
-                          variant="outline" 
-                          className="text-xs mb-2"
-                          style={{ 
-                            borderColor: leave.leave_type_color,
-                            color: leave.leave_type_color 
+                        <div className="flex items-center gap-2">
+                          <p className="font-semibold text-sm text-foreground mb-1">
+                            {leave.employee_name}
+                          </p>
+                          {leave.department && (
+                            <div className="text-xs text-muted-foreground/80">({leave.department})</div>
+                          )}
+                        </div>
+
+                        <Badge
+                          variant="outline"
+                          className="text-[11px] mb-2 font-medium"
+                          style={{
+                            borderColor: leave.leave_type_color || "#14858E",
+                            color: leave.leave_type_color || "#14858E",
                           }}
                         >
                           {leave.leave_type_name}
                         </Badge>
-                        
-                        <div className="text-xs text-gray-600 space-y-1">
-                          <div className="flex items-center gap-1">
-                            <CalendarIcon className="h-3 w-3" />
+
+
+                        <div className="text-xs text-muted-foreground space-y-1">
+                          <div className="flex items-center gap-1.5">
+                            <CalendarIcon className="h-3 w-3 text-primary/70" />
                             <span>
-                              {format(parseISO(leave.start_date), "MMM d")} - {format(parseISO(leave.end_date), "MMM d")}
+                              {format(parseISO(leave.start_date), "MMM d")} -{" "}
+                              {format(parseISO(leave.end_date), "MMM d")}
                             </span>
                           </div>
                           <div>
-                            {leave.days_requested} day{leave.days_requested > 1 ? "s" : ""}
+                            {leave.days_requested} day
+                            {leave.days_requested > 1 ? "s" : ""}
                             {leave.half_day && " (Half Day)"}
                           </div>
-                          {leave.department && (
-                            <div className="text-gray-500">{leave.department}</div>
-                          )}
+
                         </div>
                       </div>
                     </div>
@@ -267,53 +328,58 @@ export default function LeaveCalendarTab() {
       </div>
 
       {/* Monthly Leave Summary */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Leave Summary - {format(currentDate, "MMMM yyyy")}</CardTitle>
+      <Card className="border border-border/40 bg-card rounded-[22px] shadow-sm">
+        <CardHeader className="pb-3 border-b border-border/40">
+          <CardTitle className="text-lg font-bold text-foreground">
+            Leave Summary - {format(currentDate, "MMMM yyyy")}
+          </CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="p-6">
           {isLoading ? (
-            <p className="text-center text-gray-500 py-8">Loading...</p>
+            <p className="text-center text-muted-foreground py-8">Loading...</p>
           ) : leaves.length === 0 ? (
             <div className="text-center py-8">
-              <CalendarIcon className="h-12 w-12 text-gray-300 mx-auto mb-3" />
-              <p className="text-gray-500">No approved leaves for this month</p>
+              <CalendarIcon className="h-10 w-10 text-muted-foreground/40 mx-auto mb-3" />
+              <p className="text-muted-foreground text-sm">No approved leaves for this month</p>
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
               {leaves.map((leave: any) => (
                 <div
                   key={leave.id}
-                  className="flex items-center gap-3 p-3 border rounded-lg hover:shadow-md transition-all bg-white"
+                  className="flex items-center gap-3 p-3.5 border border-border/40 rounded-xl bg-card hover:border-primary/40 hover:bg-muted/10 transition-all shadow-sm"
                 >
                   <div
-                    className="w-1 h-16 rounded-full shrink-0"
-                    style={{ backgroundColor: leave.leave_type_color }}
+                    className="w-1.5 h-12 rounded-full shrink-0"
+                    style={{ backgroundColor: leave.leave_type_color || "#14858E" }}
                   />
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1">
-                      <Avatar className="h-8 w-8">
-                        <AvatarFallback 
-                          className="text-white text-xs font-semibold"
-                          style={{ backgroundColor: leave.leave_type_color }}
+                      <Avatar className="h-7 w-7">
+                        <AvatarFallback
+                          className="text-white text-[10px] font-semibold"
+                          style={{ backgroundColor: leave.leave_type_color || "#14858E" }}
                         >
                           {getInitials(leave.employee_name)}
                         </AvatarFallback>
                       </Avatar>
-                      <span className="font-semibold text-sm truncate">{leave.employee_name}</span>
+                      <span className="font-semibold text-sm text-foreground truncate">
+                        {leave.employee_name}
+                      </span>
                     </div>
-                    <Badge 
-                      variant="outline" 
-                      className="text-xs mb-1"
-                      style={{ 
-                        borderColor: leave.leave_type_color,
-                        color: leave.leave_type_color 
+                    <Badge
+                      variant="outline"
+                      className="text-[10px] mb-1 font-medium"
+                      style={{
+                        borderColor: leave.leave_type_color || "#14858E",
+                        color: leave.leave_type_color || "#14858E",
                       }}
                     >
                       {leave.leave_type_name}
                     </Badge>
-                    <div className="text-xs text-gray-600">
-                      {format(parseISO(leave.start_date), "MMM d")} - {format(parseISO(leave.end_date), "MMM d")}
+                    <div className="text-xs text-muted-foreground">
+                      {format(parseISO(leave.start_date), "MMM d")} -{" "}
+                      {format(parseISO(leave.end_date), "MMM d")}
                       {" • "}
                       {leave.days_requested}d
                     </div>

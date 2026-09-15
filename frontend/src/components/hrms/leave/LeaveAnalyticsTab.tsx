@@ -25,10 +25,10 @@ export default function LeaveAnalyticsTab() {
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-600">Total Requests</p>
+                <p className="text-sm dark:text-gray-400">Total Requests</p>
                 <p className="text-2xl font-bold">{stats.total_requests || 0}</p>
               </div>
-              <Calendar className="h-8 w-8 text-blue-500" />
+              <Calendar className="h-8 w-8 text-primary" />
             </div>
           </CardContent>
         </Card>
@@ -36,8 +36,8 @@ export default function LeaveAnalyticsTab() {
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-600">Pending</p>
-                <p className="text-2xl font-bold text-yellow-600">{stats.pending || 0}</p>
+                <p className="text-sm dark:text-gray-400">Pending</p>
+                <p className="text-2xl font-bold dark:text-gray-400">{stats.pending || 0}</p>
               </div>
               <TrendingUp className="h-8 w-8 text-yellow-500" />
             </div>
@@ -47,8 +47,8 @@ export default function LeaveAnalyticsTab() {
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-600">Approved</p>
-                <p className="text-2xl font-bold text-green-600">{stats.approved || 0}</p>
+                <p className="text-sm dark:text-gray-400">Approved</p>
+                <p className="text-2xl font-bold dark:text-gray-400">{stats.approved || 0}</p>
               </div>
               <Users className="h-8 w-8 text-green-500" />
             </div>
@@ -58,8 +58,8 @@ export default function LeaveAnalyticsTab() {
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-600">Rejected</p>
-                <p className="text-2xl font-bold text-red-600">{stats.rejected || 0}</p>
+                <p className="text-sm dark:text-gray-400">Rejected</p>
+                <p className="text-2xl font-bold dark:text-gray-400">{stats.rejected || 0}</p>
               </div>
               <XCircle className="h-8 w-8 text-red-500" />
             </div>
@@ -69,7 +69,7 @@ export default function LeaveAnalyticsTab() {
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-600">Total Days Taken</p>
+                <p className="text-sm dark:text-gray-400">Total Days Taken</p>
                 <p className="text-2xl font-bold">{parseFloat(stats.total_days_taken || 0).toFixed(1)}</p>
               </div>
               <BarChart3 className="h-8 w-8 text-purple-500" />
@@ -98,7 +98,7 @@ export default function LeaveAnalyticsTab() {
                     <div key={type.name} className="space-y-2">
                       <div className="flex items-center justify-between text-sm">
                         <span className="font-medium">{type.name}</span>
-                        <span className="text-gray-600">
+                        <span className="dark:text-gray-400">
                           {daysTaken.toFixed(1)} days ({type.request_count || 0} requests)
                         </span>
                       </div>
@@ -132,18 +132,18 @@ export default function LeaveAnalyticsTab() {
                   const daysTaken = parseFloat(month.days_taken) || 0;
                   return (
                     <div key={month.month} className="flex items-center gap-3">
-                      <div className="w-12 text-sm font-medium text-gray-600">{month.month}</div>
+                      <div className="w-12 text-sm font-medium dark:text-gray-400">{month.month}</div>
                       <div className="flex-1">
                         <div className="h-8 bg-gray-100 rounded overflow-hidden">
                           <div
-                            className="h-full bg-blue-500 flex items-center px-2 text-white text-xs font-medium transition-all duration-300"
+                            className="h-full bg-primary flex items-center px-2 text-gray-600 text-xs font-medium transition-all duration-300"
                             style={{ width: `${Math.min((daysTaken / 50) * 100, 100)}%` }}
                           >
                             {daysTaken > 0 && `${daysTaken.toFixed(1)}d`}
                           </div>
                         </div>
                       </div>
-                      <div className="w-16 text-right text-xs text-gray-600">
+                      <div className="w-16 text-right text-xs dark:text-gray-400">
                         {month.request_count || 0} req
                       </div>
                     </div>
@@ -170,17 +170,17 @@ export default function LeaveAnalyticsTab() {
               <table className="w-full">
                 <thead>
                   <tr className="border-b">
-                    <th className="text-left py-3 px-4 font-semibold text-sm text-gray-700">Employee</th>
-                    <th className="text-left py-3 px-4 font-semibold text-sm text-gray-700">Department</th>
-                    <th className="text-center py-3 px-4 font-semibold text-sm text-gray-700">Requests</th>
-                    <th className="text-right py-3 px-4 font-semibold text-sm text-gray-700">Days Taken</th>
+                    <th className="text-left py-3 px-4 font-semibold text-sm dark:text-gray-300">Employee</th>
+                    <th className="text-left py-3 px-4 font-semibold text-sm dark:text-gray-300">Department</th>
+                    <th className="text-center py-3 px-4 font-semibold text-sm dark:text-gray-300">Requests</th>
+                    <th className="text-right py-3 px-4 font-semibold text-sm dark:text-gray-300">Days Taken</th>
                   </tr>
                 </thead>
                 <tbody>
                   {topEmployees.map((emp: any, idx: number) => (
                     <tr key={idx} className="border-b">
                       <td className="py-3 px-4 text-sm">{emp.employee_name}</td>
-                      <td className="py-3 px-4 text-sm text-gray-600">{emp.department || "N/A"}</td>
+                      <td className="py-3 px-4 text-sm dark:text-gray-300">{emp.department || "N/A"}</td>
                       <td className="py-3 px-4 text-sm text-center">{emp.request_count || 0}</td>
                       <td className="py-3 px-4 text-sm text-right font-semibold">
                         {parseFloat(emp.days_taken || 0).toFixed(1)}

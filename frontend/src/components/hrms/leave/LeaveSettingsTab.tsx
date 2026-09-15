@@ -23,8 +23,9 @@ export default function LeaveSettingsTab() {
     name: "",
     code: "",
     description: "",
-    color: "#3B82F6",
+    color: "#00D6C1",
     days_allowed: "",
+    max_consecutive_days: "",
     is_paid: true,
     requires_approval: true,
     can_carry_forward: false,
@@ -108,8 +109,9 @@ export default function LeaveSettingsTab() {
       name: "",
       code: "",
       description: "",
-      color: "#3B82F6",
+      color: "#00D6C1",
       days_allowed: "",
+      max_consecutive_days: "",
       is_paid: true,
       requires_approval: true,
       can_carry_forward: false,
@@ -125,6 +127,7 @@ export default function LeaveSettingsTab() {
       description: type.description || "",
       color: type.color,
       days_allowed: type.days_allowed.toString(),
+      max_consecutive_days: type.max_consecutive_days != null ? type.max_consecutive_days.toString() : "",
       is_paid: type.is_paid,
       requires_approval: type.requires_approval,
       can_carry_forward: type.can_carry_forward,
@@ -142,6 +145,7 @@ export default function LeaveSettingsTab() {
     createMutation.mutate({
       ...formData,
       days_allowed: parseInt(formData.days_allowed),
+      max_consecutive_days: formData.max_consecutive_days ? parseInt(formData.max_consecutive_days) : null,
     });
   };
 
@@ -156,6 +160,7 @@ export default function LeaveSettingsTab() {
       data: {
         ...formData,
         days_allowed: parseInt(formData.days_allowed),
+        max_consecutive_days: formData.max_consecutive_days ? parseInt(formData.max_consecutive_days) : null,
       },
     });
   };
@@ -187,7 +192,7 @@ export default function LeaveSettingsTab() {
             <CardContent className="p-8 text-center">
               <Settings className="h-12 w-12 text-gray-300 mx-auto mb-3" />
               <p className="text-gray-500 mb-4">No leave types configured</p>
-              <Button onClick={() => setCreateDialog(true)} variant="outline" className="gap-2">
+              <Button onClick={() => setCreateDialog(true)} variant="outline" className="gap-2 hover:bg-secondary-foreground dark:hover:bg-primary hover:text-white">
                 <Plus className="h-4 w-4" />
                 Add First Leave Type
               </Button>
@@ -196,27 +201,35 @@ export default function LeaveSettingsTab() {
         ) : (
           leaveTypes.map((type: any) => (
             <Card key={type.id} className="border-l-4" style={{ borderLeftColor: type.color }}>
-              <CardHeader className="pb-3">
+              <CardHeader className="p-4 pb-0">
                 <div className="flex items-start justify-between">
-                  <div>
+                  <div className="flex items-center gap-2 justify-center">
                     <CardTitle className="text-base">{type.name}</CardTitle>
-                    <p className="text-xs text-gray-500 mt-1">{type.code}</p>
+                    <p className="text-xs text-gray-300 pt-1">({type.code})</p>
                   </div>
                   <div className="flex gap-1">
                     <Button size="sm" variant="ghost" className="h-8 w-8 p-0" onClick={() => handleEdit(type)}>
                       <Edit className="h-4 w-4" />
                     </Button>
-                    <Button size="sm" variant="ghost" className="h-8 w-8 p-0 text-destructive hover:text-destructive" onClick={() => { setSelectedType(type); setDeleteDialog(true); }}>
+                    <Button size="sm" variant="ghost" className="h-8 w-8 p-0 text-destructive hover:text-destructive hover:bg-destructive/30" onClick={() => { setSelectedType(type); setDeleteDialog(true); }}>
                       <Trash2 className="h-4 w-4" />
                     </Button>
                   </div>
                 </div>
               </CardHeader>
-              <CardContent className="space-y-3">
+              <CardContent className="px-4 pb-4 pt-1 space-y-2">
                 <div className="flex items-center justify-between text-sm">
                   <span className="text-gray-600">Days Allowed</span>
                   <span className="font-semibold">{type.days_allowed}</span>
                 </div>
+                {type.max_consecutive_days ? (
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-gray-600">Max Consecutive Days</span>
+                    <span className="font-semibold text-emerald-600 dark:text-emerald-400">
+                      {type.max_consecutive_days} days
+                    </span>
+                  </div>
+                ) : null}
 
                 {type.description && <p className="text-xs text-gray-600">{type.description}</p>}
 
@@ -250,7 +263,7 @@ export default function LeaveSettingsTab() {
 
       {/* Create Dialog */}
       <Dialog open={createDialog} onOpenChange={setCreateDialog}>
-        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Create Leave Type</DialogTitle>
           </DialogHeader>
@@ -290,19 +303,30 @@ export default function LeaveSettingsTab() {
                 <Label>Days Allowed *</Label>
                 <Input
                   type="number"
+                  min="1"
                   value={formData.days_allowed}
                   onChange={(e) => setFormData({ ...formData, days_allowed: e.target.value })}
                   placeholder="e.g., 20"
                 />
               </div>
               <div className="space-y-2">
-                <Label>Color</Label>
+                <Label>Max Consecutive Days</Label>
                 <Input
-                  type="color"
-                  value={formData.color}
-                  onChange={(e) => setFormData({ ...formData, color: e.target.value })}
+                  type="number"
+                  min="1"
+                  value={formData.max_consecutive_days}
+                  onChange={(e) => setFormData({ ...formData, max_consecutive_days: e.target.value })}
+                  placeholder="e.g., 5"
                 />
               </div>
+            </div>
+            <div className="space-y-2">
+              <Label>Color</Label>
+              <Input
+                type="color"
+                value={formData.color}
+                onChange={(e) => setFormData({ ...formData, color: e.target.value })}
+              />
             </div>
 
             <div className="space-y-3">
@@ -424,7 +448,7 @@ export default function LeaveSettingsTab() {
 
       {/* Edit Dialog */}
       <Dialog open={editDialog} onOpenChange={setEditDialog}>
-        <DialogContent className="sm:max-w-lg">
+        <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Edit Leave Type</DialogTitle>
           </DialogHeader>
@@ -464,19 +488,30 @@ export default function LeaveSettingsTab() {
                 <Label>Days Allowed *</Label>
                 <Input
                   type="number"
+                  min="1"
                   value={formData.days_allowed}
                   onChange={(e) => setFormData({ ...formData, days_allowed: e.target.value })}
                   placeholder="e.g., 20"
                 />
               </div>
               <div className="space-y-2">
-                <Label>Color</Label>
+                <Label>Max Consecutive Days</Label>
                 <Input
-                  type="color"
-                  value={formData.color}
-                  onChange={(e) => setFormData({ ...formData, color: e.target.value })}
+                  type="number"
+                  min="1"
+                  value={formData.max_consecutive_days}
+                  onChange={(e) => setFormData({ ...formData, max_consecutive_days: e.target.value })}
+                  placeholder="e.g., 5"
                 />
               </div>
+            </div>
+            <div className="space-y-2">
+              <Label>Color</Label>
+              <Input
+                type="color"
+                value={formData.color}
+                onChange={(e) => setFormData({ ...formData, color: e.target.value })}
+              />
             </div>
 
             <div className="space-y-3">

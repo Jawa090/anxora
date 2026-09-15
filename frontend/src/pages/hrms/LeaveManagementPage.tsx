@@ -12,14 +12,29 @@ import { useAuth } from "@/contexts/AuthContext";
 
 export default function LeaveManagementPage() {
   const { userRole } = useAuth();
-  const isAdmin = userRole?.role === "super_admin" || userRole?.role === "admin" || userRole?.role === "manager";
+  const isSuperAdmin = userRole?.role === "super_admin";
+  const isAdmin = isSuperAdmin || userRole?.role === "admin" || userRole?.role === "manager";
   const [searchParams, setSearchParams] = useSearchParams();
-  const [activeTab, setActiveTab] = useState(() => searchParams.get("tab") || "my-leaves");
+  const defaultTab = isSuperAdmin ? "team-leaves" : "my-leaves";
+  const [activeTab, setActiveTab] = useState(() => {
+    const tab = searchParams.get("tab");
+    if (tab === "my-leaves" && isSuperAdmin) return "team-leaves";
+    return tab || defaultTab;
+  });
 
   useEffect(() => {
     const tab = searchParams.get("tab");
-    if (tab) setActiveTab(tab);
-  }, [searchParams]);
+    if (tab) {
+      if (isSuperAdmin && tab === "my-leaves") {
+        setActiveTab("team-leaves");
+        setSearchParams({ tab: "team-leaves" }, { replace: true });
+      } else {
+        setActiveTab(tab);
+      }
+    } else if (isSuperAdmin && activeTab === "my-leaves") {
+      setActiveTab("team-leaves");
+    }
+  }, [searchParams, isSuperAdmin]);
 
   const handleTabChange = (tab: string) => {
     setActiveTab(tab);
@@ -29,16 +44,22 @@ export default function LeaveManagementPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-primary-900">Leave Management</h1>
-        <p className="text-gray-600 mt-1">Manage leave requests, balances, and policies</p>
+        <h1 className="text-2xl font-bold text-foreground">Leave Management</h1>
+        <p className="text-muted-foreground mt-1">Manage leave requests, balances, and policies</p>
       </div>
 
       <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-6">
-        <TabsList className={`grid w-full lg:w-auto lg:inline-grid ${isAdmin ? "grid-cols-6" : "grid-cols-2"}`}>
-          <TabsTrigger value="my-leaves" className="gap-2">
-            <Clock className="h-4 w-4" />
-            <span className="hidden sm:inline">My Leaves</span>
-          </TabsTrigger>
+        <TabsList
+          className={`grid w-full lg:w-auto lg:inline-grid ${
+            isSuperAdmin ? "grid-cols-5" : isAdmin ? "grid-cols-6" : "grid-cols-2"
+          }`}
+        >
+          {!isSuperAdmin && (
+            <TabsTrigger value="my-leaves" className="gap-2">
+              <Clock className="h-4 w-4" />
+              <span className="hidden sm:inline">My Leaves</span>
+            </TabsTrigger>
+          )}
           <TabsTrigger value="holidays" className="gap-2">
             <Palmtree className="h-4 w-4" />
             <span className="hidden sm:inline">Public Holidays</span>
@@ -65,9 +86,11 @@ export default function LeaveManagementPage() {
           )}
         </TabsList>
 
-        <TabsContent value="my-leaves" className="space-y-4">
-          <MyLeavesTab />
-        </TabsContent>
+        {!isSuperAdmin && (
+          <TabsContent value="my-leaves" className="space-y-4">
+            <MyLeavesTab />
+          </TabsContent>
+        )}
 
         <TabsContent value="holidays" className="space-y-4">
           <HolidaysPage />

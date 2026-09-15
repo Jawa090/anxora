@@ -22,10 +22,10 @@ import RequestLeaveDialog from "./RequestLeaveDialog";
 import { useAuth } from "@/contexts/AuthContext";
 
 const STATUS_COLORS: Record<string, string> = {
-  approved: "bg-emerald-50 text-emerald-700 border-emerald-200",
-  rejected: "bg-red-50 text-red-700 border-red-200",
-  pending: "bg-yellow-50 text-yellow-700 border-yellow-200",
-  cancelled: "bg-gray-50 text-gray-700 border-gray-200",
+  approved: "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30",
+  rejected: "bg-red-500/15 text-red-600 dark:text-red-400 border-red-500/30",
+  pending: "bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/30",
+  cancelled: "bg-gray-500/15 text-gray-600 dark:text-gray-400 border-gray-500/30",
 };
 
 const STATUS_ICONS: Record<string, any> = {
@@ -89,9 +89,9 @@ export default function MyLeavesTab() {
         <div>
           <div className="flex items-center justify-between mb-4">
             <div>
-              <h2 className="text-lg font-semibold">Leave Balance</h2>
+              <h2 className="text-lg font-semibold">Leave Quota</h2>
               <p className="text-xs text-muted-foreground">
-                Year {currentYear} — resets every January 1
+                Cycle Year {currentYear} — Resets every 1st of January
               </p>
             </div>
             <Button onClick={() => setRequestDialog(true)} className="gap-2">
@@ -125,132 +125,107 @@ export default function MyLeavesTab() {
                 const _usedPct =
                   annualTotal > 0 ? Math.round((used / annualTotal) * 100) : 0;
                 void _usedPct;
+                void monthlyRemaining;
+
+                const quotaTitle = balance.leave_type_name?.toUpperCase().includes("QUOTA")
+                  ? balance.leave_type_name.toUpperCase()
+                  : `${balance.leave_type_name?.toUpperCase() || "LEAVE"} QUOTA`;
+
+                const pct =
+                  annualTotal > 0
+                    ? Math.min(100, Math.max(0, (available / annualTotal) * 100))
+                    : 0;
+                const brandColor = balance.leave_type_color || "#00D6C1";
 
                 return (
-                  <Card
+                  <div
                     key={balance.id || balance.leave_type_id}
-                    className="border-l-4 overflow-hidden"
-                    style={{ borderLeftColor: balance.leave_type_color }}
+                    className="relative rounded-2xl bg-card border border-border/60 shadow-md overflow-hidden p-3 border-l-4 transition-all duration-200 hover:border-border"
+                    style={{ borderLeftColor: brandColor }}
                   >
-                    <CardHeader className="pb-2 pt-4 px-4">
-                      <div className="flex items-center justify-between">
-                        <CardTitle className="text-sm font-semibold">
-                          {balance.leave_type_name}
-                        </CardTitle>
-                        {balance.not_initialized && (
-                          <span className="text-[10px] bg-yellow-100 text-yellow-700 px-1.5 py-0.5 rounded-full">
-                            Not Initialized
-                          </span>
-                        )}
+                    {/* Header with Title */}
+                    <div className="flex items-center justify-between mb-2">
+                      <h3 className="text-base font-bold text-foreground tracking-tight">
+                        {balance.leave_type_name}
+                      </h3>
+                      {balance.not_initialized && (
+                        <span className="text-[10px] bg-amber-500/20 text-amber-600 dark:text-amber-300 border border-amber-500/30 px-2 py-0.5 rounded-full font-medium">
+                          Not Initialized
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Inner Box */}
+                    <div className="rounded-xl bg-muted/40 border border-border/40 p-2">
+                      <div className="flex items-center justify-between text-xs font-bold tracking-wider uppercase mb-3">
+                        <span className="text-orange-500 dark:text-orange-400">
+                          {quotaTitle}
+                        </span>
+                        <span className="font-bold text-xs" style={{ color: brandColor }}>
+                          {available} / {annualTotal} DAYS
+                        </span>
                       </div>
-                    </CardHeader>
-                    <CardContent className="px-4 pb-4 space-y-3">
-                      {/* Annual section */}
-                      <div className="rounded-lg bg-muted/30 p-3 space-y-2">
-                        <div className="flex items-center justify-between text-xs text-muted-foreground font-medium uppercase tracking-wide">
-                          <span>Leave Balance ({currentYear})</span>
-                          <span
-                            style={{ color: balance.leave_type_color }}
-                            className="font-bold text-sm"
-                          >
-                            {available} / {annualTotal} days
-                          </span>
-                        </div>
-                        <Progress
-                          value={
-                            annualTotal > 0
-                              ? (available / annualTotal) * 100
-                              : 0
-                          }
-                          className="h-1.5"
+
+                      {/* Progress bar with our brand color */}
+                      <div className="h-2 w-full bg-muted-foreground/15 rounded-full overflow-hidden mb-4">
+                        <div
+                          className="h-full rounded-full transition-all duration-300"
+                          style={{
+                            width: `${pct}%`,
+                            backgroundColor: brandColor,
+                            boxShadow: `0 0 10px ${brandColor}60`,
+                          }}
                         />
-                        <div className="grid grid-cols-3 gap-1 text-xs pt-1">
-                          <div className="text-center">
-                            <p className="text-muted-foreground">Total</p>
-                            <p className="font-bold text-sm">{annualTotal}</p>
-                          </div>
-                          <div className="text-center">
-                            <p className="text-muted-foreground">Used</p>
-                            <p className="font-bold text-sm text-orange-600">
-                              {used}
-                            </p>
-                          </div>
-                          <div className="text-center">
-                            <p className="text-muted-foreground">Remaining</p>
-                            <p
-                              className={cn(
-                                "font-bold text-sm",
-                                available <= 0
-                                  ? "text-red-600"
-                                  : "text-green-600",
-                              )}
-                            >
-                              {available}
-                            </p>
-                          </div>
-                        </div>
-                        {pending > 0 && (
-                          <p className="text-xs text-yellow-600 text-center">
-                            {pending} day(s) pending approval
-                          </p>
-                        )}
                       </div>
 
-                      {/* Monthly section */}
-                      {monthlyLimit ? (
-                        <div className="rounded-lg bg-muted/20 p-3 space-y-2">
-                          <div className="flex items-center justify-between text-xs text-muted-foreground font-medium uppercase tracking-wide">
-                            <span>This Month</span>
-                            <span className="font-bold text-sm">
-                              {monthlyUsed} / {monthlyLimit} days
-                            </span>
-                          </div>
-                          <Progress
-                            value={
-                              monthlyLimit > 0
-                                ? (monthlyUsed / monthlyLimit) * 100
-                                : 0
-                            }
-                            className="h-1.5"
-                          />
-                          <div className="grid grid-cols-2 gap-1 text-xs pt-1">
-                            <div className="text-center">
-                              <p className="text-muted-foreground">
-                                Monthly Limit
-                              </p>
-                              <p className="font-bold text-sm">
-                                {monthlyLimit}
-                              </p>
-                            </div>
-                            <div className="text-center">
-                              <p className="text-muted-foreground">Remaining</p>
-                              <p
-                                className={cn(
-                                  "font-bold text-sm",
-                                  (monthlyRemaining ?? 0) <= 0
-                                    ? "text-red-600"
-                                    : "text-blue-600",
-                                )}
-                              >
-                                {monthlyRemaining ?? monthlyLimit}
-                              </p>
-                            </div>
-                          </div>
+                      {/* 3 Metrics: TOTAL, USED, AVAILABLE */}
+                      <div className="grid grid-cols-3 gap-2 text-center">
+                        <div>
+                          <p className="text-[11px] font-bold tracking-wider text-muted-foreground uppercase">
+                            TOTAL
+                          </p>
+                          <p className="text-lg font-bold text-foreground mt-1">
+                            {annualTotal}
+                          </p>
                         </div>
-                      ) : (
-                        <p className="text-xs text-muted-foreground text-center">
-                          No monthly limit set
+                        <div>
+                          <p className="text-[11px] font-bold tracking-wider text-muted-foreground uppercase">
+                            USED
+                          </p>
+                          <p className="text-lg font-bold text-orange-500 dark:text-orange-400 mt-1">
+                            {used}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-[11px] font-bold tracking-wider text-muted-foreground uppercase">
+                            AVAILABLE
+                          </p>
+                          <p className="text-lg font-bold mt-1" style={{ color: brandColor }}>
+                            {available}
+                          </p>
+                        </div>
+                      </div>
+                      {/* 
+                      {pending > 0 && (
+                        <p className="text-[11px] text-amber-500 dark:text-amber-400/90 text-center mt-3 pt-2 border-t border-border/30 font-mono">
+                          {pending} day(s) pending approval
                         </p>
-                      )}
+                      )} */}
+                    </div>
 
-                      {balance.carried_forward > 0 && (
-                        <p className="text-xs text-blue-600 text-center">
-                          + {balance.carried_forward} days carried forward from
-                          last year
-                        </p>
-                      )}
-                    </CardContent>
-                  </Card>
+                    {/* Bottom caption */}
+                    <p className="text-xs text-gray-400 font-mono text-center mt-4">
+                      {monthlyLimit
+                        ? `Monthly cap: ${monthlyUsed} / ${monthlyLimit} days`
+                        : "No monthly cap enforced"}
+                    </p>
+
+                    {balance.carried_forward > 0 && (
+                      <p className="text-xs text-sky-400 text-center mt-1.5 font-mono">
+                        + {balance.carried_forward} days carried forward from last year
+                      </p>
+                    )}
+                  </div>
                 );
               })
             )}
@@ -275,7 +250,7 @@ export default function MyLeavesTab() {
                 <Button
                   onClick={() => setRequestDialog(true)}
                   variant="outline"
-                  className="gap-2"
+                  className="gap-2 hover:bg-secondary-foreground dark:hover:bg-primary hover:text-white"
                 >
                   <Plus className="h-4 w-4" />
                   Request Your First Leave
@@ -294,9 +269,9 @@ export default function MyLeavesTab() {
                   return (
                     <div
                       key={request.id}
-                      className="p-4 hover:bg-primary-50 transition-colors"
+                      className="p-4 hover:bg-muted/40 transition-colors"
                     >
-                      <div className="flex items-start justify-between gap-4">
+                      <div className="flex items-center justify-between gap-4">
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-3 mb-2">
                             <div
@@ -307,7 +282,7 @@ export default function MyLeavesTab() {
                             />
                             <div className="flex-1">
                               <div className="flex items-center gap-2 mb-1 flex-wrap">
-                                <h3 className="font-semibold">
+                                <h3 className="font-semibold text-foreground">
                                   {request.leave_type_name}
                                 </h3>
                                 <Badge
@@ -327,8 +302,8 @@ export default function MyLeavesTab() {
                                       className={cn(
                                         "text-xs",
                                         request.paid_status === "paid"
-                                          ? "bg-green-50 text-green-700 border-green-200"
-                                          : "bg-orange-50 text-orange-700 border-orange-200",
+                                          ? "bg-green-500/15 text-green-600 dark:text-green-400 border-green-500/30"
+                                          : "bg-orange-500/15 text-orange-600 dark:text-orange-400 border-orange-500/30",
                                       )}
                                     >
                                       {request.paid_status === "paid" ? (
@@ -342,7 +317,7 @@ export default function MyLeavesTab() {
                                     </Badge>
                                   )}
                               </div>
-                              <div className="flex items-center gap-4 text-sm text-gray-600">
+                              <div className="flex items-center gap-4 text-xs sm:text-sm text-muted-foreground">
                                 <span className="flex items-center gap-1">
                                   <Calendar className="h-3.5 w-3.5" />
                                   {format(
@@ -355,20 +330,20 @@ export default function MyLeavesTab() {
                                     "MMM d, yyyy",
                                   )}
                                 </span>
-                                <span className="font-medium">
+                                <span className="font-medium text-foreground/80">
                                   {duration} day{duration > 1 ? "s" : ""}
                                 </span>
                               </div>
                             </div>
                           </div>
 
-                          <p className="text-sm text-gray-700 ml-4 pl-3">
-                            {request.reason}
+                          <p className="text-sm text-primary ml-4 pl-3">
+                            Reason: <span className="text-foreground">{request.reason}</span>
                           </p>
 
                           {request.rejection_reason && (
                             <div className="ml-4 pl-3 mt-2">
-                              <p className="text-xs text-red-600 bg-red-50 p-2 rounded">
+                              <p className="text-xs text-red-600 dark:text-red-400 bg-red-500/10 border border-red-500/20 p-2 rounded">
                                 <strong>Rejection reason:</strong>{" "}
                                 {request.rejection_reason}
                               </p>
@@ -376,14 +351,15 @@ export default function MyLeavesTab() {
                           )}
 
                           {request.approver_name && (
-                            <p className="text-xs text-gray-500 ml-4 pl-3 mt-2">
-                              {request.status === "approved"
-                                ? "Approved"
-                                : "Reviewed"}{" "}
-                              by {request.approver_name}
-                              {request.approved_at &&
-                                ` on ${format(new Date(request.approved_at), "MMM d, yyyy")}`}
-                            </p>
+                            <div className="flex items-center gap-1.5 text-xs ml-4 pl-3 mt-2 text-emerald-600 dark:text-emerald-400 font-medium">
+                              <CheckCircle className="h-3.5 w-3.5 shrink-0" />
+                              <span>
+                                {request.status === "approved" ? "Approved" : "Reviewed"} by{" "}
+                                <strong className="font-semibold text-foreground">{request.approver_name}</strong>
+                                {request.approved_at &&
+                                  ` on ${format(new Date(request.approved_at), "MMM d, yyyy")}`}
+                              </span>
+                            </div>
                           )}
                         </div>
 
@@ -391,6 +367,7 @@ export default function MyLeavesTab() {
                           <Button
                             size="sm"
                             variant="outline"
+                            className="shrink-0 hover:bg-secondary-foreground dark:hover:bg-primary hover:text-white transition-colors"
                             onClick={() => cancelMutation.mutate(request.id)}
                             disabled={cancelMutation.isPending}
                           >
@@ -401,7 +378,7 @@ export default function MyLeavesTab() {
                           <Button
                             size="sm"
                             variant="outline"
-                            className="text-destructive hover:bg-destructive/10"
+                            className="shrink-0 text-destructive hover:bg-destructive/10 transition-colors"
                             onClick={() => deleteMutation.mutate(request.id)}
                             disabled={deleteMutation.isPending}
                           >

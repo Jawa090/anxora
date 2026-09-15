@@ -29,14 +29,24 @@ const update = async (req, res, next) => {
            domain = COALESCE($2, domain),
            logo_url = COALESCE($3, logo_url),
            settings = COALESCE($4, settings),
-           address = COALESCE($5, address),
+           address = CASE WHEN $5::text IS NOT NULL THEN $5 ELSE address END,
            attendance_machine_ip = COALESCE($6, attendance_machine_ip),
            working_hours_per_day = COALESCE($7, working_hours_per_day),
            break_time_hours = COALESCE($8, break_time_hours),
            updated_at = now()
        WHERE id = $9
        RETURNING *`,
-      [name, domain, logoUrl, settings, address, attendance_machine_ip, working_hours_per_day, break_time_hours, req.user.orgId]
+      [
+        name ?? null,
+        domain ?? null,
+        logoUrl ?? null,
+        settings ?? null,
+        address !== undefined ? address : null,
+        attendance_machine_ip ?? null,
+        working_hours_per_day ?? null,
+        break_time_hours ?? null,
+        req.user.orgId
+      ]
     );
 
     if (result.rows.length === 0) {

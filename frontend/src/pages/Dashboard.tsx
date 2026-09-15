@@ -22,6 +22,7 @@ import { Progress } from "@/components/ui/progress";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { SalesChart } from "@/components/dashboard/SalesChart";
+import WorkforceAttendanceTrendChart from "@/components/hrms/WorkforceAttendanceTrendChart";
 import { MyAssignedMilestones } from "@/components/projects/MyAssignedMilestones";
 import { useLeadStats, useDealStats } from "@/hooks/useCrmData";
 import { useTasks, useProjects } from "@/hooks/useTasks";
@@ -55,7 +56,7 @@ function StatTile({
       )}
     >
       <div className="absolute top-0 right-0 w-28 h-28 bg-gradient-to-bl from-[#2DD4BF]/10 to-transparent rounded-bl-full pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-      
+
       <div className="flex items-start justify-between w-full gap-3">
         <div className="flex-1 min-w-0">
           <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider truncate">
@@ -65,7 +66,7 @@ function StatTile({
             {value}
           </p>
         </div>
-        
+
         <div className="flex flex-col items-end justify-between shrink-0 gap-2">
           <div
             className={cn(
@@ -155,9 +156,26 @@ export default function Dashboard() {
   }, [allTasks]);
 
   const projectStats = useMemo(() => {
-    const active = projects.filter((p) => p.status === "active").length;
-    const completed = projects.filter((p) => p.status === "completed").length;
-    return { total: projects.length, active, completed };
+    const isCompleted = (s?: string) => {
+      const val = (s || "").toLowerCase().trim();
+      return val === "completed" || val === "done";
+    };
+    const isActive = (s?: string) => {
+      const val = (s || "").toLowerCase().trim();
+      return val === "active" || val === "in_progress" || val === "in-progress";
+    };
+    const isCancelled = (s?: string) => {
+      const val = (s || "").toLowerCase().trim();
+      return val === "cancelled" || val === "canceled";
+    };
+
+    const active = projects.filter((p) => isActive(p.status)).length;
+    const completed = projects.filter((p) => isCompleted(p.status)).length;
+    const pending = projects.filter(
+      (p) => !isActive(p.status) && !isCompleted(p.status) && !isCancelled(p.status),
+    ).length;
+
+    return { total: projects.length, active, pending, completed };
   }, [projects]);
 
   const recentTasks = useMemo(
@@ -189,8 +207,8 @@ export default function Dashboard() {
 
   const attendanceRate = hrmsStats?.totalEmployees
     ? Math.round(
-        ((hrmsStats.presentToday || 0) / hrmsStats.totalEmployees) * 100,
-      )
+      ((hrmsStats.presentToday || 0) / hrmsStats.totalEmployees) * 100,
+    )
     : 0;
 
   return (
@@ -230,16 +248,16 @@ export default function Dashboard() {
             onClick={() => navigate("/crm/deals")}
           />
         </div>
-        {/* Tasks */}
+        {/* Projects */}
         <div className="col-span-2 sm:col-span-2 lg:col-span-2">
           <StatTile
-            label="Active Project Tasks"
-            value={taskStats.inProgress}
-            sub={`${taskStats.overdue} overdue`}
-            icon={CheckCircle2}
+            label="Active Projects"
+            value={`${projectStats.active} / ${projects.length}`}
+            sub={`${projectStats.pending} pending · ${projectStats.completed} completed`}
+            icon={FolderKanban}
             gradient={
               taskStats.overdue > 0
-                ? "bg-gradient-to-tr from-[#2DD4BE] to-[#0D646B]"
+                ? "bg-gradient-to-tr from-[#2DD4BF] to-[#0D646B]"
                 : "bg-gradient-to-tr from-[#10B981] to-[#2DD4BF]"
             }
             onClick={() => navigate("/projects")}
@@ -249,7 +267,7 @@ export default function Dashboard() {
         <div className="col-span-2 sm:col-span-2 lg:col-span-2">
           <StatTile
             label="Present Today"
-            value={hrmsStats?.presentToday ?? "—"}
+            value={`${hrmsStats?.presentToday ?? 0} / ${hrmsStats?.totalEmployees ?? 0}`}
             sub={`${attendanceRate}% attendance`}
             icon={Users}
             gradient="bg-gradient-to-tr from-[#14858E] to-[#2DD4BF]"
@@ -359,6 +377,11 @@ export default function Dashboard() {
 
       {/* ── My Assigned Milestones ── */}
       <MyAssignedMilestones />
+
+
+      {/* ── Workforce Attendance & Punctuality Trend ── */}
+      <WorkforceAttendanceTrendChart />
+
 
       {/* ── Row 3: Projects + Pipeline + HRMS ── */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -547,50 +570,50 @@ export default function Dashboard() {
                 </div>
               </div>
 
-            <div className="grid grid-cols-2 gap-2">
-              {[
-                {
-                  label: "Total Staff",
-                  value: hrmsStats?.totalEmployees ?? "—",
-                  color: "text-foreground",
-                },
-                {
-                  label: "On Leave",
-                  value: hrmsStats?.approvedLeaves ?? "—",
-                  color: "text-blue-500",
-                },
-                {
-                  label: "Pending Leaves",
-                  value: hrmsStats?.pendingLeaves ?? "—",
-                  color: "text-orange-500",
-                },
-                {
-                  label: "Avg Hours",
-                  value: hrmsStats?.averageWorkHours
-                    ? `${hrmsStats.averageWorkHours.toFixed(1)}h`
-                    : "—",
-                  color: "text-muted-foreground",
-                },
-              ].map((s) => (
-                <div
-                  key={s.label}
-                  className="rounded-xl bg-secondary/20 px-3 py-2"
-                >
-                  <p
-                    className={cn("text-base font-bold tabular-nums", s.color)}
+              <div className="grid grid-cols-2 gap-2">
+                {[
+                  {
+                    label: "Total Staff",
+                    value: hrmsStats?.totalEmployees ?? "—",
+                    color: "text-foreground",
+                  },
+                  {
+                    label: "On Leave",
+                    value: hrmsStats?.approvedLeaves ?? "—",
+                    color: "text-blue-500",
+                  },
+                  {
+                    label: "Pending Leaves",
+                    value: hrmsStats?.pendingLeaves ?? "—",
+                    color: "text-orange-500",
+                  },
+                  {
+                    label: "Avg Hours",
+                    value: hrmsStats?.averageWorkHours
+                      ? `${hrmsStats.averageWorkHours.toFixed(1)}h`
+                      : "—",
+                    color: "text-muted-foreground",
+                  },
+                ].map((s) => (
+                  <div
+                    key={s.label}
+                    className="rounded-xl bg-secondary/20 px-3 py-2"
                   >
-                    {s.value}
-                  </p>
-                  <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
-                    {s.label}
-                  </p>
-                </div>
-              ))}
+                    <p
+                      className={cn("text-base font-bold tabular-nums", s.color)}
+                    >
+                      {s.value}
+                    </p>
+                    <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
+                      {s.label}
+                    </p>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
         </div>
       </div>
-    </div>
 
       {/* ── Row 4: Recent Activity ── */}
       <div className="rounded-[22px] border border-border/40 bg-card overflow-hidden shadow-sm">
@@ -657,7 +680,7 @@ export default function Dashboard() {
                       className={cn(
                         "text-[9px] uppercase font-bold tracking-wider rounded-md",
                         BADGE_COLORS[badge] ||
-                          "bg-muted text-muted-foreground border-border",
+                        "bg-muted text-muted-foreground border-border",
                       )}
                     >
                       {badge}
@@ -665,8 +688,8 @@ export default function Dashboard() {
                     <span className="text-[10px] font-semibold text-muted-foreground">
                       {a.created_at
                         ? formatDistanceToNow(new Date(a.created_at), {
-                            addSuffix: true,
-                          })
+                          addSuffix: true,
+                        })
                         : ""}
                     </span>
                   </div>

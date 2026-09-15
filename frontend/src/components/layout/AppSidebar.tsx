@@ -239,7 +239,7 @@ const navigation: NavItem[] = [
         icon: DollarSign,
         roles: ["super_admin", "admin", "manager"],
       },
-      { title: "Notifications", href: "/hrms/notifications", icon: Bell },
+      // { title: "Notifications", href: "/hrms/notifications", icon: Bell },
     ],
   },
   // {
