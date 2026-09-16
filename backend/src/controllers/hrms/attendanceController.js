@@ -82,6 +82,12 @@ const updateAttendanceSchema = Joi.object({
 
 const getAll = async (req, res, next) => {
   try {
+    const { autoCheckoutOpenShifts } = require('../../services/autoCheckoutService');
+    await autoCheckoutOpenShifts(req.user.orgId);
+
+    const { markAbsentForPassedShifts } = require('../../services/attendanceAbsentService');
+    await markAbsentForPassedShifts(req.user.orgId);
+
     const { page = 1, limit = 500, date, from, to, search, employee_id, status } = req.query;
     const offset = (page - 1) * limit;
 
@@ -148,18 +154,12 @@ const getAll = async (req, res, next) => {
 
     const result = await db.query(query, params);
 
-    // Simple count for pagination (only if needed)
-    const countResult = await db.query(
-      `SELECT COUNT(*) FROM public.attendance WHERE org_id = $1 AND DATE(date) = $2`,
-      [req.user.orgId, queryDate]
-    );
-
     res.json({
       data: result.rows,
       pagination: {
         page: parseInt(page),
         limit: parseInt(limit),
-        total: parseInt(countResult.rows[0].count),
+        total: result.rows.length,
       },
     });
   } catch (err) {
@@ -393,11 +393,11 @@ const clockIn = async (req, res, next) => {
 
     // Check if already clocked in today
     const existingRecord = await db.query(
-      'SELECT id, clock_out FROM public.attendance WHERE employee_id = $1 AND DATE(date) = $2 AND org_id = $3',
+      'SELECT id, clock_in, clock_out, status, notes FROM public.attendance WHERE employee_id = $1 AND DATE(date) = $2 AND org_id = $3',
       [employeeId, today, req.user.orgId]
     );
 
-    if (existingRecord.rows.length > 0 && !existingRecord.rows[0].clock_out) {
+    if (existingRecord.rows.length > 0 && existingRecord.rows[0].clock_in && !existingRecord.rows[0].clock_out) {
       return res.status(400).json({ error: 'Already clocked in today' });
     }
 
@@ -406,13 +406,35 @@ const clockIn = async (req, res, next) => {
     const { punctuality, shiftId } = await calculatePunctuality(employeeId, req.user.orgId, now);
     const status = 'present';
 
-    const result = await db.query(
-      `INSERT INTO public.attendance (
-        org_id, user_id, employee_id, date, clock_in, status, punctuality, shift_id
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-      RETURNING *`,
-      [req.user.orgId, req.user.id, employeeId, today, now, status, punctuality, shiftId]
-    );
+    let result;
+    if (existingRecord.rows.length > 0 && (!existingRecord.rows[0].clock_in || existingRecord.rows[0].status === 'absent')) {
+      console.log('Updating existing absent attendance record to present for employee:', employeeId);
+      const timeStr = now.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+      const finalNotes = existingRecord.rows[0].notes 
+        ? `${existingRecord.rows[0].notes} | Checked in: ${timeStr}`
+        : `Checked in: ${timeStr}`;
+
+      result = await db.query(
+        `UPDATE public.attendance SET
+          clock_in = $1,
+          status = $2,
+          punctuality = $3,
+          shift_id = COALESCE($4, shift_id),
+          notes = $5,
+          updated_at = CURRENT_TIMESTAMP
+        WHERE id = $6
+        RETURNING *`,
+        [now, status, punctuality, shiftId, finalNotes, existingRecord.rows[0].id]
+      );
+    } else {
+      result = await db.query(
+        `INSERT INTO public.attendance (
+          org_id, user_id, employee_id, date, clock_in, status, punctuality, shift_id
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+        RETURNING *`,
+        [req.user.orgId, req.user.id, employeeId, today, now, status, punctuality, shiftId]
+      );
+    }
 
     // Get employee name for real-time update
     const empNameResult = await db.query(
@@ -437,6 +459,12 @@ const clockIn = async (req, res, next) => {
 
 const myToday = async (req, res, next) => {
   try {
+    const { autoCheckoutOpenShifts } = require('../../services/autoCheckoutService');
+    await autoCheckoutOpenShifts(req.user.orgId);
+
+    const { markAbsentForPassedShifts } = require('../../services/attendanceAbsentService');
+    await markAbsentForPassedShifts(req.user.orgId);
+
     const today = new Date().toISOString().split('T')[0];
     const empResult = await findEmployeeByUserOrEmail(req.user.id, req.user.orgId);
     if (empResult.rows.length === 0) return res.json(null);
@@ -453,6 +481,9 @@ const myToday = async (req, res, next) => {
 
 const myHistory = async (req, res, next) => {
   try {
+    const { autoCheckoutOpenShifts } = require('../../services/autoCheckoutService');
+    await autoCheckoutOpenShifts(req.user.orgId);
+
     const { limit = 365, offset = 0, from, to } = req.query;
     const empResult = await findEmployeeByUserOrEmail(req.user.id, req.user.orgId);
     if (empResult.rows.length === 0) return res.json([]);
@@ -844,6 +875,9 @@ const mySummary = async (req, res, next) => {
 
 const getStats = async (req, res, next) => {
   try {
+    const { autoCheckoutOpenShifts } = require('../../services/autoCheckoutService');
+    await autoCheckoutOpenShifts(req.user.orgId);
+
     const { date = new Date().toISOString().split('T')[0] } = req.query;
 
     const result = await db.query(

@@ -5,8 +5,22 @@ const { processActiveSequences } = require('./sequenceScheduler');
 function start() {
   console.log('⏰ Starting Cron Scheduler...');
 
-  // Checks for scheduled campaigns & active sequences every minute
+  // Checks for scheduled campaigns & active sequences & auto-checkout every minute
   cron.schedule('* * * * *', async () => {
+    try {
+      const { autoCheckoutOpenShifts } = require('../services/autoCheckoutService');
+      await autoCheckoutOpenShifts();
+    } catch (e) {
+      console.error('[Cron] Auto checkout open shifts failed:', e.message);
+    }
+
+    try {
+      const { markAbsentForPassedShifts } = require('../services/attendanceAbsentService');
+      await markAbsentForPassedShifts();
+    } catch (e) {
+      console.error('[Cron] Mark absent for passed shifts failed:', e.message);
+    }
+
     try {
       console.log('[Cron] Checking for scheduled campaigns to send...');
       await processScheduledCampaigns();
@@ -22,7 +36,18 @@ function start() {
     }
   });
 
-  console.log('✅ Campaign and Sequence Scheduler cron jobs started (checks every minute)');
+  // Run once immediately on startup
+  try {
+    const { autoCheckoutOpenShifts } = require('../services/autoCheckoutService');
+    autoCheckoutOpenShifts().catch(() => {});
+  } catch (e) {}
+
+  try {
+    const { markAbsentForPassedShifts } = require('../services/attendanceAbsentService');
+    markAbsentForPassedShifts().catch(() => {});
+  } catch (e) {}
+
+  console.log('✅ Campaign, Sequence, Attendance Auto-Checkout & Auto-Absent cron jobs started');
 }
 
 module.exports = { start };

@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 import { Loader2 } from 'lucide-react';
-import { validateApplicationForm, ValidationError, trimString, isEmpty } from '@/utils/formValidation';
+import { validateApplicationForm, ValidationError, trimString, isEmpty, formatCNIC } from '@/utils/formValidation';
 import { FormFieldError } from '@/components/FormFieldError';
 
 export default function PublicApplicationForm() {
@@ -55,6 +55,9 @@ export default function PublicApplicationForm() {
    * Handle field value change
    */
   const handleFieldChange = (fieldName: string, value: any) => {
+    if (fieldName === 'cnic') {
+      value = formatCNIC(value, formData.cnic);
+    }
     setFormData(prev => ({ ...prev, [fieldName]: value }));
     setTouched(prev => new Set(prev).add(fieldName));
   };
@@ -355,6 +358,7 @@ export default function PublicApplicationForm() {
                   onChange={(e) => handleFieldChange('cnic', e.target.value)}
                   onBlur={() => handleFieldBlur('cnic')}
                   placeholder="xxxxx-xxxxxxx-x"
+                  maxLength={15}
                   className={getFieldError('cnic') ? 'border-red-600 bg-red-50 dark:bg-red-950/10' : ''}
                 />
                 {getFieldError('cnic') && <FormFieldError error={getFieldError('cnic')} />}

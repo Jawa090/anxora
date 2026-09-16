@@ -197,6 +197,8 @@ export default function TeamLeavesTab() {
   const [selectedRequest, setSelectedRequest] = useState<any>(null);
   const [rejectDialog, setRejectDialog] = useState(false);
   const [rejectionReason, setRejectionReason] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
   const qc = useQueryClient();
 
   const [reportMonth, setReportMonth] = useState(format(new Date(), "yyyy-MM"));
@@ -243,6 +245,7 @@ export default function TeamLeavesTab() {
     setYearFilter("");
     setMonthFilter("");
     setDayFilter("");
+    setCurrentPage(1);
   };
 
   // Fetch team leave requests
@@ -270,6 +273,13 @@ export default function TeamLeavesTab() {
       return false;
     return true;
   });
+
+  const totalPages = Math.max(1, Math.ceil(requests.length / pageSize));
+  const validCurrentPage = Math.min(Math.max(1, currentPage), totalPages);
+  const paginatedRequests = requests.slice(
+    (validCurrentPage - 1) * pageSize,
+    validCurrentPage * pageSize,
+  );
 
   const invalidateAll = () => {
     qc.invalidateQueries({ queryKey: ["team-leave-requests"] });
@@ -331,10 +341,10 @@ export default function TeamLeavesTab() {
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-600">Total Requests</p>
-                <p className="text-2xl font-bold">{requests.length}</p>
+                <p className="text-sm dark:text-gray-400">Total Requests</p>
+                <p className="text-2xl font-bold text-secondary-foreground dark:text-primary">{requests.length}</p>
               </div>
-              <Calendar className="h-8 w-8 text-blue-500" />
+              <Calendar className="h-8 w-8 text-secondary-foreground dark:text-primary" />
             </div>
           </CardContent>
         </Card>
@@ -342,7 +352,7 @@ export default function TeamLeavesTab() {
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-600">Pending</p>
+                <p className="text-sm dark:text-gray-400">Pending</p>
                 <p className="text-2xl font-bold text-yellow-600">{pendingCount}</p>
               </div>
               <Clock className="h-8 w-8 text-yellow-500" />
@@ -353,7 +363,7 @@ export default function TeamLeavesTab() {
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-600">Approved</p>
+                <p className="text-sm dark:text-gray-400">Approved</p>
                 <p className="text-2xl font-bold text-green-600">{approvedCount}</p>
               </div>
               <CheckCircle className="h-8 w-8 text-green-500" />
@@ -364,7 +374,7 @@ export default function TeamLeavesTab() {
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-600">Rejected</p>
+                <p className="text-sm dark:text-gray-400">Rejected</p>
                 <p className="text-2xl font-bold text-red-600">{rejectedCount}</p>
               </div>
               <XCircle className="h-8 w-8 text-red-500" />
@@ -382,13 +392,22 @@ export default function TeamLeavesTab() {
             <Input
               placeholder="Search by employee name..."
               value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              onChange={(e) => {
+                setSearch(e.target.value);
+                setCurrentPage(1);
+              }}
               className="pl-9"
             />
           </div>
 
           {/* Status */}
-          <Select value={statusFilter} onValueChange={setStatusFilter}>
+          <Select
+            value={statusFilter}
+            onValueChange={(val) => {
+              setStatusFilter(val);
+              setCurrentPage(1);
+            }}
+          >
             <SelectTrigger className="w-36">
               <SelectValue />
             </SelectTrigger>
@@ -407,14 +426,28 @@ export default function TeamLeavesTab() {
                 <Calendar className="h-3.5 w-3.5" />
                 {yearFilter || "Year"}
                 {yearFilter && (
-                  <span onClick={(e) => { e.stopPropagation(); setYearFilter(""); }} className="ml-0.5 hover:text-destructive">
+                  <span
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setYearFilter("");
+                      setCurrentPage(1);
+                    }}
+                    className="ml-0.5 hover:text-destructive"
+                  >
                     <X className="h-3 w-3" />
                   </span>
                 )}
               </Button>
             </PopoverTrigger>
             <PopoverContent className="p-0 w-auto" align="start">
-              <YearPicker value={yearFilter} onChange={setYearFilter} onClose={() => setYearOpen(false)} />
+              <YearPicker
+                value={yearFilter}
+                onChange={(v) => {
+                  setYearFilter(v);
+                  setCurrentPage(1);
+                }}
+                onClose={() => setYearOpen(false)}
+              />
             </PopoverContent>
           </Popover>
 
@@ -425,14 +458,28 @@ export default function TeamLeavesTab() {
                 <Calendar className="h-3.5 w-3.5" />
                 {monthFilter ? MONTH_ABBR[parseInt(monthFilter) - 1] : "Month"}
                 {monthFilter && (
-                  <span onClick={(e) => { e.stopPropagation(); setMonthFilter(""); }} className="ml-0.5 hover:text-destructive">
+                  <span
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setMonthFilter("");
+                      setCurrentPage(1);
+                    }}
+                    className="ml-0.5 hover:text-destructive"
+                  >
                     <X className="h-3 w-3" />
                   </span>
                 )}
               </Button>
             </PopoverTrigger>
             <PopoverContent className="p-0 w-auto" align="start">
-              <MonthPicker value={monthFilter} onChange={setMonthFilter} onClose={() => setMonthOpen(false)} />
+              <MonthPicker
+                value={monthFilter}
+                onChange={(v) => {
+                  setMonthFilter(v);
+                  setCurrentPage(1);
+                }}
+                onClose={() => setMonthOpen(false)}
+              />
             </PopoverContent>
           </Popover>
 
@@ -443,14 +490,28 @@ export default function TeamLeavesTab() {
                 <Calendar className="h-3.5 w-3.5" />
                 {dayFilter ? `Day ${dayFilter}` : "Day"}
                 {dayFilter && (
-                  <span onClick={(e) => { e.stopPropagation(); setDayFilter(""); }} className="ml-0.5 hover:text-destructive">
+                  <span
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setDayFilter("");
+                      setCurrentPage(1);
+                    }}
+                    className="ml-0.5 hover:text-destructive"
+                  >
                     <X className="h-3 w-3" />
                   </span>
                 )}
               </Button>
             </PopoverTrigger>
             <PopoverContent className="p-0 w-auto" align="start">
-              <DayPicker value={dayFilter} onChange={setDayFilter} onClose={() => setDayOpen(false)} />
+              <DayPicker
+                value={dayFilter}
+                onChange={(v) => {
+                  setDayFilter(v);
+                  setCurrentPage(1);
+                }}
+                onClose={() => setDayOpen(false)}
+              />
             </PopoverContent>
           </Popover>
 
@@ -502,8 +563,9 @@ export default function TeamLeavesTab() {
               <p className="text-gray-500">No leave requests found</p>
             </div>
           ) : (
-            <div className="divide-y max-h-[520px] overflow-y-auto">
-              {requests.map((request: any) => {
+            <>
+              <div className="divide-y">
+                {paginatedRequests.map((request: any) => {
                 const Icon = STATUS_ICONS[request.status] || Clock;
                 const duration =
                   differenceInDays(
@@ -680,7 +742,71 @@ export default function TeamLeavesTab() {
                 );
               })}
             </div>
-          )}
+
+            {/* Pagination Controls */}
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 px-5 py-4 border-t border-border/30">
+              <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+                <span>Show</span>
+                <Select
+                  value={String(pageSize)}
+                  onValueChange={(val) => {
+                    setPageSize(Number(val));
+                    setCurrentPage(1);
+                  }}
+                >
+                  <SelectTrigger className="w-16 h-8 bg-secondary/50 border-none text-xs">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="5">5</SelectItem>
+                    <SelectItem value="10">10</SelectItem>
+                    <SelectItem value="20">20</SelectItem>
+                    <SelectItem value="50">50</SelectItem>
+                  </SelectContent>
+                </Select>
+                <span>entries</span>
+                <span className="ml-2 sm:ml-4">
+                  Showing{" "}
+                  {requests.length === 0
+                    ? 0
+                    : (validCurrentPage - 1) * pageSize + 1}{" "}
+                  to{" "}
+                  {Math.min(validCurrentPage * pageSize, requests.length)} of{" "}
+                  {requests.length} entries
+                </span>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-8 px-2.5 text-xs"
+                  onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                  disabled={validCurrentPage === 1}
+                >
+                  <ChevronLeft className="h-3.5 w-3.5 mr-1" />
+                  Previous
+                </Button>
+                <span className="text-xs font-medium px-2 text-muted-foreground select-none">
+                  Page <span className="text-foreground font-semibold">{validCurrentPage}</span> of{" "}
+                  <span className="text-foreground font-semibold">{totalPages || 1}</span>
+                </span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-8 px-2.5 text-xs"
+                  onClick={() =>
+                    setCurrentPage((p) => Math.min(totalPages, p + 1))
+                  }
+                  disabled={validCurrentPage === totalPages || totalPages === 0}
+                >
+                  Next
+                  <ChevronRight className="h-3.5 w-3.5 ml-1" />
+                </Button>
+              </div>
+            </div>
+          </>
+        )}
         </CardContent>
       </Card>
 
@@ -766,6 +892,6 @@ export default function TeamLeavesTab() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </div>
+    </div >
   );
 }

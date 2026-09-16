@@ -6,6 +6,7 @@ const shiftSchema = Joi.object({
   start_time: Joi.string().required(), // e.g. "14:00" or "14:00:00"
   end_time: Joi.string().required(),   // e.g. "22:00" or "22:00:00"
   grace_period_mins: Joi.number().integer().min(0).default(15),
+  auto_checkout_hours: Joi.number().min(0).max(24).optional().allow(null),
   description: Joi.string().optional().allow('', null),
   color: Joi.string().optional().allow('', null),
   is_active: Joi.boolean().default(true),
@@ -35,14 +36,14 @@ const createShift = async (req, res, next) => {
       return res.status(400).json({ error: error.details[0].message });
     }
 
-    const { name, start_time, end_time, grace_period_mins = 15, description, color, is_active = true } = value;
+    const { name, start_time, end_time, grace_period_mins = 15, auto_checkout_hours, description, color, is_active = true } = value;
 
     const result = await db.query(
       `INSERT INTO public.shift_templates (
-        org_id, name, start_time, end_time, grace_period_mins, description, color, is_active, created_by
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+        org_id, name, start_time, end_time, grace_period_mins, auto_checkout_hours, description, color, is_active, created_by
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
       RETURNING *`,
-      [req.user.orgId, name, start_time, end_time, grace_period_mins, description || null, color || '#f59e0b', is_active, req.user.id]
+      [req.user.orgId, name, start_time, end_time, grace_period_mins, auto_checkout_hours || null, description || null, color || '#f59e0b', is_active, req.user.id]
     );
 
     res.status(201).json(result.rows[0]);
@@ -59,15 +60,15 @@ const updateShift = async (req, res, next) => {
       return res.status(400).json({ error: error.details[0].message });
     }
 
-    const { name, start_time, end_time, grace_period_mins, description, color, is_active } = value;
+    const { name, start_time, end_time, grace_period_mins, auto_checkout_hours, description, color, is_active } = value;
 
     const result = await db.query(
       `UPDATE public.shift_templates 
        SET name = $1, start_time = $2, end_time = $3, grace_period_mins = $4,
-           description = $5, color = $6, is_active = $7, updated_at = NOW()
-       WHERE id = $8 AND org_id = $9
+           auto_checkout_hours = $5, description = $6, color = $7, is_active = $8, updated_at = NOW()
+       WHERE id = $9 AND org_id = $10
        RETURNING *`,
-      [name, start_time, end_time, grace_period_mins, description || null, color || '#f59e0b', is_active, id, req.user.orgId]
+      [name, start_time, end_time, grace_period_mins, auto_checkout_hours || null, description || null, color || '#f59e0b', is_active, id, req.user.orgId]
     );
 
     if (result.rows.length === 0) {
@@ -114,7 +115,8 @@ const getAssignments = async (req, res, next) => {
         st.name as shift_name,
         st.start_time,
         st.end_time,
-        st.grace_period_mins
+        st.grace_period_mins,
+        st.auto_checkout_hours
        FROM public.employees e
        LEFT JOIN public.users u ON LOWER(u.email) = LOWER(e.email)
        LEFT JOIN public.employee_shifts es ON e.id = es.employee_id AND es.org_id = $1

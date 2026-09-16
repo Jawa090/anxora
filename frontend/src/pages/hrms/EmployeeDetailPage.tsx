@@ -82,11 +82,11 @@ export default function EmployeeDetailPage() {
       setLoading(true);
       const response: any = await api.get(`/employees/${id}`);
       const data = response.data || response;
-      
+
       if (!data || !data.first_name) {
         throw new Error('Employee not found');
       }
-      
+
       setEmployee(data);
     } catch (error: any) {
       console.error('Error fetching employee:', error);
@@ -186,7 +186,7 @@ export default function EmployeeDetailPage() {
           <Button
             variant="ghost"
             onClick={() => navigate('/hrms/employees')}
-            className="mb-4 gap-2"
+            className="mb-4 gap-2 hover:bg-secondary-foreground dark:hover:bg-primary hover:text-white"
           >
             <ArrowLeft className="h-4 w-4" />
             Back to Employees
@@ -196,19 +196,19 @@ export default function EmployeeDetailPage() {
             <div className="flex items-center gap-4">
               <Avatar className="h-20 w-20">
                 <AvatarImage src={`${FILE_BASE_URL}${employee.profile_picture}`} alt={name} />
-                <AvatarFallback className="text-2xl bg-gradient-to-br from-blue-500 to-indigo-600 text-white">
+                <AvatarFallback className="text-2xl bg-secondary-foreground dark:bg-primary text-white dark:text-black">
                   {getInitials(name)}
                 </AvatarFallback>
               </Avatar>
               <div>
                 <h1 className="text-3xl font-bold text-primary/00">{name}</h1>
-                <p className="text-gray-600 mt-1">{employee.position || employee.job_title || 'Employee'}</p>
+                <p className="dark:text-gray-300 mt-1">{employee.position || employee.job_title || 'Employee'}</p>
                 <div className="flex items-center gap-3 mt-2">
                   <Badge variant="outline" className={cn('capitalize', STATUS_COLORS[employee.status] || 'bg-gray-50')}>
                     {employee.status?.replace('_', ' ')}
                   </Badge>
                   {employee.employee_id && (
-                    <span className="text-sm text-gray-600">ID: {employee.employee_id}</span>
+                    <span className="text-sm text-gray-300">ID: {employee.employee_id}</span>
                   )}
                 </div>
               </div>
@@ -254,7 +254,7 @@ export default function EmployeeDetailPage() {
                   <div className="flex items-start gap-3">
                     <Mail className="h-4 w-4 text-gray-400 mt-0.5" />
                     <div>
-                      <p className="text-xs text-gray-500">Email</p>
+                      <p className="text-xs dark:text-gray-400">Email</p>
                       <p className="text-sm font-medium">{employee.email}</p>
                     </div>
                   </div>
@@ -263,7 +263,7 @@ export default function EmployeeDetailPage() {
                   <div className="flex items-start gap-3">
                     <Mail className="h-4 w-4 text-gray-400 mt-0.5" />
                     <div>
-                      <p className="text-xs text-gray-500">Official Email</p>
+                      <p className="text-xs dark:text-gray-400">Official Email</p>
                       <p className="text-sm font-medium">{employee.official_email}</p>
                     </div>
                   </div>
@@ -272,7 +272,7 @@ export default function EmployeeDetailPage() {
                   <div className="flex items-start gap-3">
                     <Mail className="h-4 w-4 text-gray-400 mt-0.5" />
                     <div>
-                      <p className="text-xs text-gray-500">Personal Email</p>
+                      <p className="text-xs dark:text-gray-400">Personal Email</p>
                       <p className="text-sm font-medium">{employee.personal_email}</p>
                     </div>
                   </div>
@@ -281,7 +281,7 @@ export default function EmployeeDetailPage() {
                   <div className="flex items-start gap-3">
                     <Phone className="h-4 w-4 text-gray-400 mt-0.5" />
                     <div>
-                      <p className="text-xs text-gray-500">Phone</p>
+                      <p className="text-xs dark:text-gray-400">Phone</p>
                       <p className="text-sm font-medium">{employee.phone}</p>
                     </div>
                   </div>
@@ -290,7 +290,7 @@ export default function EmployeeDetailPage() {
                   <div className="flex items-start gap-3">
                     <Phone className="h-4 w-4 text-gray-400 mt-0.5" />
                     <div>
-                      <p className="text-xs text-gray-500">Secondary Phone</p>
+                      <p className="text-xs dark:text-gray-400">Secondary Phone</p>
                       <p className="text-sm font-medium">{employee.secondary_phone}</p>
                     </div>
                   </div>
@@ -309,43 +309,43 @@ export default function EmployeeDetailPage() {
               <CardContent className="space-y-4">
                 {employee.cnic && (
                   <div>
-                    <p className="text-xs text-gray-500">CNIC</p>
+                    <p className="text-xs dark:text-gray-400">CNIC</p>
                     <p className="text-sm font-medium">{employee.cnic}</p>
                   </div>
                 )}
                 {employee.date_of_birth && (
                   <div>
-                    <p className="text-xs text-gray-500">Date of Birth</p>
+                    <p className="text-xs dark:text-gray-400">Date of Birth</p>
                     <p className="text-sm font-medium">{format(new Date(employee.date_of_birth), 'MMMM d, yyyy')}</p>
                   </div>
                 )}
                 {employee.gender && (
                   <div>
-                    <p className="text-xs text-gray-500">Gender</p>
+                    <p className="text-xs dark:text-gray-400">Gender</p>
                     <p className="text-sm font-medium capitalize">{employee.gender}</p>
                   </div>
                 )}
                 {employee.religion && (
                   <div>
-                    <p className="text-xs text-gray-500">Religion</p>
+                    <p className="text-xs dark:text-gray-400">Religion</p>
                     <p className="text-sm font-medium">{employee.religion}</p>
                   </div>
                 )}
                 {employee.marital_status && (
                   <div>
-                    <p className="text-xs text-gray-500">Marital Status</p>
+                    <p className="text-xs dark:text-gray-400">Marital Status</p>
                     <p className="text-sm font-medium capitalize">{employee.marital_status}</p>
                   </div>
                 )}
                 {employee.blood_group && (
                   <div>
-                    <p className="text-xs text-gray-500">Blood Group</p>
+                    <p className="text-xs dark:text-gray-400">Blood Group</p>
                     <p className="text-sm font-medium">{employee.blood_group}</p>
                   </div>
                 )}
                 {employee.nationality && (
                   <div>
-                    <p className="text-xs text-gray-500">Nationality</p>
+                    <p className="text-xs dark:text-gray-400">Nationality</p>
                     <p className="text-sm font-medium">{employee.nationality}</p>
                   </div>
                 )}
@@ -364,14 +364,14 @@ export default function EmployeeDetailPage() {
                 <CardContent className="space-y-4">
                   {employee.current_address && (
                     <div>
-                      <p className="text-xs text-gray-500">Current Address</p>
+                      <p className="text-xs dark:text-gray-400">Current Address</p>
                       <p className="text-sm font-medium">{employee.current_address}</p>
                       {employee.city && <p className="text-sm text-gray-600">{employee.city}, {employee.state} {employee.postal_code}</p>}
                     </div>
                   )}
                   {employee.permanent_address && (
                     <div>
-                      <p className="text-xs text-gray-500">Permanent Address</p>
+                      <p className="text-xs dark:text-gray-400">Permanent Address</p>
                       <p className="text-sm font-medium">{employee.permanent_address}</p>
                     </div>
                   )}
@@ -390,18 +390,18 @@ export default function EmployeeDetailPage() {
                 </CardHeader>
                 <CardContent className="space-y-3">
                   <div>
-                    <p className="text-xs text-gray-500">Name</p>
+                    <p className="text-xs dark:text-gray-400">Name</p>
                     <p className="text-sm font-medium">{employee.emergency_contact_name}</p>
                   </div>
                   {employee.emergency_contact_phone && (
                     <div>
-                      <p className="text-xs text-gray-500">Phone</p>
+                      <p className="text-xs dark:text-gray-400">Phone</p>
                       <p className="text-sm font-medium">{employee.emergency_contact_phone}</p>
                     </div>
                   )}
                   {employee.emergency_contact_relation && (
                     <div>
-                      <p className="text-xs text-gray-500">Relation</p>
+                      <p className="text-xs dark:text-gray-400">Relation</p>
                       <p className="text-sm font-medium">{employee.emergency_contact_relation}</p>
                     </div>
                   )}
@@ -424,37 +424,37 @@ export default function EmployeeDetailPage() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   {employee.department && (
                     <div>
-                      <p className="text-xs text-gray-500">Department</p>
+                      <p className="text-xs dark:text-gray-400">Department</p>
                       <p className="text-sm font-medium">{employee.department}</p>
                     </div>
                   )}
                   {employee.position && (
                     <div>
-                      <p className="text-xs text-gray-500">Position</p>
+                      <p className="text-xs dark:text-gray-400">Position</p>
                       <p className="text-sm font-medium">{employee.position}</p>
                     </div>
                   )}
                   {employee.job_title && (
                     <div>
-                      <p className="text-xs text-gray-500">Job Title</p>
+                      <p className="text-xs dark:text-gray-400">Job Title</p>
                       <p className="text-sm font-medium">{employee.job_title}</p>
                     </div>
                   )}
                   {employee.hire_date && (
                     <div>
-                      <p className="text-xs text-gray-500">Hire Date</p>
+                      <p className="text-xs dark:text-gray-400">Hire Date</p>
                       <p className="text-sm font-medium">{format(new Date(employee.hire_date), 'MMMM d, yyyy')}</p>
                     </div>
                   )}
                   {employee.probation_status && (
                     <div>
-                      <p className="text-xs text-gray-500">Probation Status</p>
+                      <p className="text-xs dark:text-gray-400">Probation Status</p>
                       <p className="text-sm font-medium capitalize">{employee.probation_status.replace('_', ' ')}</p>
                     </div>
                   )}
                   {employee.probation_end_date && (
                     <div>
-                      <p className="text-xs text-gray-500">Probation End Date</p>
+                      <p className="text-xs dark:text-gray-400">Probation End Date</p>
                       <p className="text-sm font-medium">{format(new Date(employee.probation_end_date), 'MMMM d, yyyy')}</p>
                     </div>
                   )}
@@ -475,13 +475,13 @@ export default function EmployeeDetailPage() {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     {employee.base_salary && (
                       <div>
-                        <p className="text-xs text-gray-500">Base Salary</p>
+                        <p className="text-xs dark:text-gray-400">Base Salary</p>
                         <p className="text-sm font-medium">PKR {Number(employee.base_salary).toLocaleString()}</p>
                       </div>
                     )}
                     {employee.commission_rate && (
                       <div>
-                        <p className="text-xs text-gray-500">Commission Rate</p>
+                        <p className="text-xs dark:text-gray-400">Commission Rate</p>
                         <p className="text-sm font-medium">{employee.commission_rate}%</p>
                       </div>
                     )}
@@ -502,24 +502,24 @@ export default function EmployeeDetailPage() {
                 <CardContent>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
-                      <p className="text-xs text-gray-500">Bank Name</p>
+                      <p className="text-xs dark:text-gray-400">Bank Name</p>
                       <p className="text-sm font-medium">{employee.bank_name}</p>
                     </div>
                     {employee.bank_account_number && (
                       <div>
-                        <p className="text-xs text-gray-500">Account Number</p>
+                        <p className="text-xs dark:text-gray-400">Account Number</p>
                         <p className="text-sm font-medium">{employee.bank_account_number}</p>
                       </div>
                     )}
                     {employee.bank_account_title && (
                       <div>
-                        <p className="text-xs text-gray-500">Account Title</p>
+                        <p className="text-xs dark:text-gray-400">Account Title</p>
                         <p className="text-sm font-medium">{employee.bank_account_title}</p>
                       </div>
                     )}
                     {employee.tax_id && (
                       <div>
-                        <p className="text-xs text-gray-500">Tax ID / NTN</p>
+                        <p className="text-xs dark:text-gray-400">Tax ID / NTN</p>
                         <p className="text-sm font-medium">{employee.tax_id}</p>
                       </div>
                     )}
@@ -541,25 +541,25 @@ export default function EmployeeDetailPage() {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     {employee.education_level && (
                       <div>
-                        <p className="text-xs text-gray-500">Education Level</p>
+                        <p className="text-xs dark:text-gray-400">Education Level</p>
                         <p className="text-sm font-medium">{employee.education_level}</p>
                       </div>
                     )}
                     {employee.university && (
                       <div>
-                        <p className="text-xs text-gray-500">University</p>
+                        <p className="text-xs dark:text-gray-400">University</p>
                         <p className="text-sm font-medium">{employee.university}</p>
                       </div>
                     )}
                     {employee.degree && (
                       <div>
-                        <p className="text-xs text-gray-500">Degree</p>
+                        <p className="text-xs dark:text-gray-400">Degree</p>
                         <p className="text-sm font-medium">{employee.degree}</p>
                       </div>
                     )}
                     {employee.graduation_year && (
                       <div>
-                        <p className="text-xs text-gray-500">Graduation Year</p>
+                        <p className="text-xs dark:text-gray-400">Graduation Year</p>
                         <p className="text-sm font-medium">{employee.graduation_year}</p>
                       </div>
                     )}
@@ -581,19 +581,19 @@ export default function EmployeeDetailPage() {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     {employee.previous_company && (
                       <div>
-                        <p className="text-xs text-gray-500">Previous Company</p>
+                        <p className="text-xs dark:text-gray-400">Previous Company</p>
                         <p className="text-sm font-medium">{employee.previous_company}</p>
                       </div>
                     )}
                     {employee.previous_position && (
                       <div>
-                        <p className="text-xs text-gray-500">Previous Position</p>
+                        <p className="text-xs dark:text-gray-400">Previous Position</p>
                         <p className="text-sm font-medium">{employee.previous_position}</p>
                       </div>
                     )}
                     {employee.years_of_experience && (
                       <div>
-                        <p className="text-xs text-gray-500">Years of Experience</p>
+                        <p className="text-xs dark:text-gray-400">Years of Experience</p>
                         <p className="text-sm font-medium">{employee.years_of_experience} years</p>
                       </div>
                     )}
@@ -614,7 +614,7 @@ export default function EmployeeDetailPage() {
                 <CardContent className="space-y-4">
                   {employee.skills && (
                     <div>
-                      <p className="text-xs text-gray-500 mb-2">Skills</p>
+                      <p className="text-xs dark:text-gray-400 mb-2">Skills</p>
                       <div className="flex flex-wrap gap-2">
                         {(Array.isArray(employee.skills) ? employee.skills : employee.skills.split(',')).map((skill: string, i: number) => (
                           <Badge key={i} variant="secondary" className="bg-blue-50 text-blue-700">
@@ -626,7 +626,7 @@ export default function EmployeeDetailPage() {
                   )}
                   {employee.certifications && (
                     <div>
-                      <p className="text-xs text-gray-500 mb-2">Certifications</p>
+                      <p className="text-xs dark:text-gray-400 mb-2">Certifications</p>
                       <div className="flex flex-wrap gap-2">
                         {(Array.isArray(employee.certifications) ? employee.certifications : employee.certifications.split(',')).map((cert: string, i: number) => (
                           <Badge key={i} variant="secondary" className="bg-green-50 text-green-700">
@@ -638,7 +638,7 @@ export default function EmployeeDetailPage() {
                   )}
                   {employee.languages && (
                     <div>
-                      <p className="text-xs text-gray-500 mb-2">Languages</p>
+                      <p className="text-xs dark:text-gray-400 mb-2">Languages</p>
                       <div className="flex flex-wrap gap-2">
                         {(Array.isArray(employee.languages) ? employee.languages : employee.languages.split(',')).map((lang: string, i: number) => (
                           <Badge key={i} variant="secondary" className="bg-purple-50 text-purple-700">
@@ -690,7 +690,7 @@ export default function EmployeeDetailPage() {
                 {documents.length === 0 ? (
                   <div className="text-center py-8">
                     <FileText className="h-12 w-12 text-gray-300 mx-auto mb-3" />
-                    <p className="text-sm text-gray-500 mb-2">No documents uploaded yet</p>
+                    <p className="text-sm dark:text-gray-400 mb-2">No documents uploaded yet</p>
                     <Button
                       size="sm"
                       variant="outline"
@@ -721,12 +721,12 @@ export default function EmployeeDetailPage() {
                                 {doc.document_type}
                               </Badge>
                               {doc.file_size && (
-                                <span className="text-xs text-gray-500">
+                                <span className="text-xs dark:text-gray-400">
                                   {(doc.file_size / 1024).toFixed(1)} KB
                                 </span>
                               )}
                               {doc.uploaded_at && (
-                                <span className="text-xs text-gray-500">
+                                <span className="text-xs dark:text-gray-400">
                                   {format(new Date(doc.uploaded_at), 'MMM d, yyyy')}
                                 </span>
                               )}
@@ -783,7 +783,7 @@ export default function EmployeeDetailPage() {
                           <FileText className="h-5 w-5 text-gray-600" />
                           <div>
                             <p className="text-sm font-medium">CNIC Picture</p>
-                            <p className="text-xs text-gray-500">Stored in profile</p>
+                            <p className="text-xs dark:text-gray-400">Stored in profile</p>
                           </div>
                         </div>
                       )}
@@ -792,7 +792,7 @@ export default function EmployeeDetailPage() {
                           <User className="h-5 w-5 text-gray-600" />
                           <div>
                             <p className="text-sm font-medium">Profile Picture</p>
-                            <p className="text-xs text-gray-500">Stored in profile</p>
+                            <p className="text-xs dark:text-gray-400">Stored in profile</p>
                           </div>
                         </div>
                       )}

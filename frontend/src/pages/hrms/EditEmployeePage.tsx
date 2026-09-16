@@ -13,6 +13,7 @@ import { toast } from 'sonner';
 import { DEPARTMENTS } from '@/lib/constants';
 import { format } from 'date-fns';
 import { DatePicker } from '@/components/ui/date-picker';
+import { formatCNIC } from '@/utils/formValidation';
 
 export default function EditEmployeePage() {
   const navigate = useNavigate();
@@ -118,7 +119,7 @@ export default function EditEmployeePage() {
         secondary_phone: employee.secondary_phone || '',
         official_email: employee.official_email || '',
         personal_email: employee.personal_email || '',
-        cnic: employee.cnic || '',
+        cnic: formatCNIC(employee.cnic || ''),
         date_of_birth: employee.date_of_birth ? employee.date_of_birth.split('T')[0] : '',
         gender: employee.gender || '',
         religion: employee.religion || '',
@@ -175,6 +176,9 @@ export default function EditEmployeePage() {
   };
 
   const handleChange = (field: string, value: any) => {
+    if (field === 'cnic') {
+      value = formatCNIC(value, formData.cnic);
+    }
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
@@ -304,7 +308,7 @@ export default function EditEmployeePage() {
           <Button
             variant="ghost"
             onClick={() => navigate('/hrms/employees')}
-            className="mb-4 gap-2"
+            className="mb-4 gap-2 hover:bg-secondary-foreground dark:hover:bg-primary hover:text-white"
           >
             <ArrowLeft className="h-4 w-4" />
             Back to Employees
@@ -312,7 +316,12 @@ export default function EditEmployeePage() {
 
           <div className="flex items-center gap-4">
             <div className="p-3 bg-secondary-foreground dark:bg-primary rounded-2xl shadow-lg">
-              <User className="h-8 w-8 text-white" />
+              <Avatar className="h-20 w-20">
+                <AvatarImage src={`${FILE_BASE_URL}${employee.profile_picture}`} alt={name} />
+                <AvatarFallback className="text-2xl bg-secondary-foreground dark:bg-primary text-white dark:text-black">
+                  {getInitials(name)}
+                </AvatarFallback>
+              </Avatar>
             </div>
             <div>
               <h1 className="text-3xl font-bold text-secondary-foreground dark:text-primary">{formData.full_name}</h1>
@@ -429,8 +438,8 @@ export default function EditEmployeePage() {
             {currentStep === 2 && (
               <div className="space-y-6">
                 <div>
-                  <h2 className="text-2xl font-bold text-gray-900 mb-2">Personal Details</h2>
-                  <p className="text-gray-600">Personal information and address</p>
+                  <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Personal Details</h2>
+                  <p className="dark:text-gray-400">Personal information and address</p>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -440,6 +449,7 @@ export default function EditEmployeePage() {
                       value={formData.cnic}
                       onChange={(e) => handleChange('cnic', e.target.value)}
                       placeholder="12345-1234567-1"
+                      maxLength={15}
                       className="mt-2"
                     />
                   </div>
@@ -572,7 +582,7 @@ export default function EditEmployeePage() {
                   </div>
 
                   <div className="md:col-span-2">
-                    <h3 className="text-lg font-semibold text-gray-900 mb-4 mt-6">Emergency Contact</h3>
+                    <h3 className="text-lg font-semibold dark:text-gray-400 mb-4 mt-6">Emergency Contact</h3>
                   </div>
 
                   <div>
@@ -612,8 +622,8 @@ export default function EditEmployeePage() {
             {currentStep === 3 && (
               <div className="space-y-6">
                 <div>
-                  <h2 className="text-2xl font-bold text-gray-900 mb-2">Employment Details</h2>
-                  <p className="text-gray-600">Job position and salary information</p>
+                  <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Employment Details</h2>
+                  <p className="text-gray-600 dark:text-gray-400">Job position and salary information</p>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -750,7 +760,7 @@ export default function EditEmployeePage() {
                   </div>
 
                   <div className="md:col-span-2">
-                    <h3 className="text-lg font-semibold text-gray-900 mb-4 mt-6">Banking Information</h3>
+                    <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-400 mb-4 mt-6">Banking Information</h3>
                   </div>
 
                   <div>
@@ -794,7 +804,7 @@ export default function EditEmployeePage() {
                   </div>
 
                   <div className="md:col-span-2">
-                    <h3 className="text-lg font-semibold text-gray-900 mb-4 mt-6">Education & Experience</h3>
+                    <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-400 mb-4 mt-6">Education & Experience</h3>
                   </div>
 
                   <div>

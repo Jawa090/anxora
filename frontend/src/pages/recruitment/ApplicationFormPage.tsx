@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea';
 import { ArrowLeft, Printer, Save } from 'lucide-react';
 import { toast } from 'sonner';
+import { formatCNIC } from '@/utils/formValidation';
 
 export default function ApplicationFormPage() {
   const { id } = useParams();
@@ -138,8 +139,9 @@ export default function ApplicationFormPage() {
                   <Input
                     id="cnic"
                     placeholder="12345-1234567-1"
+                    maxLength={15}
                     value={formData.cnic}
-                    onChange={(e) => setFormData({ ...formData, cnic: e.target.value })}
+                    onChange={(e) => setFormData({ ...formData, cnic: formatCNIC(e.target.value, formData.cnic) })}
                     required
                   />
                 </div>

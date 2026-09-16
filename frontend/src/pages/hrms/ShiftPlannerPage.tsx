@@ -52,6 +52,7 @@ interface ShiftTemplate {
   start_time: string;
   end_time: string;
   grace_period_mins: number;
+  auto_checkout_hours?: number | null;
   description?: string | null;
   color?: string | null;
   is_active: boolean;
@@ -71,6 +72,7 @@ interface EmployeeAssignment {
   start_time?: string | null;
   end_time?: string | null;
   grace_period_mins?: number | null;
+  auto_checkout_hours?: number | null;
 }
 
 function getInitials(name: string) {
@@ -84,7 +86,19 @@ function getInitials(name: string) {
 
 function formatTimeDisplay(t: string | null | undefined) {
   if (!t) return "—";
-  return t.slice(0, 5); // "14:00:00" -> "14:00"
+  const sliced = t.slice(0, 5); // "14:00:00" -> "14:00"
+  if (sliced === "00:00") return "12:00";
+  if (sliced.startsWith("00:")) return `12:${sliced.slice(3)}`;
+  return sliced;
+}
+
+function calculateDurationHours(start: string, end: string): number {
+  if (!start || !end) return 9;
+  const sParts = start.split(":").map(Number);
+  const eParts = end.split(":").map(Number);
+  let durationMins = (eParts[0] * 60 + eParts[1]) - (sParts[0] * 60 + sParts[1]);
+  if (durationMins <= 0) durationMins += 24 * 60;
+  return Math.round((durationMins / 60) * 100) / 100;
 }
 
 export default function ShiftPlannerPage() {
@@ -99,6 +113,7 @@ export default function ShiftPlannerPage() {
     start_time: "09:00",
     end_time: "18:00",
     grace_period_mins: 15,
+    auto_checkout_hours: 9,
     description: "",
   });
 
@@ -173,6 +188,7 @@ export default function ShiftPlannerPage() {
       start_time: "09:00",
       end_time: "18:00",
       grace_period_mins: 15,
+      auto_checkout_hours: 9,
       description: "",
     });
     setShiftDialog(true);
@@ -180,11 +196,15 @@ export default function ShiftPlannerPage() {
 
   const openEditShift = (s: ShiftTemplate) => {
     setEditingShift(s);
+    const startStr = formatTimeDisplay(s.start_time);
+    const endStr = formatTimeDisplay(s.end_time);
+    const computedDuration = calculateDurationHours(startStr, endStr);
     setForm({
       name: s.name,
-      start_time: formatTimeDisplay(s.start_time),
-      end_time: formatTimeDisplay(s.end_time),
+      start_time: startStr,
+      end_time: endStr,
       grace_period_mins: s.grace_period_mins ?? 15,
+      auto_checkout_hours: s.auto_checkout_hours != null ? Number(s.auto_checkout_hours) : computedDuration,
       description: s.description || "",
     });
     setShiftDialog(true);
@@ -201,6 +221,7 @@ export default function ShiftPlannerPage() {
       start_time: form.start_time,
       end_time: form.end_time,
       grace_period_mins: Number(form.grace_period_mins) || 15,
+      auto_checkout_hours: Number(form.auto_checkout_hours) || null,
       description: form.description.trim() || null,
     });
   };
@@ -352,11 +373,19 @@ export default function ShiftPlannerPage() {
                         <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary shrink-0">
                           <Clock className="h-4 w-4" />
                         </div>
-                        <span className="font-semibold text-base">{shift.name}</span>
+                        <h4 className="font-semibold text-base text-foreground leading-tight">
+                          {shift.name}
+                        </h4>
                       </div>
-                      <p className="text-xs text-muted-foreground">
-                        Grace Period: <span className="text-foreground font-medium">{shift.grace_period_mins ?? 15} minutes</span>
-                      </p>
+                      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground mt-0.5">
+                        <span>
+                          Grace: <strong className="text-foreground">{shift.grace_period_mins ?? 15}m</strong>
+                        </span>
+                        <span>•</span>
+                        <span>
+                          Auto Checkout: <strong className="text-foreground">{shift.auto_checkout_hours ?? 9} hrs</strong>
+                        </span>
+                      </div>
                     </div>
                   </div>
 
@@ -626,32 +655,52 @@ export default function ShiftPlannerPage() {
                 <Label>Start Time</Label>
                 <TimePicker
                   value={form.start_time}
-                  onChange={(val) => setForm({ ...form, start_time: val })}
+                  onChange={(val) => {
+                    const dur = calculateDurationHours(val, form.end_time);
+                    setForm({ ...form, start_time: val, auto_checkout_hours: dur });
+                  }}
                 />
               </div>
               <div className="space-y-1.5">
                 <Label>End Time</Label>
                 <TimePicker
                   value={form.end_time}
-                  onChange={(val) => setForm({ ...form, end_time: val })}
+                  onChange={(val) => {
+                    const dur = calculateDurationHours(form.start_time, val);
+                    setForm({ ...form, end_time: val, auto_checkout_hours: dur });
+                  }}
                 />
               </div>
             </div>
 
-            <div className="space-y-1.5">
-              <Label>Grace Period (minutes)</Label>
-              <Input
-                type="number"
-                min="0"
-                max="120"
-                value={form.grace_period_mins}
-                onChange={(e) => setForm({ ...form, grace_period_mins: parseInt(e.target.value) || 0 })}
-                placeholder="15"
-              />
-              <p className="text-[11px] text-muted-foreground">
-                Employee check-in within this period is marked <strong>On Time</strong>. After this, marked <strong>Late</strong>.
-              </p>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label>Grace Period (mins)</Label>
+                <Input
+                  type="number"
+                  min="0"
+                  max="120"
+                  value={form.grace_period_mins}
+                  onChange={(e) => setForm({ ...form, grace_period_mins: parseInt(e.target.value) || 0 })}
+                  placeholder="15"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Auto Checkout (Hours)</Label>
+                <Input
+                  type="number"
+                  step="0.25"
+                  min="1"
+                  max="24"
+                  value={form.auto_checkout_hours}
+                  onChange={(e) => setForm({ ...form, auto_checkout_hours: parseFloat(e.target.value) || 0 })}
+                  placeholder="9"
+                />
+              </div>
             </div>
+            <p className="text-[11px] text-muted-foreground">
+              Check-in within grace period is <strong>On Time</strong>. Employee is automatically checked out after working <strong>{form.auto_checkout_hours || 9} hours</strong> from check-in.
+            </p>
 
             <div className="space-y-1.5">
               <Label>Description (optional)</Label>

@@ -88,7 +88,16 @@ function getInitials(name: string) {
 
 function fmt(iso: string | null) {
   if (!iso) return "—";
-  try { return format(new Date(iso), "HH:mm"); } catch { return "—"; }
+  try {
+    const d = new Date(iso);
+    if (isNaN(d.getTime())) return "—";
+    const hours = d.getHours();
+    const mins = String(d.getMinutes()).padStart(2, "0");
+    const displayHours = hours === 0 ? "12" : String(hours).padStart(2, "0");
+    return `${displayHours}:${mins}`;
+  } catch {
+    return "—";
+  }
 }
 
 function formatHours(decimal: number | string | null | undefined): string {

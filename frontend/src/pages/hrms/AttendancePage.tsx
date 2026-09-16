@@ -145,6 +145,20 @@ function formatHoursSigned(decimal: number): string {
   return `${sign}${hours}h ${minutes}m`;
 }
 
+function formatTimeDisplay(dateOrIso: string | Date | null | undefined): string {
+  if (!dateOrIso) return "—";
+  try {
+    const d = typeof dateOrIso === "string" ? new Date(dateOrIso) : dateOrIso;
+    if (isNaN(d.getTime())) return "—";
+    const hours = d.getHours();
+    const mins = String(d.getMinutes()).padStart(2, "0");
+    const displayHours = hours === 0 ? "12" : String(hours).padStart(2, "0");
+    return `${displayHours}:${mins}`;
+  } catch {
+    return "—";
+  }
+}
+
 function toTimeInput(iso: string | null): string {
   if (!iso) return "";
   try {
@@ -718,41 +732,43 @@ export default function AttendancePage() {
                           )}
                         </td>
                         <td className="py-2.5 px-3 text-center text-muted-foreground whitespace-nowrap">
-                          {r.clock_in ? format(new Date(r.clock_in), "HH:mm") : "—"}
+                          {formatTimeDisplay(r.clock_in)}
                         </td>
                         <td className="py-2.5 px-3 text-center text-muted-foreground whitespace-nowrap hidden sm:table-cell">
-                          {r.break_start ? format(new Date(r.break_start), "HH:mm") : "—"}
+                          {formatTimeDisplay(r.break_start)}
                         </td>
                         <td className="py-2.5 px-3 text-center text-muted-foreground whitespace-nowrap hidden sm:table-cell">
-                          {r.break_end ? format(new Date(r.break_end), "HH:mm") : "—"}
+                          {formatTimeDisplay(r.break_end)}
                         </td>
                         <td className="py-2.5 px-3 text-center whitespace-nowrap">
                           {r.clock_out ? (
-                            format(new Date(r.clock_out), "HH:mm")
-                          ) : (
+                            formatTimeDisplay(r.clock_out)
+                          ) : r.clock_in && r.status !== "absent" ? (
                             <span className="text-emerald-500 text-[10px]">Active</span>
+                          ) : (
+                            "—"
                           )}
                         </td>
                         <td className="py-2.5 px-3 text-center font-medium whitespace-nowrap hidden md:table-cell">
-                          {formatHours(r.total_hours_worked)}
+                          {r.status === "absent" && !r.clock_in ? "0m" : formatHours(r.total_hours_worked)}
                         </td>
                         <td className="py-2.5 px-3 text-center font-medium text-emerald-600 whitespace-nowrap hidden md:table-cell">
-                          {r.extra_time ? `+${formatHours(r.extra_time)}` : "—"}
+                          {r.status === "absent" && !r.clock_in ? "—" : r.extra_time ? `+${formatHours(r.extra_time)}` : "—"}
                         </td>
                         <td className="py-2.5 px-3 text-center font-medium text-red-600 whitespace-nowrap hidden md:table-cell">
-                          {r.less_time ? `-${formatHours(r.less_time)}` : "—"}
+                          {r.status === "absent" && !r.clock_in ? "—" : r.less_time ? `-${formatHours(r.less_time)}` : "—"}
                         </td>
                         <td className="py-2.5 px-3 text-center whitespace-nowrap">
                           <Badge
                             variant="outline"
                             className={cn(
                               "text-[10px] font-medium capitalize",
-                              r.punctuality === "late"
+                              r.punctuality === "late" || r.status === "absent"
                                 ? "bg-red-50 text-red-700 border-red-200"
                                 : "bg-emerald-50 text-emerald-700 border-emerald-200",
                             )}
                           >
-                            {r.punctuality === "late" ? "Late" : "On Time"}
+                            {r.punctuality === "late" || r.status === "absent" ? "Late" : "On Time"}
                           </Badge>
                         </td>
                         <td className="py-2.5 px-3 text-center whitespace-nowrap">
@@ -981,6 +997,7 @@ export default function AttendancePage() {
                               rec.status === "on_break" ||
                               (Boolean(rec.clock_in) && rec.status !== "absent")
                           ).length;
+                          const absentCount = dateRecords.filter((rec) => rec.status === "absent").length;
                           const isTodayDate = isToday(recordDate) || recordDateStr === format(now, "yyyy-MM-dd");
 
                           return (
@@ -996,8 +1013,17 @@ export default function AttendancePage() {
                                       variant="outline"
                                       className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/30 text-[11px] font-semibold px-2 py-0.5"
                                     >
-                                      {presentCount} {isTodayDate ? "Present " : "Present"}
+                                      {presentCount} {isTodayDate ? "Present" : "Present"}
                                     </Badge>
+
+                                    {absentCount > 0 && (
+                                      <Badge
+                                        variant="outline"
+                                        className="bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/30 text-[11px] font-semibold px-2 py-0.5"
+                                      >
+                                        {absentCount} Absent
+                                      </Badge>
+                                    )}
                                   </div>
                                 </div>
                               </td>
@@ -1028,41 +1054,43 @@ export default function AttendancePage() {
                             </div>
                           </td>
                           <td className="py-2.5 px-3 text-center whitespace-nowrap">
-                            {r.clock_in ? format(new Date(r.clock_in), "HH:mm") : "—"}
+                            {formatTimeDisplay(r.clock_in)}
                           </td>
                           <td className="py-2.5 px-3 text-center whitespace-nowrap">
                             {r.clock_out ? (
-                              format(new Date(r.clock_out), "HH:mm")
-                            ) : (
+                              formatTimeDisplay(r.clock_out)
+                            ) : r.clock_in && r.status !== "absent" ? (
                               <span className="text-emerald-500 text-[10px]">Active</span>
+                            ) : (
+                              "—"
                             )}
                           </td>
                           <td className="py-2.5 px-3 text-center  whitespace-nowrap">
-                            {r.break_start ? format(new Date(r.break_start), "HH:mm") : "—"}
+                            {formatTimeDisplay(r.break_start)}
                           </td>
                           <td className="py-2.5 px-3 text-center  whitespace-nowrap">
-                            {r.break_end ? format(new Date(r.break_end), "HH:mm") : "—"}
+                            {formatTimeDisplay(r.break_end)}
                           </td>
                           <td className="py-2.5 px-3 text-center font-medium whitespace-nowrap">
-                            {r.total_hours_worked ? `${formatHours(r.total_hours_worked)}` : "0m"}
+                            {r.status === "absent" && !r.clock_in ? "0m" : r.total_hours_worked ? `${formatHours(r.total_hours_worked)}` : "0m"}
                           </td>
                           <td className="py-2.5 px-3 text-center font-medium text-emerald-600 whitespace-nowrap">
-                            {r.extra_time ? `+${formatHours(r.extra_time)}` : "+0m"}
+                            {r.status === "absent" && !r.clock_in ? "—" : r.extra_time ? `+${formatHours(r.extra_time)}` : "+0m"}
                           </td>
                           <td className="py-2.5 px-3 text-center font-medium text-red-600 whitespace-nowrap">
-                            {r.less_time ? `-${formatHours(r.less_time)}` : "-0m"}
+                            {r.status === "absent" && !r.clock_in ? "—" : r.less_time ? `-${formatHours(r.less_time)}` : "-0m"}
                           </td>
                           <td className="py-2.5 px-3 text-center whitespace-nowrap">
                             <Badge
                               variant="outline"
                               className={cn(
                                 "text-[10px] font-medium capitalize",
-                                r.punctuality === "late"
+                                r.punctuality === "late" || r.status === "absent"
                                   ? "bg-red-50 text-red-700 border-red-200"
                                   : "bg-emerald-50 text-emerald-700 border-emerald-200",
                               )}
                             >
-                              {r.punctuality === "late" ? "Late" : "On Time"}
+                              {r.punctuality === "late" || r.status === "absent" ? "Late" : "On Time"}
                             </Badge>
                           </td>
                           <td className="py-2.5 px-3 text-center whitespace-nowrap">
@@ -1197,20 +1225,16 @@ export default function AttendancePage() {
             {[
               {
                 label: "Clock In",
-                value: myAttendance?.clock_in
-                  ? format(new Date(myAttendance.clock_in), "HH:mm")
-                  : "—",
+                value: formatTimeDisplay(myAttendance?.clock_in),
               },
               {
                 label: "Clock Out",
-                value: myAttendance?.clock_out
-                  ? format(new Date(myAttendance.clock_out), "HH:mm")
-                  : "—",
+                value: formatTimeDisplay(myAttendance?.clock_out),
               },
               {
                 label: "Break",
                 value: myAttendance?.break_start
-                  ? `${format(new Date(myAttendance.break_start), "HH:mm")}${myAttendance.break_end ? ` – ${format(new Date(myAttendance.break_end), "HH:mm")}` : " (active)"}`
+                  ? `${formatTimeDisplay(myAttendance.break_start)}${myAttendance.break_end ? ` – ${formatTimeDisplay(myAttendance.break_end)}` : " (active)"}`
                   : "—",
               },
               {

@@ -137,6 +137,49 @@ export const validateCNIC = (value: any): ValidationError | null => {
 };
 
 /**
+ * Format CNIC with automatic dashes: xxxxx-xxxxxxx-x
+ */
+export const formatCNIC = (value: any, prevValue: string = ''): string => {
+    if (!value) return '';
+    const str = String(value);
+    const isDeleting = Boolean(prevValue && str.length < prevValue.length);
+
+    // Extract only digits, max 13
+    const digits = str.replace(/\D/g, '').slice(0, 13);
+
+    if (isDeleting) {
+        // If user deleted the dash, also remove the previous digit to avoid getting stuck
+        if (prevValue.endsWith('-') && !str.endsWith('-')) {
+            const trimmedDigits = digits.slice(0, -1);
+            return formatCNIC(trimmedDigits);
+        }
+
+        if (digits.length <= 5) {
+            return digits;
+        }
+        if (digits.length <= 12) {
+            return `${digits.slice(0, 5)}-${digits.slice(5)}`;
+        }
+        return `${digits.slice(0, 5)}-${digits.slice(5, 12)}-${digits.slice(12)}`;
+    }
+
+    // When typing or pasting
+    if (digits.length < 5) {
+        return digits;
+    }
+    if (digits.length === 5) {
+        return `${digits}-`;
+    }
+    if (digits.length < 12) {
+        return `${digits.slice(0, 5)}-${digits.slice(5)}`;
+    }
+    if (digits.length === 12) {
+        return `${digits.slice(0, 5)}-${digits.slice(5)}-`;
+    }
+    return `${digits.slice(0, 5)}-${digits.slice(5, 12)}-${digits.slice(12)}`;
+};
+
+/**
  * Validate date is not in future
  */
 export const validateDate = (value: any, fieldName: string = 'Date'): ValidationError | null => {

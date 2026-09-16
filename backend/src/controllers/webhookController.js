@@ -176,7 +176,7 @@ exports.handleWebhook = async (req, res) => {
                     // Route to correct column based on state, or fallback to chronological ordering if state is missing
                     if (state === 0) { // Clock In
                         await db.query(
-                            `UPDATE attendance SET check_in = $1, clock_in = $1, raw_device_log = $2 WHERE id = $3`,
+                            `UPDATE attendance SET check_in = $1, clock_in = $1, raw_device_log = $2, status = 'present' WHERE id = $3`,
                             [recordTime, JSON.stringify(log), existingAttendance.id]
                         );
                     } else if (state === 1) { // Clock Out

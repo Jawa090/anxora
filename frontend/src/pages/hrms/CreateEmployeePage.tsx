@@ -11,6 +11,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { toast } from 'sonner';
 import { DEPARTMENTS } from '@/lib/constants';
 import { DatePicker } from '@/components/ui/date-picker';
+import { formatCNIC } from '@/utils/formValidation';
 
 export default function CreateEmployeePage() {
   const navigate = useNavigate();
@@ -101,6 +102,9 @@ export default function CreateEmployeePage() {
   });
 
   const handleChange = (field: string, value: any) => {
+    if (field === 'cnic') {
+      value = formatCNIC(value, formData.cnic);
+    }
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
@@ -440,6 +444,7 @@ export default function CreateEmployeePage() {
                       value={formData.cnic}
                       onChange={(e) => handleChange('cnic', e.target.value)}
                       placeholder="12345-1234567-1"
+                      maxLength={15}
                       className="mt-2"
                     />
                   </div>

@@ -353,7 +353,20 @@ export const payrollApi = {
   getSalarySlips: (params?: { month?: number; year?: number; employee_id?: string }) =>
     api.get<{ data: any[] }>('/payroll/slips', params),
   getSalarySlipById: (id: string) => api.get<{ data: any }>(`/payroll/slips/${id}`),
-  generateSalarySlip: (data: { employee_id: string; month: number; year: number; basic_salary: number; earnings: any[]; deductions: any[] }) =>
+  generateSalarySlip: (data: {
+    employee_id: string;
+    month: number;
+    year: number;
+    basic_salary: number;
+    earnings: any[];
+    deductions: any[];
+    absent_days?: number;
+    late_days?: number;
+    worked_days?: number;
+    total_days?: number;
+    notes?: string;
+    [key: string]: any;
+  }) =>
     api.post<{ data: any }>('/payroll/slips', data),
   deleteSalarySlip: (id: string) => api.delete(`/payroll/slips/${id}`),
 };

@@ -10,6 +10,7 @@ const getSalarySlips = async (req, res, next) => {
         ss.*,
         CONCAT(e.first_name, ' ', e.last_name) as employee_name,
         e.employee_id as emp_code,
+        e.cnic,
         e.department,
         e.position as designation
       FROM salary_slips ss
@@ -57,6 +58,7 @@ const getSalarySlipById = async (req, res, next) => {
         e.first_name,
         e.last_name,
         e.employee_id as emp_code,
+        e.cnic,
         e.department,
         e.position as designation,
         e.email,
@@ -90,7 +92,10 @@ const getSalarySlipById = async (req, res, next) => {
 
 const generateSalarySlip = async (req, res, next) => {
   try {
-    const { employee_id, month, year, basic_salary, earnings, deductions } = req.body;
+    const { 
+      employee_id, month, year, basic_salary, earnings, deductions, notes,
+      absent_days = 0, late_days = 0, worked_days = 30, total_days = 30
+    } = req.body;
 
     // Check if slip already exists
     const existingSlip = await db.query(
@@ -113,14 +118,23 @@ const generateSalarySlip = async (req, res, next) => {
     try {
       await client.query('BEGIN');
 
-      // Create salary slip
+      // Create salary slip with permanent snapshot of attendance values finalized by HR
       const slipResult = await client.query(
         `INSERT INTO salary_slips (
           org_id, employee_id, month, year, basic_salary,
-          total_earnings, total_deductions, net_salary, status, generated_by
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'generated', $9)
+          total_earnings, total_deductions, net_salary, status, generated_by, notes,
+          absent_days, late_days, worked_days, total_days
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'generated', $9, $10, $11, $12, $13, $14)
         RETURNING *`,
-        [req.user.orgId, employee_id, month, year, basic_salary, totalEarnings, totalDeductions, netSalary, req.user.id]
+        [
+          req.user.orgId, employee_id, month, year, basic_salary, 
+          totalEarnings, totalDeductions, netSalary, req.user.id, 
+          notes || null,
+          parseInt(absent_days, 10) || 0,
+          parseInt(late_days, 10) || 0,
+          parseInt(worked_days, 10) || 30,
+          parseInt(total_days, 10) || 30
+        ]
       );
 
       const slipId = slipResult.rows[0].id;

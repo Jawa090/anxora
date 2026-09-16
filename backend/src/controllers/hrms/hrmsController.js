@@ -4,6 +4,9 @@ const { v4: uuidv4 } = require('uuid');
 // Get HRMS dashboard statistics
 const getStats = async (req, res, next) => {
   try {
+    const { markAbsentForPassedShifts } = require('../../services/attendanceAbsentService');
+    await markAbsentForPassedShifts(req.user.orgId);
+
     const { period = 'today' } = req.query;
     let dateFilter = '';
 
@@ -180,6 +183,12 @@ const getActivities = async (req, res, next) => {
 // Get attendance records
 const getAttendance = async (req, res, next) => {
   try {
+    const { autoCheckoutOpenShifts } = require('../../services/autoCheckoutService');
+    await autoCheckoutOpenShifts(req.user.orgId);
+
+    const { markAbsentForPassedShifts } = require('../../services/attendanceAbsentService');
+    await markAbsentForPassedShifts(req.user.orgId);
+
     const { date, from, to, search, employee_id, status } = req.query;
     let whereClause = 'WHERE a.org_id = $1';
     const params = [req.user.orgId];
@@ -252,6 +261,9 @@ const getAttendance = async (req, res, next) => {
 // Get today's attendance
 const getTodayAttendance = async (req, res, next) => {
   try {
+    const { markAbsentForPassedShifts } = require('../../services/attendanceAbsentService');
+    await markAbsentForPassedShifts(req.user.orgId);
+
     const query = `
       SELECT
         a.*,
@@ -278,6 +290,9 @@ const getTodayAttendance = async (req, res, next) => {
 // Get current user's today attendance
 const getMyTodayAttendance = async (req, res, next) => {
   try {
+    const { markAbsentForPassedShifts } = require('../../services/attendanceAbsentService');
+    await markAbsentForPassedShifts(req.user.orgId);
+
     // Get employee record
     const employeeResult = await db.query(
       'SELECT id FROM employees WHERE user_id = $1 AND org_id = $2',
@@ -406,11 +421,11 @@ const clockIn = async (req, res, next) => {
 
     // Check if already clocked in today
     const existingRecord = await db.query(
-      'SELECT id, clock_out FROM attendance WHERE employee_id = $1 AND DATE(date) = $2',
+      'SELECT id, clock_in, clock_out, status, notes FROM attendance WHERE employee_id = $1 AND DATE(date) = $2',
       [employeeId, today]
     );
 
-    if (existingRecord.rows.length > 0 && !existingRecord.rows[0].clock_out) {
+    if (existingRecord.rows.length > 0 && existingRecord.rows[0].clock_in && !existingRecord.rows[0].clock_out) {
       return res.status(400).json({ error: 'Already clocked in today' });
     }
 
@@ -419,29 +434,82 @@ const clockIn = async (req, res, next) => {
     const { punctuality, shiftId } = await calculatePunctuality(employeeId, req.user.orgId, now);
     const status = 'present';
 
-    console.log('Creating attendance record for employee:', employeeId);
-    const result = await db.query(
-      `INSERT INTO attendance (
-        org_id, user_id, employee_id, date, clock_in, status, punctuality, shift_id, notes, 
-        location_lat, location_lng, ip_address, device_info
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
-      RETURNING *`,
-      [
-        req.user.orgId,
-        req.user.id,
-        employeeId,
-        today,
-        now,
-        status,
-        punctuality,
-        shiftId,
-        notes,
-        location?.lat || null,
-        location?.lng || null,
-        req.ip,
-        JSON.stringify({ userAgent: req.get('User-Agent') })
-      ]
-    );
+    let result;
+    if (existingRecord.rows.length > 0 && (!existingRecord.rows[0].clock_in || existingRecord.rows[0].status === 'absent')) {
+      console.log('Updating existing absent attendance record to present for employee:', employeeId);
+      const timeStr = now.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+      let finalNotes = notes || null;
+      if (!finalNotes) {
+        finalNotes = existingRecord.rows[0].notes 
+          ? `${existingRecord.rows[0].notes} | Checked in: ${timeStr}`
+          : `Checked in: ${timeStr}`;
+      }
+
+      result = await db.query(
+        `UPDATE attendance SET
+          clock_in = $1,
+          status = $2,
+          punctuality = $3,
+          shift_id = COALESCE($4, shift_id),
+          notes = $5,
+          location_lat = $6,
+          location_lng = $7,
+          ip_address = $8,
+          device_info = $9,
+          updated_at = CURRENT_TIMESTAMP
+        WHERE id = $10
+        RETURNING *`,
+        [
+          now,
+          status,
+          punctuality,
+          shiftId,
+          finalNotes,
+          location?.lat || null,
+          location?.lng || null,
+          req.ip,
+          JSON.stringify({ userAgent: req.get('User-Agent') }),
+          existingRecord.rows[0].id
+        ]
+      );
+    } else {
+      console.log('Creating attendance record for employee:', employeeId);
+      result = await db.query(
+        `INSERT INTO attendance (
+          org_id, user_id, employee_id, date, clock_in, status, punctuality, shift_id, notes, 
+          location_lat, location_lng, ip_address, device_info
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+        RETURNING *`,
+        [
+          req.user.orgId,
+          req.user.id,
+          employeeId,
+          today,
+          now,
+          status,
+          punctuality,
+          shiftId,
+          notes,
+          location?.lat || null,
+          location?.lng || null,
+          req.ip,
+          JSON.stringify({ userAgent: req.get('User-Agent') })
+        ]
+      );
+    }
+
+    try {
+      const realtimeService = require('../../services/realtimeService');
+      const empNameResult = await db.query(
+        'SELECT CONCAT(first_name, \' \', last_name) as employee_name, profile_picture FROM employees WHERE id = $1',
+        [employeeId]
+      );
+      realtimeService.emitAttendanceUpdated(req.user.orgId, {
+        ...result.rows[0],
+        employee_name: empNameResult.rows[0]?.employee_name || 'Unknown',
+        avatar_url: empNameResult.rows[0]?.profile_picture || null
+      });
+    } catch (e) {}
 
     // Create notification
     await createHRMSNotification(
