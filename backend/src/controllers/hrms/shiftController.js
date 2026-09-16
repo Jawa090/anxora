@@ -7,6 +7,11 @@ const shiftSchema = Joi.object({
   end_time: Joi.string().required(),   // e.g. "22:00" or "22:00:00"
   grace_period_mins: Joi.number().integer().min(0).default(15),
   auto_checkout_hours: Joi.number().min(0).max(24).optional().allow(null),
+  working_hours: Joi.number().min(0).max(24).optional().allow(null),
+  break_duration_hours: Joi.number().min(0).max(12).default(1.0).required(),
+  auto_deduct_break: Joi.boolean().default(true).required(),
+  half_day_min_percentage: Joi.number().min(0).max(100).optional().default(25),
+  full_day_min_percentage: Joi.number().min(0).max(100).optional().default(75),
   description: Joi.string().optional().allow('', null),
   color: Joi.string().optional().allow('', null),
   is_active: Joi.boolean().default(true),
@@ -36,14 +41,29 @@ const createShift = async (req, res, next) => {
       return res.status(400).json({ error: error.details[0].message });
     }
 
-    const { name, start_time, end_time, grace_period_mins = 15, auto_checkout_hours, description, color, is_active = true } = value;
+    const { 
+      name, start_time, end_time, grace_period_mins = 15, auto_checkout_hours, 
+      working_hours, break_duration_hours = 1.0, auto_deduct_break = true,
+      half_day_min_percentage = 25, full_day_min_percentage = 75,
+      description, color, is_active = true 
+    } = value;
 
     const result = await db.query(
       `INSERT INTO public.shift_templates (
-        org_id, name, start_time, end_time, grace_period_mins, auto_checkout_hours, description, color, is_active, created_by
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+        org_id, name, start_time, end_time, grace_period_mins, auto_checkout_hours, 
+        working_hours, break_duration_hours, auto_deduct_break,
+        half_day_min_percentage, full_day_min_percentage,
+        description, color, is_active, created_by
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
       RETURNING *`,
-      [req.user.orgId, name, start_time, end_time, grace_period_mins, auto_checkout_hours || null, description || null, color || '#f59e0b', is_active, req.user.id]
+      [
+        req.user.orgId, name, start_time, end_time, grace_period_mins, 
+        auto_checkout_hours || null, working_hours || null, 
+        break_duration_hours !== undefined ? break_duration_hours : 1.0,
+        auto_deduct_break !== undefined ? auto_deduct_break : true,
+        half_day_min_percentage || 25, full_day_min_percentage || 75,
+        description || null, color || '#f59e0b', is_active, req.user.id
+      ]
     );
 
     res.status(201).json(result.rows[0]);
@@ -60,15 +80,31 @@ const updateShift = async (req, res, next) => {
       return res.status(400).json({ error: error.details[0].message });
     }
 
-    const { name, start_time, end_time, grace_period_mins, auto_checkout_hours, description, color, is_active } = value;
+    const { 
+      name, start_time, end_time, grace_period_mins, auto_checkout_hours, 
+      working_hours, break_duration_hours, auto_deduct_break,
+      half_day_min_percentage, full_day_min_percentage,
+      description, color, is_active 
+    } = value;
 
     const result = await db.query(
       `UPDATE public.shift_templates 
        SET name = $1, start_time = $2, end_time = $3, grace_period_mins = $4,
-           auto_checkout_hours = $5, description = $6, color = $7, is_active = $8, updated_at = NOW()
-       WHERE id = $9 AND org_id = $10
+           auto_checkout_hours = $5, working_hours = $6, 
+           break_duration_hours = $7, auto_deduct_break = $8,
+           half_day_min_percentage = $9, full_day_min_percentage = $10,
+           description = $11, color = $12, is_active = $13, updated_at = NOW()
+       WHERE id = $14 AND org_id = $15
        RETURNING *`,
-      [name, start_time, end_time, grace_period_mins, auto_checkout_hours || null, description || null, color || '#f59e0b', is_active, id, req.user.orgId]
+      [
+        name, start_time, end_time, grace_period_mins, 
+        auto_checkout_hours || null, working_hours || null,
+        break_duration_hours !== undefined ? break_duration_hours : 1.0,
+        auto_deduct_break !== undefined ? auto_deduct_break : true,
+        half_day_min_percentage !== undefined ? half_day_min_percentage : 25,
+        full_day_min_percentage !== undefined ? full_day_min_percentage : 75,
+        description || null, color || '#f59e0b', is_active, id, req.user.orgId
+      ]
     );
 
     if (result.rows.length === 0) {

@@ -316,12 +316,7 @@ export default function EditEmployeePage() {
 
           <div className="flex items-center gap-4">
             <div className="p-3 bg-secondary-foreground dark:bg-primary rounded-2xl shadow-lg">
-              <Avatar className="h-20 w-20">
-                <AvatarImage src={`${FILE_BASE_URL}${employee.profile_picture}`} alt={name} />
-                <AvatarFallback className="text-2xl bg-secondary-foreground dark:bg-primary text-white dark:text-black">
-                  {getInitials(name)}
-                </AvatarFallback>
-              </Avatar>
+              <User className="h-8 w-8 text-white" />
             </div>
             <div>
               <h1 className="text-3xl font-bold text-secondary-foreground dark:text-primary">{formData.full_name}</h1>

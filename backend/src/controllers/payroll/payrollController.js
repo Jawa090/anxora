@@ -130,10 +130,10 @@ const generateSalarySlip = async (req, res, next) => {
           req.user.orgId, employee_id, month, year, basic_salary, 
           totalEarnings, totalDeductions, netSalary, req.user.id, 
           notes || null,
-          parseInt(absent_days, 10) || 0,
+          parseFloat(absent_days) || 0,
           parseInt(late_days, 10) || 0,
-          parseInt(worked_days, 10) || 30,
-          parseInt(total_days, 10) || 30
+          parseFloat(worked_days) || 30,
+          parseFloat(total_days) || 30
         ]
       );
 

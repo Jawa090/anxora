@@ -512,12 +512,6 @@ function OrganizationSettings() {
   const [attendanceMachineIp, setAttendanceMachineIp] = useState(
     (organization as any)?.attendance_machine_ip || "",
   );
-  const [workingHoursPerDay, setWorkingHoursPerDay] = useState(
-    (organization as any)?.working_hours_per_day || 9.0,
-  );
-  const [breakTimeHours, setBreakTimeHours] = useState(
-    (organization as any)?.break_time_hours || 1.0,
-  );
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -525,8 +519,6 @@ function OrganizationSettings() {
       if (organization.name) setOrgName(organization.name);
       setOrgAddress(organization.address || "");
       setAttendanceMachineIp((organization as any).attendance_machine_ip || "");
-      setWorkingHoursPerDay((organization as any).working_hours_per_day || 9.0);
-      setBreakTimeHours((organization as any).break_time_hours || 1.0);
     }
   }, [organization]);
 
@@ -545,8 +537,6 @@ function OrganizationSettings() {
         name: orgName,
         address: orgAddress,
         attendance_machine_ip: attendanceMachineIp,
-        working_hours_per_day: Number(workingHoursPerDay),
-        break_time_hours: Number(breakTimeHours),
       });
       toast.success("Organization updated");
       await refreshOrganization();
@@ -605,7 +595,7 @@ function OrganizationSettings() {
 
             {/* ZKTeco IP (ADMS Server Setting) */}
             {isAdmin && (
-              <div className="space-y-2">
+              <div className="space-y-2 sm:col-span-2">
                 <Label htmlFor="attendanceMachineIp">
                   Biometric ADMS Push IP/URL
                 </Label>
@@ -617,37 +607,11 @@ function OrganizationSettings() {
                   className={!isSuperAdmin ? "bg-muted" : ""}
                   placeholder="e.g. 192.168.25.118"
                 />
+                <p className="text-xs text-muted-foreground">
+                  IP or URL for ZKTeco / Biometric device pushes. Shift schedules, operating hours, and attendance thresholds (Half Day / Full Day) are configured in <strong>HRMS &gt; Shift Planner</strong>.
+                </p>
               </div>
             )}
-
-            {/* Attendance Rules */}
-            <div className="space-y-2">
-              <Label htmlFor="workingHoursPerDay">
-                Total Working Hours/Day
-              </Label>
-              <Input
-                id="workingHoursPerDay"
-                type="number"
-                step="0.5"
-                value={workingHoursPerDay}
-                onChange={(e) => setWorkingHoursPerDay(e.target.value)}
-                disabled={!isSuperAdmin}
-                className={!isSuperAdmin ? "bg-muted" : ""}
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="breakTimeHours">Break Time (Hours)</Label>
-              <Input
-                id="breakTimeHours"
-                type="number"
-                step="0.25"
-                value={breakTimeHours}
-                onChange={(e) => setBreakTimeHours(e.target.value)}
-                disabled={!isSuperAdmin}
-                className={!isSuperAdmin ? "bg-muted" : ""}
-              />
-            </div>
 
             {/* Org ID — display only, copyable */}
             <div className="space-y-2 sm:col-span-2">

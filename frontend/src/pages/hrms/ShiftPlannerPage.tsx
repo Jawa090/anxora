@@ -53,6 +53,11 @@ interface ShiftTemplate {
   end_time: string;
   grace_period_mins: number;
   auto_checkout_hours?: number | null;
+  working_hours?: number | null;
+  break_duration_hours?: number | null;
+  auto_deduct_break?: boolean | null;
+  half_day_min_percentage?: number | null;
+  full_day_min_percentage?: number | null;
   description?: string | null;
   color?: string | null;
   is_active: boolean;
@@ -112,8 +117,14 @@ export default function ShiftPlannerPage() {
     name: "",
     start_time: "09:00",
     end_time: "18:00",
+    shift_duration: 9,
     grace_period_mins: 15,
     auto_checkout_hours: 9,
+    break_duration_hours: 1.0,
+    auto_deduct_break: true,
+    working_hours: 8,
+    half_day_min_percentage: 25,
+    full_day_min_percentage: 75,
     description: "",
   });
 
@@ -183,12 +194,21 @@ export default function ShiftPlannerPage() {
 
   const openCreateShift = () => {
     setEditingShift(null);
+    const dur = calculateDurationHours("09:00", "18:00");
+    const breakH = 1.0;
+    const net = Math.max(1, dur - breakH);
     setForm({
       name: "",
       start_time: "09:00",
       end_time: "18:00",
+      shift_duration: dur,
       grace_period_mins: 15,
-      auto_checkout_hours: 9,
+      auto_checkout_hours: dur,
+      break_duration_hours: breakH,
+      auto_deduct_break: true,
+      working_hours: net,
+      half_day_min_percentage: 25,
+      full_day_min_percentage: 75,
       description: "",
     });
     setShiftDialog(true);
@@ -199,15 +219,76 @@ export default function ShiftPlannerPage() {
     const startStr = formatTimeDisplay(s.start_time);
     const endStr = formatTimeDisplay(s.end_time);
     const computedDuration = calculateDurationHours(startStr, endStr);
+    const breakHours = s.break_duration_hours != null ? Number(s.break_duration_hours) : 1.0;
+    const autoDeduct = s.auto_deduct_break !== false;
+    const calculatedNet = Math.max(1, computedDuration - (autoDeduct ? breakHours : 0));
     setForm({
       name: s.name,
       start_time: startStr,
       end_time: endStr,
+      shift_duration: computedDuration,
       grace_period_mins: s.grace_period_mins ?? 15,
       auto_checkout_hours: s.auto_checkout_hours != null ? Number(s.auto_checkout_hours) : computedDuration,
+      break_duration_hours: breakHours,
+      auto_deduct_break: autoDeduct,
+      working_hours: s.working_hours != null ? Number(s.working_hours) : calculatedNet,
+      half_day_min_percentage: s.half_day_min_percentage != null ? Number(s.half_day_min_percentage) : 25,
+      full_day_min_percentage: s.full_day_min_percentage != null ? Number(s.full_day_min_percentage) : 75,
       description: s.description || "",
     });
     setShiftDialog(true);
+  };
+
+  const handleStartTimeChange = (val: string) => {
+    const dur = calculateDurationHours(val, form.end_time);
+    const net = Math.max(1, dur - (form.auto_deduct_break ? form.break_duration_hours : 0));
+    setForm((prev) => ({
+      ...prev,
+      start_time: val,
+      shift_duration: dur,
+      auto_checkout_hours: dur,
+      working_hours: net,
+    }));
+  };
+
+  const handleEndTimeChange = (val: string) => {
+    const dur = calculateDurationHours(form.start_time, val);
+    const net = Math.max(1, dur - (form.auto_deduct_break ? form.break_duration_hours : 0));
+    setForm((prev) => ({
+      ...prev,
+      end_time: val,
+      shift_duration: dur,
+      auto_checkout_hours: dur,
+      working_hours: net,
+    }));
+  };
+
+  const handleShiftDurationChange = (dur: number) => {
+    const net = Math.max(1, dur - (form.auto_deduct_break ? form.break_duration_hours : 0));
+    setForm((prev) => ({
+      ...prev,
+      shift_duration: dur,
+      auto_checkout_hours: dur,
+      working_hours: net,
+    }));
+  };
+
+  const handleBreakDurationChange = (breakH: number) => {
+    const net = Math.max(1, form.shift_duration - (form.auto_deduct_break ? breakH : 0));
+    setForm((prev) => ({
+      ...prev,
+      break_duration_hours: breakH,
+      working_hours: net,
+    }));
+  };
+
+  const handleAutoDeductChange = (isYes: boolean) => {
+    const net = Math.max(1, form.shift_duration - (isYes ? form.break_duration_hours : 0));
+    setForm((prev) => ({
+      ...prev,
+      auto_deduct_break: isYes,
+      working_hours: net,
+    }));
   };
 
   const handleSaveShift = (e: React.FormEvent) => {
@@ -222,6 +303,11 @@ export default function ShiftPlannerPage() {
       end_time: form.end_time,
       grace_period_mins: Number(form.grace_period_mins) || 15,
       auto_checkout_hours: Number(form.auto_checkout_hours) || null,
+      break_duration_hours: Number(form.break_duration_hours) != null ? Number(form.break_duration_hours) : 1.0,
+      auto_deduct_break: Boolean(form.auto_deduct_break),
+      working_hours: Number(form.working_hours) || 8,
+      half_day_min_percentage: Number(form.half_day_min_percentage) || 25,
+      full_day_min_percentage: Number(form.full_day_min_percentage) || 75,
       description: form.description.trim() || null,
     });
   };
@@ -377,13 +463,30 @@ export default function ShiftPlannerPage() {
                           {shift.name}
                         </h4>
                       </div>
-                      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground mt-0.5">
+                      <div className="flex flex-wrap items-center gap-x-2.5 gap-y-0.5 text-xs text-muted-foreground mt-0.5">
                         <span>
-                          Grace: <strong className="text-foreground">{shift.grace_period_mins ?? 15}m</strong>
+                          Shift hrs: <strong className="text-foreground">{calculateDurationHours(formatTimeDisplay(shift.start_time), formatTimeDisplay(shift.end_time))}h</strong>
                         </span>
                         <span>•</span>
                         <span>
-                          Auto Checkout: <strong className="text-foreground">{shift.auto_checkout_hours ?? 9} hrs</strong>
+                          Net Working Hrs: <strong className="text-foreground">{parseFloat(String(shift.working_hours || 8))}h</strong>
+                        </span>
+                        <span>•</span>
+                        <span>
+                          Break: <strong className="text-foreground">{parseFloat(String(shift.break_duration_hours || 1))}h</strong>
+                        </span>
+                        <span>•</span>
+                        <span>
+                          Grace: <strong className="text-foreground">{shift.grace_period_mins ?? 15}m</strong>
+                        </span>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-2 pt-1 text-[11px]">
+                        <span className="inline-flex items-center justify-center gap-1 px-2 py-1 rounded-md bg-amber-500/10 text-amber-700 dark:text-amber-300 font-medium text-center">
+                          Half Day: {parseFloat(String(shift.half_day_min_percentage || 25))}% ({(((parseFloat(String(shift.working_hours || 8))) * (parseFloat(String(shift.half_day_min_percentage || 25)))) / 100).toFixed(1)}h)
+                        </span>
+                        <span className="inline-flex items-center justify-center gap-1 px-2 py-1 rounded-md bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 font-medium text-center">
+                          Full Day: {parseFloat(String(shift.full_day_min_percentage || 75))}% ({(((parseFloat(String(shift.working_hours || 8))) * (parseFloat(String(shift.full_day_min_percentage || 75)))) / 100).toFixed(1)}h)
                         </span>
                       </div>
                     </div>
@@ -414,7 +517,7 @@ export default function ShiftPlannerPage() {
                           setDeletingShift(shift);
                           setDeleteDialog(true);
                         }}
-                        className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                        className="h-8 w-8 text-destructive hover:bg-destructive/30 hover:text-destructive"
                       >
                         <Trash2 className="h-3.5 w-3.5" />
                       </Button>
@@ -635,7 +738,7 @@ export default function ShiftPlannerPage() {
 
       {/* CREATE / EDIT SHIFT MODAL */}
       <Dialog open={shiftDialog} onOpenChange={setShiftDialog}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{editingShift ? "Edit Shift Template" : "Add Shift Template"}</DialogTitle>
           </DialogHeader>
@@ -655,21 +758,172 @@ export default function ShiftPlannerPage() {
                 <Label>Start Time</Label>
                 <TimePicker
                   value={form.start_time}
-                  onChange={(val) => {
-                    const dur = calculateDurationHours(val, form.end_time);
-                    setForm({ ...form, start_time: val, auto_checkout_hours: dur });
-                  }}
+                  onChange={(val) => handleStartTimeChange(val)}
                 />
               </div>
               <div className="space-y-1.5">
                 <Label>End Time</Label>
                 <TimePicker
                   value={form.end_time}
-                  onChange={(val) => {
-                    const dur = calculateDurationHours(form.start_time, val);
-                    setForm({ ...form, end_time: val, auto_checkout_hours: dur });
-                  }}
+                  onChange={(val) => handleEndTimeChange(val)}
                 />
+              </div>
+            </div>
+
+            {/* Shift Duration & Break Configuration Card */}
+            <div className="rounded-xl border border-border/60 bg-muted/20 p-3.5 space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-semibold text-foreground">Timing & Break Details</span>
+                <span className="text-[11px] font-semibold text-primary px-2 py-0.5 rounded bg-primary/10">
+                  {form.shift_duration}h Shift Duration
+                </span>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                {/* Shift Duration (Auto-detected from start/end, but fully editable) */}
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between h-5">
+                    <Label className="text-xs font-semibold">Shift Duration (Hours) *</Label>
+                  </div>
+                  <Input
+                    className="h-9 text-xs"
+                    type="number"
+                    step="0.25"
+                    min="1"
+                    max="24"
+                    value={form.shift_duration}
+                    onChange={(e) => handleShiftDurationChange(parseFloat(e.target.value) || 0)}
+                    required
+                    placeholder="9"
+                  />
+                  <p className="text-[10px] text-muted-foreground leading-tight">
+                    From {formatTimeDisplay(form.start_time)} to {formatTimeDisplay(form.end_time)}
+                  </p>
+                </div>
+
+                {/* Break Duration */}
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between h-5">
+                    <Label className="text-xs font-semibold">Break Duration (Hours) *</Label>
+                  </div>
+                  <Input
+                    className="h-9 text-xs"
+                    type="number"
+                    step="0.25"
+                    min="0"
+                    max="6"
+                    value={form.break_duration_hours}
+                    onChange={(e) => handleBreakDurationChange(parseFloat(e.target.value) || 0)}
+                    required
+                    placeholder="1.0"
+                  />
+                  <p className="text-[10px] text-muted-foreground leading-tight">
+                    Lunch / prayer break
+                  </p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3 pt-2 border-t border-border/40">
+                {/* Net Working Hours */}
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between h-5">
+                    <Label className="text-xs font-semibold">Net Working Hours *</Label>
+                    <span className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400">
+                      {form.working_hours} hrs
+                    </span>
+                  </div>
+                  <Input
+                    className="h-9 text-xs"
+                    type="number"
+                    step="0.25"
+                    min="1"
+                    max="24"
+                    value={form.working_hours}
+                    onChange={(e) => setForm({ ...form, working_hours: parseFloat(e.target.value) || 0 })}
+                    placeholder="8"
+                    required
+                  />
+                  <p className="text-[10px] text-muted-foreground leading-tight">
+                    {form.shift_duration}h Shift - {form.auto_deduct_break ? form.break_duration_hours : 0}h Break = <strong>{form.working_hours}h Net</strong>
+                  </p>
+                </div>
+
+                {/* Auto-Deduct Break if Unrecorded */}
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between h-5">
+                    <Label className="text-xs font-semibold">Auto-Deduct Break *</Label>
+                  </div>
+                  <Select
+                    value={form.auto_deduct_break ? "yes" : "no"}
+                    onValueChange={(val) => handleAutoDeductChange(val === "yes")}
+                  >
+                    <SelectTrigger className="h-9 text-xs bg-background">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="yes">Yes (Auto-deduct)</SelectItem>
+                      <SelectItem value="no">No (Only punched)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <p className="text-[10px] text-muted-foreground leading-tight">
+                    Deducts {form.break_duration_hours}h if unrecorded.
+                  </p>
+                </div>
+
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-semibold text-foreground">Attendance Thresholds</span>
+                <span className="text-[11px] font-medium text-muted-foreground">
+                  Based on <strong>{form.working_hours}h Net Work</strong>
+                </span>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between h-5">
+                    <Label className="text-xs">Half Day Min (%) *</Label>
+                    <span className="text-[11px] font-semibold text-amber-600 dark:text-amber-400">
+                      {((Number(form.working_hours || 8) * Number(form.half_day_min_percentage || 25)) / 100).toFixed(1)}h
+                    </span>
+                  </div>
+                  <Input
+                    className="h-9 text-xs"
+                    type="number"
+                    step="1"
+                    min="0"
+                    max="100"
+                    value={form.half_day_min_percentage}
+                    onChange={(e) => setForm({ ...form, half_day_min_percentage: parseFloat(e.target.value) || 0 })}
+                    placeholder="25"
+                    required
+                  />
+                  <p className="text-[10px] text-destructive leading-tight">
+                    &lt; {((Number(form.working_hours || 8) * Number(form.half_day_min_percentage || 25)) / 100).toFixed(1)}h is Absent
+                  </p>
+                </div>
+
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between h-5">
+                    <Label className="text-xs">Full Day Min (%) *</Label>
+                    <span className="text-[11px] font-semibold text-emerald-600 dark:text-emerald-400">
+                      {((Number(form.working_hours || 8) * Number(form.full_day_min_percentage || 75)) / 100).toFixed(1)}h
+                    </span>
+                  </div>
+                  <Input
+                    className="h-9 text-xs"
+                    type="number"
+                    step="1"
+                    min="0"
+                    max="100"
+                    value={form.full_day_min_percentage}
+                    onChange={(e) => setForm({ ...form, full_day_min_percentage: parseFloat(e.target.value) || 0 })}
+                    placeholder="75"
+                    required
+                  />
+                  <p className="text-[10px] text-emerald-600 dark:text-emerald-400 leading-tight">
+                    &ge; {((Number(form.working_hours || 8) * Number(form.full_day_min_percentage || 75)) / 100).toFixed(1)}h is Full Day
+                  </p>
+                </div>
               </div>
             </div>
 
@@ -699,7 +953,7 @@ export default function ShiftPlannerPage() {
               </div>
             </div>
             <p className="text-[11px] text-muted-foreground">
-              Check-in within grace period is <strong>On Time</strong>. Employee is automatically checked out after working <strong>{form.auto_checkout_hours || 9} hours</strong> from check-in.
+              Check-in within grace period is <strong>On Time</strong>. Employee is automatically checked out after working <strong>{form.auto_checkout_hours || form.shift_duration || 9} hours</strong> from check-in.
             </p>
 
             <div className="space-y-1.5">

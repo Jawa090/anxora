@@ -641,42 +641,125 @@ input[type="time"]::-webkit-calendar-picker-indicator {
 }
 
 /* ============================================
-   PRINT / PDF STYLES — Salary Slip Only
+   PRINT / PDF STYLES — Salary Slip & Documents
    ============================================ */
 @media print {
-
-  /* Hide everything by default */
-  body * {
-    visibility: hidden;
+  /* Reset document background for printing */
+  html, body {
+    background: #ffffff !important;
+    color: #0f172a !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
   }
 
-  /* Only show the slip content and its children */
-  #salary-slip-print-area,
-  #salary-slip-print-area * {
-    visibility: visible;
+  /* Hide app navigation, sidebar, topbar, buttons, telephony, etc. */
+  aside,
+  header,
+  nav,
+  .print\:hidden,
+  button,
+  [role="navigation"],
+  .fixed.bottom-4,
+  .telephony-overlay {
+    display: none !important;
+    visibility: hidden !important;
   }
 
-  /* Position the slip at top-left of page */
+  /* Unconstrain wrappers so content is not clipped */
+  #root,
+  .min-h-screen,
+  main,
+  .max-w-4xl {
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    display: block !important;
+    position: static !important;
+    overflow: visible !important;
+  }
+
+  div[style*="padding-left"] {
+    padding-left: 0 !important;
+  }
+
+  /* Salary Slip Print Container */
   #salary-slip-print-area {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    padding: 20px;
-    background: white;
-    color: black;
+    position: static !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 auto !important;
+    padding: 10px !important;
+    background: #ffffff !important;
+    color: #0f172a !important;
+    border: none !important;
+    box-shadow: none !important;
+    overflow: visible !important;
   }
 
-  /* Remove box-shadow, backdrop blur for print */
-  #salary-slip-print-area .rounded-2xl {
-    box-shadow: none !important;
-    backdrop-filter: none !important;
-    border: none !important;
+  #salary-slip-print-area * {
+    visibility: visible !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* Force light backgrounds & crisp high-contrast text for slip elements */
+  #salary-slip-print-area .bg-background,
+  #salary-slip-print-area .bg-card,
+  #salary-slip-print-area .bg-card\/30 {
+    background-color: #ffffff !important;
+    color: #0f172a !important;
+  }
+
+  #salary-slip-print-area .bg-muted\/40,
+  #salary-slip-print-area th {
+    background-color: #f1f5f9 !important;
+    color: #334155 !important;
+  }
+
+  #salary-slip-print-area .border-border,
+  #salary-slip-print-area .border-border\/80,
+  #salary-slip-print-area .border-border\/40 {
+    border-color: #cbd5e1 !important;
+  }
+
+  #salary-slip-print-area .text-foreground,
+  #salary-slip-print-area .text-foreground\/80 {
+    color: #0f172a !important;
+  }
+
+  #salary-slip-print-area .text-muted-foreground {
+    color: #475569 !important;
+  }
+
+  #salary-slip-print-area h1 {
+    color: #059669 !important;
+    background: none !important;
+    -webkit-text-fill-color: #059669 !important;
+  }
+
+  #salary-slip-print-area .text-emerald-500,
+  #salary-slip-print-area .text-emerald-600 {
+    color: #059669 !important;
+  }
+
+  #salary-slip-print-area .bg-emerald-500\/10 {
+    background-color: #ecfdf5 !important;
+  }
+
+  #salary-slip-print-area .text-red-600 {
+    color: #dc2626 !important;
+  }
+
+  #salary-slip-print-area .bg-red-500\/10 {
+    background-color: #fef2f2 !important;
   }
 
   @page {
     size: A4 portrait;
-    margin: 15mm;
+    margin: 0;
   }
 }
 

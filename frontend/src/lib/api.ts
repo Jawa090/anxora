@@ -310,7 +310,7 @@ export const signingPartiesApi = {
 };
 
 export const employeesApi = {
-  getAll: (params?: { page?: number; limit?: number; search?: string; department?: string; status?: string }) =>
+  getAll: (params?: { page?: number; limit?: number; search?: string; department?: string; status?: string; includeAdmins?: string }) =>
     api.get<{ data: any[]; pagination: any }>('/employees', params),
   getById: (id: string) => api.get<any>(`/employees/${id}`),
   create: (data: any) => api.post<any>('/employees', data),

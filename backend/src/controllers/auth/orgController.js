@@ -21,7 +21,7 @@ const getCurrent = async (req, res, next) => {
 
 const update = async (req, res, next) => {
   try {
-    const { name, domain, logoUrl, settings, address, attendance_machine_ip, working_hours_per_day, break_time_hours } = req.body;
+    const { name, domain, logoUrl, settings, address, attendance_machine_ip, working_hours_per_day, break_time_hours, half_day_min_percentage, full_day_min_percentage } = req.body;
 
     const result = await db.query(
       `UPDATE public.organizations 
@@ -33,8 +33,10 @@ const update = async (req, res, next) => {
            attendance_machine_ip = COALESCE($6, attendance_machine_ip),
            working_hours_per_day = COALESCE($7, working_hours_per_day),
            break_time_hours = COALESCE($8, break_time_hours),
+           half_day_min_percentage = COALESCE($9, half_day_min_percentage),
+           full_day_min_percentage = COALESCE($10, full_day_min_percentage),
            updated_at = now()
-       WHERE id = $9
+       WHERE id = $11
        RETURNING *`,
       [
         name ?? null,
@@ -45,6 +47,8 @@ const update = async (req, res, next) => {
         attendance_machine_ip ?? null,
         working_hours_per_day ?? null,
         break_time_hours ?? null,
+        half_day_min_percentage ?? null,
+        full_day_min_percentage ?? null,
         req.user.orgId
       ]
     );

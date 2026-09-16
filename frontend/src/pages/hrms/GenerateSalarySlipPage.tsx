@@ -6,11 +6,16 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Trash2, ArrowLeft, Printer, Calendar as CalendarIcon, CheckCircle2 } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
+import { Plus, Trash2, ArrowLeft, Printer, Calendar as CalendarIcon, CheckCircle2, Search, Check, ChevronsUpDown, X } from "lucide-react";
 import { employeesApi, payrollApi, api } from "@/lib/api";
 import { useToast } from "@/components/ui/use-toast";
 import { DatePicker } from "@/components/ui/date-picker";
 import { formatCNIC } from "@/utils/formValidation";
+import { format } from "date-fns";
+import { cn } from "@/lib/utils";
 
 const MONTHS = [
   { value: 1, label: "January" }, { value: 2, label: "February" }, { value: 3, label: "March" },
@@ -23,6 +28,17 @@ const currentYear = new Date().getFullYear();
 const YEARS = Array.from({ length: 6 }, (_, i) => currentYear - i + 1);
 
 type CustomItem = { name: string; amount: number };
+
+function getInitials(name: string) {
+  return (name || "")
+    .trim()
+    .split(" ")
+    .filter(Boolean)
+    .map((n) => n[0])
+    .join("")
+    .toUpperCase()
+    .slice(0, 2) || "EM";
+}
 
 export default function GenerateSalarySlipPage() {
   const navigate = useNavigate();
@@ -77,13 +93,33 @@ export default function GenerateSalarySlipPage() {
     setTotalDaysInMonth(days);
   }, [month, year]);
 
-  // Fetch employees
+  // Fetch employees (includeAdmins=true includes admins and managers, while super_admin remains excluded)
   const { data: employeesData } = useQuery({
-    queryKey: ["employees"],
-    queryFn: () => employeesApi.getAll(),
+    queryKey: ["employees", "salary-slip-employees"],
+    queryFn: () => employeesApi.getAll({ includeAdmins: "true", limit: 500, status: "active" }),
   });
   const employees = employeesData?.data || [];
   const employee = employees.find((e: any) => e.id === selectedEmployee);
+
+  const [employeeOpen, setEmployeeOpen] = useState(false);
+  const [employeeSearch, setEmployeeSearch] = useState("");
+
+  const filteredEmployees = employees.filter((emp: any) => {
+    if (!employeeSearch.trim()) return true;
+    const q = employeeSearch.toLowerCase().trim();
+    const fullName = `${emp.first_name || ""} ${emp.last_name || ""}`.toLowerCase();
+    const empId = (emp.employee_id || emp.employee_code || "").toLowerCase();
+    const dept = (emp.department || "").toLowerCase();
+    const pos = (emp.position || emp.job_title || "").toLowerCase();
+    const role = (emp.role || "").toLowerCase();
+    return (
+      fullName.includes(q) ||
+      empId.includes(q) ||
+      dept.includes(q) ||
+      pos.includes(q) ||
+      role.includes(q)
+    );
+  });
 
   // When an employee is selected, auto-fill CNIC and base salary
   useEffect(() => {
@@ -116,33 +152,14 @@ export default function GenerateSalarySlipPage() {
         const startDateStr = `${year}-${String(month).padStart(2, "0")}-01`;
         const endDateStr = `${year}-${String(month).padStart(2, "0")}-${String(lastDay).padStart(2, "0")}`;
 
-        // 1. Fetch Leaves
+        // 1. Fetch Approved Leaves
         const leavesRes = await api.get<{ data: any[] }>("/leave", {
           employeeId: selectedEmployee,
           status: "approved",
         });
         const leaves = leavesRes?.data || [];
 
-        let unpaidDays = 0;
-        const monthStart = new Date(year, month - 1, 1);
-        const monthEnd = new Date(year, month, 0);
-
-        leaves.forEach((leave: any) => {
-          if (leave.paid_status?.toLowerCase() !== "unpaid") return;
-          const leaveStart = new Date(leave.start_date);
-          const leaveEnd = new Date(leave.end_date);
-
-          const overlapStart = new Date(Math.max(leaveStart.getTime(), monthStart.getTime()));
-          const overlapEnd = new Date(Math.min(leaveEnd.getTime(), monthEnd.getTime()));
-
-          if (overlapStart <= overlapEnd) {
-            const diffTime = Math.abs(overlapEnd.getTime() - overlapStart.getTime());
-            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
-            unpaidDays += diffDays;
-          }
-        });
-
-        // 2. Fetch Attendance
+        // 2. Fetch Attendance records
         const attendanceRes = await api.get<{ data: any[] }>("/attendance", {
           employee_id: selectedEmployee,
           from: startDateStr,
@@ -150,13 +167,105 @@ export default function GenerateSalarySlipPage() {
           limit: "all",
         });
         const attendanceRecords = attendanceRes?.data || [];
-        const lates = attendanceRecords.filter((rec: any) => rec.status === "late" || rec.punctuality === "late").length;
-        const absents = attendanceRecords.filter((rec: any) => rec.status === "absent").length;
 
-        const effectiveAbsents = Math.max(unpaidDays, absents);
-        setAbsentsCount(effectiveAbsents);
+        // Late count (direct punctuality or status)
+        const lates = attendanceRecords.filter(
+          (rec: any) => rec.status === "late" || rec.punctuality === "late"
+        ).length;
+
+        // Day-by-day correlation based on HR Payroll Rules:
+        // 1. Leave Paid + Absent -> 0 deduction
+        // 2. Leave Unpaid + Absent -> 1 day deduction
+        // 3. Leave Paid/Unpaid + Check-in -> Present (Leave not consumed) -> 0 deduction
+        // 4. Half-day Paid Leave + Check-in, no checkout -> 0 deduction
+        // 5. Half-day Unpaid Leave + Check-in, no checkout -> 0.5 day deduction
+        // 6. Check-in + Check-out, no leave -> 0 deduction
+        // (Half-day without leave -> 0.5 deduction; Absent without leave -> 1 day deduction)
+
+        let totalDeductibleDays = 0;
+
+        for (let d = 1; d <= lastDay; d++) {
+          const currentDateStr = `${year}-${String(month).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+
+          // Find attendance record on this day (if any)
+          const att = attendanceRecords.find((rec: any) => {
+            const rDate = rec.date
+              ? (typeof rec.date === "string" ? rec.date.substring(0, 10) : format(new Date(rec.date), "yyyy-MM-dd"))
+              : rec.clock_in
+                ? (typeof rec.clock_in === "string" ? rec.clock_in.substring(0, 10) : format(new Date(rec.clock_in), "yyyy-MM-dd"))
+                : null;
+            return rDate === currentDateStr;
+          });
+
+          // Find approved leave covering this day (if any)
+          const leave = leaves.find((l: any) => {
+            const s = typeof l.start_date === "string" ? l.start_date.substring(0, 10) : format(new Date(l.start_date), "yyyy-MM-dd");
+            const e = typeof l.end_date === "string" ? l.end_date.substring(0, 10) : format(new Date(l.end_date), "yyyy-MM-dd");
+            return currentDateStr >= s && currentDateStr <= e;
+          });
+
+          const hasCheckIn = !!(att && att.clock_in);
+          const hasCheckOut = !!(att && att.clock_out);
+          const isPunctualityHalfDay = att?.punctuality === "half_day";
+          const isStatusHalfDay = att?.status === "half_day";
+          const isAttAbsent = att?.status === "absent";
+          const isAttPresent = att?.status === "present" || att?.status === "late";
+
+          // Partial attendance / half-day check
+          const isPartialAttendance = isPunctualityHalfDay || isStatusHalfDay || (hasCheckIn && !hasCheckOut && !isAttPresent);
+
+          const isLeavePaid = leave?.paid_status?.toLowerCase() === "paid";
+          const isLeaveUnpaid = leave?.paid_status?.toLowerCase() === "unpaid";
+          const isHalfDayLeave = !!(leave && (leave.half_day || Number(leave.days_requested) === 0.5));
+
+          if (leave) {
+            if (hasCheckIn && !isPartialAttendance) {
+              // Scenario 3: Leave Paid/Unpaid + Check-in -> Present -> Leave cancel/not consumed -> No deduction
+              totalDeductibleDays += 0;
+            } else if (isHalfDayLeave) {
+              if (isPartialAttendance || hasCheckIn) {
+                if (isLeavePaid) {
+                  // Scenario 4: Half-day Paid Leave + Check-in, no checkout -> No deduction
+                  totalDeductibleDays += 0;
+                } else {
+                  // Scenario 5: Half-day Unpaid Leave + Check-in, no checkout -> 0.5 day deduction
+                  totalDeductibleDays += 0.5;
+                }
+              } else {
+                // Half-day leave applied, but employee was completely absent all day
+                totalDeductibleDays += isLeavePaid ? 0.5 : 1.0;
+              }
+            } else {
+              // Full-day leave
+              if (isLeavePaid) {
+                // Scenario 1: Leave Paid + Absent -> No deduction
+                totalDeductibleDays += 0;
+              } else {
+                // Scenario 2: Leave Unpaid + Absent -> 1 day deduction
+                totalDeductibleDays += 1.0;
+              }
+            }
+          } else {
+            // No leave applied on this day
+            if (isAttPresent || (hasCheckIn && hasCheckOut)) {
+              // Scenario 6: Check-in + Check-out, no leave -> No deduction
+              totalDeductibleDays += 0;
+            } else if (isPunctualityHalfDay || isStatusHalfDay) {
+              // Partial attendance without leave -> 0.5 deduction
+              totalDeductibleDays += 0.5;
+            } else if (isAttAbsent) {
+              // Absent without leave -> 1 day deduction
+              totalDeductibleDays += 1.0;
+            } else if (hasCheckIn && !hasCheckOut) {
+              // Checked in without checkout, no leave: treated as present
+              totalDeductibleDays += 0;
+            }
+          }
+        }
+
+        setAbsentsCount(totalDeductibleDays);
         setLateCount(lates);
-        setWorkedDays(Math.max(0, lastDay - effectiveAbsents));
+        setWorkedDays(Math.max(0, lastDay - totalDeductibleDays));
       } catch (err) {
         console.error("Error fetching stats:", err);
       }
@@ -165,9 +274,9 @@ export default function GenerateSalarySlipPage() {
     fetchStats();
   }, [selectedEmployee, month, year, totalDaysInMonth]);
 
-  // Handle Absents Change manually
+  // Handle Absents Change manually (supports decimal e.g. 0.5)
   const handleAbsentsChange = (val: string) => {
-    const days = Math.max(0, parseInt(val) || 0);
+    const days = Math.max(0, parseFloat(val) || 0);
     setAbsentsCount(days);
     setWorkedDays(Math.max(0, totalDaysInMonth - days));
   };
@@ -235,7 +344,7 @@ export default function GenerateSalarySlipPage() {
     ];
 
     const compiledDeductions = [
-      ...(absentDeduction > 0 ? [{ name: `Absent Deduction (${absentsCount} days)`, amount: absentDeduction }] : []),
+      ...(absentDeduction > 0 ? [{ name: `Absent Deduction (${absentsCount} day${absentsCount === 1 ? "" : "s"})`, amount: absentDeduction }] : []),
       ...(numAdvancePayment > 0 ? [{ name: "Advance Payment", amount: numAdvancePayment }] : []),
       ...(numTax > 0 ? [{ name: "Income Tax (Withholding)", amount: numTax }] : []),
       ...(numOtherDeductions > 0 ? [{ name: "Other Deductions", amount: numOtherDeductions }] : []),
@@ -337,23 +446,132 @@ export default function GenerateSalarySlipPage() {
                 EMPLOYEE & CYCLE PERIOD
               </h2>
 
-              {/* Target Employee */}
+              {/* Target Employee with Avatar, Search, and 6-user scroll limit */}
               <div className="space-y-1.5">
                 <Label className="text-xs font-semibold text-foreground">
                   Target Employee <span className="text-destructive">*</span>
                 </Label>
-                <Select value={selectedEmployee} onValueChange={setSelectedEmployee}>
-                  <SelectTrigger className="h-10 rounded-xl bg-background/60 border-border/60 text-sm">
-                    <SelectValue placeholder="Select team member..." />
-                  </SelectTrigger>
-                  <SelectContent className="max-h-[260px] overflow-y-auto">
-                    {employees.map((emp: any) => (
-                      <SelectItem key={emp.id} value={emp.id}>
-                        {emp.first_name} {emp.last_name} ({emp.employee_id || emp.employee_code || "EMP"}) — {emp.department || "General"}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <Popover open={employeeOpen} onOpenChange={setEmployeeOpen}>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      role="combobox"
+                      aria-expanded={employeeOpen}
+                      className="w-full h-12 justify-between rounded-xl bg-background/60 border-border/60 text-sm px-3 hover:bg-background/80"
+                    >
+                      {employee ? (
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          <Avatar className="h-8 w-8 shrink-0 rounded-full border border-border/60">
+                            <AvatarImage src={employee.profile_picture || employee.avatar_url} alt={employee.first_name} />
+                            <AvatarFallback className="bg-primary/10 text-primary font-bold text-xs">
+                              {getInitials(`${employee.first_name || ""} ${employee.last_name || ""}`)}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div className="flex flex-col text-left truncate">
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <span className="font-semibold text-foreground truncate">
+                                {employee.first_name} {employee.last_name}
+                              </span>
+                            </div>
+                            <span className="text-xs text-muted-foreground truncate">
+                              {employee.department || "General"}
+                            </span>
+                          </div>
+                        </div>
+                      ) : (
+                        <span className="text-muted-foreground">Select team member...</span>
+                      )}
+                      <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50 text-muted-foreground" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent
+                    className="w-[--radix-popover-trigger-width] min-w-[320px] p-0 rounded-xl bg-popover border border-border shadow-xl overflow-hidden"
+                    align="start"
+                  >
+                    {/* Search Input */}
+                    <div className="flex items-center border-b border-border/60 px-3 py-2 bg-muted/20">
+                      <Search className="h-4 w-4 mr-2 text-muted-foreground shrink-0" />
+                      <input
+                        placeholder="Search employee by name, ID, department, role..."
+                        value={employeeSearch}
+                        onChange={(e) => setEmployeeSearch(e.target.value)}
+                        className="w-full bg-transparent text-xs sm:text-sm placeholder:text-muted-foreground focus:outline-none"
+                        autoFocus
+                      />
+                      {employeeSearch && (
+                        <button
+                          type="button"
+                          onClick={() => setEmployeeSearch("")}
+                          className="text-muted-foreground hover:text-foreground p-0.5 rounded"
+                        >
+                          <X className="h-3.5 w-3.5" />
+                        </button>
+                      )}
+                    </div>
+
+                    {/* Employee List - exactly 6 users visible, then scrollable */}
+                    <div className="max-h-[315px] overflow-y-auto p-1 divide-y divide-border/20">
+                      {filteredEmployees.length === 0 ? (
+                        <div className="p-4 text-center text-xs text-muted-foreground">
+                          No team members found
+                        </div>
+                      ) : (
+                        filteredEmployees.map((emp: any) => {
+                          const isSelected = emp.id === selectedEmployee;
+                          return (
+                            <button
+                              key={emp.id}
+                              type="button"
+                              onClick={() => {
+                                setSelectedEmployee(emp.id);
+                                setEmployeeOpen(false);
+                                setEmployeeSearch("");
+                              }}
+                              className={cn(
+                                "w-full flex items-center justify-between gap-3 px-3 py-2.5 rounded-lg text-left transition-colors text-sm",
+                                isSelected
+                                  ? "bg-primary text-primary-foreground font-semibold"
+                                  : "hover:bg-muted/60 text-foreground"
+                              )}
+                            >
+                              <div className="flex items-center gap-2.5 min-w-0">
+                                <Avatar className="h-8 w-8 shrink-0 rounded-full border border-border/50">
+                                  <AvatarImage src={emp.profile_picture || emp.avatar_url} alt={emp.first_name} />
+                                  <AvatarFallback
+                                    className={cn(
+                                      "text-xs font-bold",
+                                      isSelected
+                                        ? "bg-primary-foreground/20 text-primary-foreground"
+                                        : "bg-primary/10 text-primary"
+                                    )}
+                                  >
+                                    {getInitials(`${emp.first_name || ""} ${emp.last_name || ""}`)}
+                                  </AvatarFallback>
+                                </Avatar>
+                                <div className="flex flex-col min-w-0">
+                                  <div className="flex items-center gap-1.5 flex-wrap">
+                                    <span className="font-medium truncate">
+                                      {emp.first_name} {emp.last_name}
+                                    </span>
+                                  </div>
+                                  <span
+                                    className={cn(
+                                      "text-xs truncate",
+                                      isSelected ? "text-primary-foreground/80" : "text-muted-foreground"
+                                    )}
+                                  >
+                                    {emp.department || "General"}
+                                  </span>
+                                </div>
+                              </div>
+                              {isSelected && <Check className="h-4 w-4 shrink-0" />}
+                            </button>
+                          );
+                        })
+                      )}
+                    </div>
+                  </PopoverContent>
+                </Popover>
               </div>
 
               {/* Month & Year */}
@@ -449,6 +667,7 @@ export default function GenerateSalarySlipPage() {
                     <Input
                       type="number"
                       min="0"
+                      step="0.5"
                       max={totalDaysInMonth}
                       placeholder="0"
                       value={absentsCount}
@@ -647,35 +866,7 @@ export default function GenerateSalarySlipPage() {
             </CardContent>
           </Card>
 
-          {/* Card 4: PAYROLL COMPUTATION SUMMARY */}
-          <Card className="rounded-2xl border-border/50 bg-card shadow-sm overflow-hidden">
-            <CardContent className="p-5 sm:p-6 space-y-3">
-              <h2 className="text-xs font-black uppercase tracking-wider text-secondary-foreground dark:text-primary">
-                PAYROLL COMPUTATION SUMMARY
-              </h2>
 
-              <div className="flex justify-between items-center text-sm py-1 border-b border-border/30">
-                <span className="text-muted-foreground">Gross Earnings:</span>
-                <span className="font-semibold font-mono text-foreground">
-                  Rs {Math.round(grossEarnings).toLocaleString()}
-                </span>
-              </div>
-
-              <div className="flex justify-between items-center text-sm py-1 border-b border-border/30">
-                <span className="text-muted-foreground">Total Deductions:</span>
-                <span className="font-semibold font-mono text-red-500 dark:text-red-400">
-                  - Rs {Math.round(totalDeductions).toLocaleString()}
-                </span>
-              </div>
-
-              <div className="flex justify-between items-center pt-2 text-base font-black">
-                <span className="text-foreground">Net Take-Home Salary:</span>
-                <span className="text-secondary-foreground dark:text-primary font-mono text-lg font-black">
-                  Rs {Math.round(netSalary).toLocaleString()}
-                </span>
-              </div>
-            </CardContent>
-          </Card>
         </div>
 
         {/* Right Column: LIVE STATEMENT PREVIEW */}
@@ -923,6 +1114,35 @@ export default function GenerateSalarySlipPage() {
               </div>
             </div>
           </div>
+          {/* Card 4: PAYROLL COMPUTATION SUMMARY */}
+          <Card className="rounded-2xl border-border/50 bg-card shadow-sm mt-5">
+            <CardContent className="p-5 sm:p-6 space-y-3">
+              <h2 className="text-xs font-black uppercase tracking-wider text-secondary-foreground dark:text-primary">
+                PAYROLL COMPUTATION SUMMARY
+              </h2>
+
+              <div className="flex justify-between items-center text-sm py-1 border-b border-border/30">
+                <span className="text-muted-foreground">Gross Earnings:</span>
+                <span className="font-semibold font-mono text-foreground">
+                  Rs {Math.round(grossEarnings).toLocaleString()}
+                </span>
+              </div>
+
+              <div className="flex justify-between items-center text-sm py-1 border-b border-border/30">
+                <span className="text-muted-foreground">Total Deductions:</span>
+                <span className="font-semibold font-mono text-red-500 dark:text-red-400">
+                  - Rs {Math.round(totalDeductions).toLocaleString()}
+                </span>
+              </div>
+
+              <div className="flex justify-between items-center pt-2 text-base font-black">
+                <span className="text-foreground">Net Take-Home Salary:</span>
+                <span className="text-secondary-foreground dark:text-primary font-mono text-lg font-black">
+                  Rs {Math.round(netSalary).toLocaleString()}
+                </span>
+              </div>
+            </CardContent>
+          </Card>
         </div>
       </div>
     </div>
