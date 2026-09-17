@@ -749,7 +749,7 @@ export default function ProjectDetailPage() {
   // ─── Loading ─────────────────────────────────────────────────────────────────
   if (loadingProj)
     return (
-      <div className="flex items-center justify-center h-64 text-sm text-muted-foreground bg-background -m-8 min-h-screen">
+      <div className="flex items-center justify-center h-64 text-sm text-muted-foreground bg-background min-h-screen">
         <div className="flex flex-col items-center gap-3">
           <div className="h-8 w-8 rounded-full border-2 border-blue-500 border-t-transparent animate-spin" />
           <span>Loading workspace...</span>
@@ -759,7 +759,7 @@ export default function ProjectDetailPage() {
 
   if (!project || !isUserAuthorized)
     return (
-      <div className="flex flex-col items-center justify-center h-64 text-sm bg-background -m-8 min-h-screen p-8 text-center">
+      <div className="flex flex-col items-center justify-center h-64 text-sm bg-background min-h-screen p-8 text-center">
         <div className="max-w-md p-8 rounded-3xl bg-card border border-border shadow-2xl space-y-6">
           <div className="h-16 w-16 mx-auto rounded-2xl bg-destructive/10 text-destructive flex items-center justify-center">
             <Shield className="h-8 w-8 animate-bounce" />
@@ -1210,7 +1210,7 @@ export default function ProjectDetailPage() {
   ];
 
   return (
-    <div className="flex flex-col h-[calc(100vh-4rem)] overflow-hidden -m-8 bg-background text-foreground ">
+    <div className="flex flex-col h-[calc(100vh-4rem)] overflow-hidden bg-background text-foreground ">
       {/* ══ STICKY HEADER ══════════════════════════════════════════════════════ */}
       <header className="sticky top-0 z-30 border-b border-border bg-background/80 backdrop-blur-xl px-8 py-4 flex items-center justify-between shrink-0">
         <div className="flex items-center gap-3.5 min-w-0">

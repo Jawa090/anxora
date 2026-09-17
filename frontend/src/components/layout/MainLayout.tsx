@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Outlet, useNavigate } from "react-router-dom";
+import { Outlet, useNavigate, useLocation } from "react-router-dom";
 import { AppSidebar } from "./AppSidebar";
 import { TopBar } from "./Header";
 import { TelephonyOverlay } from "@/components/telephony/TelephonyProvider";
@@ -45,6 +45,14 @@ export function MainLayout() {
     localStorage.setItem('sidebar-width', width.toString());
   };
 
+  const location = useLocation();
+  const searchParams = new URLSearchParams(location.search);
+  const isChatActive =
+    (location.pathname.startsWith("/collaboration/workgroups") && searchParams.has("team")) ||
+    (location.pathname.startsWith("/collaboration/team-chats") && searchParams.has("team")) ||
+    (location.pathname.startsWith("/collaboration/direct-chats") && searchParams.has("chat")) ||
+    (location.pathname.startsWith("/collaboration/broadcast") && searchParams.has("team"));
+
   return (
     <SoftphoneProvider>
       <div className="min-h-screen bg-background overflow-x-hidden">
@@ -65,16 +73,26 @@ export function MainLayout() {
         />
 
         <div
-          className="flex flex-col transition-all duration-300"
+          className="flex flex-col transition-all duration-300 min-w-0"
           style={{
             paddingLeft: isMobile ? '0' : `${sidebarWidth}px`,
-            width: '100%'
+            width: '100%',
+            maxWidth: '100vw',
+            boxSizing: 'border-box',
           }}
         >
           <TopBar onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)} isMobile={isMobile} />
-          <main className="p-4 md:p-6 lg:p-8">
-            <Outlet />
-          </main>
+          {isChatActive ? (
+            <main className="h-[calc(100vh-4rem)] w-full overflow-hidden p-0 m-0">
+              <Outlet />
+            </main>
+          ) : (
+            <main className="px-3.5 py-3 md:px-5 md:py-4 lg:px-6 lg:py-4 w-full min-w-0 max-w-full overflow-x-hidden">
+              <div className="w-full max-w-[1600px] mx-auto min-w-0">
+                <Outlet />
+              </div>
+            </main>
+          )}
         </div>
         <TelephonyOverlay />
       </div>

@@ -89,18 +89,52 @@ function getInitials(name: string) {
     .slice(0, 2);
 }
 
-function formatTimeDisplay(t: string | null | undefined) {
+function to24hTime(t: string | null | undefined, defaultVal = "09:00"): string {
+  if (!t) return defaultVal;
+  const str = t.trim();
+  const match = str.match(/^(\d{1,2}):(\d{2})(?::\d{2})?\s*(AM|PM)?$/i);
+  if (match) {
+    let h = parseInt(match[1], 10);
+    const m = match[2];
+    const period = match[3]?.toUpperCase();
+    if (period === "PM" && h < 12) h += 12;
+    if (period === "AM" && h === 12) h = 0;
+    return `${String(h).padStart(2, "0")}:${m}`;
+  }
+  const parts = str.split(":");
+  if (parts.length >= 2) {
+    const h = parseInt(parts[0], 10);
+    const m = parts[1].slice(0, 2).padStart(2, "0");
+    if (!isNaN(h)) {
+      return `${String(h).padStart(2, "0")}:${m}`;
+    }
+  }
+  return defaultVal;
+}
+
+function formatTimeDisplay(t: string | null | undefined): string {
   if (!t) return "—";
-  const sliced = t.slice(0, 5); // "14:00:00" -> "14:00"
-  if (sliced === "00:00") return "12:00";
-  if (sliced.startsWith("00:")) return `12:${sliced.slice(3)}`;
-  return sliced;
+  const str = t.trim();
+  if (/^\d{1,2}:\d{2}\s*(AM|PM)$/i.test(str)) {
+    return str.toUpperCase();
+  }
+  const parts = str.split(":");
+  if (parts.length < 2) return str;
+  let h = parseInt(parts[0], 10);
+  const m = parts[1].slice(0, 2).padStart(2, "0");
+  if (isNaN(h)) return str;
+  const period = h >= 12 ? "PM" : "AM";
+  let h12 = h % 12;
+  if (h12 === 0) h12 = 12;
+  return `${String(h12).padStart(2, "0")}:${m} ${period}`;
 }
 
 function calculateDurationHours(start: string, end: string): number {
   if (!start || !end) return 9;
-  const sParts = start.split(":").map(Number);
-  const eParts = end.split(":").map(Number);
+  const s24 = to24hTime(start, "09:00");
+  const e24 = to24hTime(end, "18:00");
+  const sParts = s24.split(":").map(Number);
+  const eParts = e24.split(":").map(Number);
   let durationMins = (eParts[0] * 60 + eParts[1]) - (sParts[0] * 60 + sParts[1]);
   if (durationMins <= 0) durationMins += 24 * 60;
   return Math.round((durationMins / 60) * 100) / 100;
@@ -216,8 +250,8 @@ export default function ShiftPlannerPage() {
 
   const openEditShift = (s: ShiftTemplate) => {
     setEditingShift(s);
-    const startStr = formatTimeDisplay(s.start_time);
-    const endStr = formatTimeDisplay(s.end_time);
+    const startStr = to24hTime(s.start_time, "09:00");
+    const endStr = to24hTime(s.end_time, "18:00");
     const computedDuration = calculateDurationHours(startStr, endStr);
     const breakHours = s.break_duration_hours != null ? Number(s.break_duration_hours) : 1.0;
     const autoDeduct = s.auto_deduct_break !== false;
@@ -299,8 +333,8 @@ export default function ShiftPlannerPage() {
     }
     saveShiftMutation.mutate({
       name: form.name.trim(),
-      start_time: form.start_time,
-      end_time: form.end_time,
+      start_time: to24hTime(form.start_time, "09:00"),
+      end_time: to24hTime(form.end_time, "18:00"),
       grace_period_mins: Number(form.grace_period_mins) || 15,
       auto_checkout_hours: Number(form.auto_checkout_hours) || null,
       break_duration_hours: Number(form.break_duration_hours) != null ? Number(form.break_duration_hours) : 1.0,
@@ -463,19 +497,16 @@ export default function ShiftPlannerPage() {
                           {shift.name}
                         </h4>
                       </div>
-                      <div className="flex flex-wrap items-center gap-x-2.5 gap-y-0.5 text-xs text-muted-foreground mt-0.5">
+                      <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-xs text-muted-foreground mt-1">
                         <span>
-                          Shift hrs: <strong className="text-foreground">{calculateDurationHours(formatTimeDisplay(shift.start_time), formatTimeDisplay(shift.end_time))}h</strong>
+                          Shift: <strong className="text-foreground">{calculateDurationHours(shift.start_time, shift.end_time)}h</strong>
                         </span>
-                        <span>•</span>
                         <span>
-                          Net Working Hrs: <strong className="text-foreground">{parseFloat(String(shift.working_hours || 8))}h</strong>
+                          Net Working: <strong className="text-foreground">{parseFloat(String(shift.working_hours || 8))}h</strong>
                         </span>
-                        <span>•</span>
                         <span>
                           Break: <strong className="text-foreground">{parseFloat(String(shift.break_duration_hours || 1))}h</strong>
                         </span>
-                        <span>•</span>
                         <span>
                           Grace: <strong className="text-foreground">{shift.grace_period_mins ?? 15}m</strong>
                         </span>
@@ -788,7 +819,7 @@ export default function ShiftPlannerPage() {
                   <Input
                     className="h-9 text-xs"
                     type="number"
-                    step="0.25"
+                    step="any"
                     min="1"
                     max="24"
                     value={form.shift_duration}
@@ -809,7 +840,7 @@ export default function ShiftPlannerPage() {
                   <Input
                     className="h-9 text-xs"
                     type="number"
-                    step="0.25"
+                    step="any"
                     min="0"
                     max="6"
                     value={form.break_duration_hours}
@@ -835,7 +866,7 @@ export default function ShiftPlannerPage() {
                   <Input
                     className="h-9 text-xs"
                     type="number"
-                    step="0.25"
+                    step="any"
                     min="1"
                     max="24"
                     value={form.working_hours}
@@ -943,7 +974,7 @@ export default function ShiftPlannerPage() {
                 <Label>Auto Checkout (Hours)</Label>
                 <Input
                   type="number"
-                  step="0.25"
+                  step="any"
                   min="1"
                   max="24"
                   value={form.auto_checkout_hours}

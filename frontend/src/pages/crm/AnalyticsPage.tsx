@@ -125,7 +125,7 @@ export default function CRMAnalyticsPage({ hideHeader = false }: { hideHeader?: 
         />
       )}
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-4">
         <StatCard title="Conversion Rate" value={conversionRate} change={{ value: 0, type: "increase" }} icon={Target} iconClassName="bg-primary" />
         <StatCard title="Avg Deal Size" value={avgDealSize} change={{ value: 0, type: "increase" }} icon={Award} iconClassName="bg-success" />
         <StatCard title="Win Rate" value={winRate} change={{ value: 0, type: "decrease" }} icon={TrendingDown} iconClassName="bg-warning" />

@@ -448,7 +448,52 @@ const remove = async (req, res, next) => {
     await client.query(`UPDATE public.companies SET owner_id = NULL WHERE owner_id = $1`, [id]).catch(() => {});
     await client.query(`UPDATE public.companies SET created_by = NULL WHERE created_by = $1`, [id]).catch(() => {});
 
-    // Workgroups
+    // Workgroups: notify groups that user left and transfer creator ownership if creator
+    const memberWgRes = await client.query(
+      `SELECT DISTINCT w.id, w.created_by, w.name, w.org_id
+       FROM workgroups w
+       LEFT JOIN workgroup_members wm ON wm.workgroup_id = w.id AND wm.user_id = $1
+       WHERE (wm.user_id = $1 OR w.created_by = $1)
+         AND COALESCE((w.settings->>'is_direct_chat')::boolean, false) = false`,
+      [id]
+    ).catch(() => ({ rows: [] }));
+
+    const { handleWorkgroupCreatorDeparture } = require('../collaboration/workgroupController');
+    const realtimeServiceModule = require('../../services/realtimeService');
+
+    for (const wg of memberWgRes.rows) {
+      const userName = targetUser.full_name || 'This user';
+      const departurePostId = uuidv4();
+      await client.query(
+        `INSERT INTO workgroup_posts (
+          id, workgroup_id, user_id, content, content_type
+        ) VALUES ($1, $2, $3, $4, 'text')`,
+        [
+          departurePostId,
+          wg.id,
+          safeRequester,
+          `[SYSTEM] ${userName} left the group.`,
+        ]
+      ).catch(() => {});
+
+      const postResult = await client.query(
+        `SELECT p.*, u.full_name as author_name, u.avatar_url as author_avatar
+         FROM workgroup_posts p
+         JOIN users u ON p.user_id = u.id
+         WHERE p.id = $1`,
+        [departurePostId]
+      ).catch(() => ({ rows: [] }));
+
+      if (postResult.rows[0]) {
+        realtimeServiceModule.emitWorkgroupPost(wg.id, postResult.rows[0]);
+      }
+
+      // If user was group creator, transfer to moderator or earliest member
+      if (wg.created_by === id) {
+        await handleWorkgroupCreatorDeparture(wg.id, id, safeRequester, client);
+      }
+    }
+
     await client.query(`UPDATE public.workgroups SET created_by = $1 WHERE created_by = $2`, [safeRequester, id]).catch(() => {});
     await client.query(`UPDATE public.workgroup_channels SET created_by = $1 WHERE created_by = $2`, [safeRequester, id]).catch(() => {});
     await client.query(`UPDATE public.workgroup_meetings SET created_by = $1 WHERE created_by = $2`, [safeRequester, id]).catch(() => {});

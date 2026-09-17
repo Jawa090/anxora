@@ -288,7 +288,7 @@ export default function ProjectsDashboardPage() {
   };
 
   return (
-    <div className="flex flex-col min-h-full h-full overflow-y-auto custom-scrollbar bg-background text-foreground p-8 -m-8 relative pb-24">
+    <div className="flex flex-col min-h-full h-full overflow-y-auto custom-scrollbar bg-background text-foreground relative pb-16 space-y-4">
 
       {/* Header */}
       <div className="flex items-center justify-between pb-5 border-b border-border bg-background/45 backdrop-blur-xl shrink-0">

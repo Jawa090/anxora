@@ -25,16 +25,16 @@ function StatCard({
       className="cursor-pointer hover:shadow-md transition-all group"
       onClick={() => navigate(href)}
     >
-      <CardContent className="p-5 flex items-center gap-4">
-        <div className={cn("p-3 rounded-xl", color)}>
-          <Icon className="h-6 w-6 text-white" />
+      <CardContent className="p-4 flex items-center gap-3">
+        <div className={cn("p-2.5 rounded-xl shrink-0", color)}>
+          <Icon className="h-5 w-5 text-white" />
         </div>
         <div className="flex-1 min-w-0">
-          <p className="text-sm text-muted-foreground">{title}</p>
-          <p className="text-2xl font-bold text-foreground">{value}</p>
-          {sub && <p className="text-xs text-muted-foreground mt-0.5">{sub}</p>}
+          <p className="text-xs font-medium text-muted-foreground truncate">{title}</p>
+          <p className="text-xl font-bold text-foreground">{value}</p>
+          {sub && <p className="text-[11px] text-muted-foreground mt-0.5 truncate">{sub}</p>}
         </div>
-        <ArrowRight className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+        <ArrowRight className="h-3.5 w-3.5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
       </CardContent>
     </Card>
   );
@@ -69,7 +69,7 @@ export default function CrmDashboardPage() {
       title: "Leads",
       value: totalLeads,
       icon: UserPlus,
-      color: "bg-blue-500",
+      color: "bg-secondary-foreground dark:bg-primary/30",
       href: "/crm/leads",
       sub: "Total leads in pipeline",
     },
@@ -116,24 +116,22 @@ export default function CrmDashboardPage() {
   ];
 
   return (
-    <div className="p-6 space-y-6">
-      <div className="flex items-center gap-3">
-        <TrendingUp className="h-6 w-6 text-primary" />
+    <div className="space-y-4">
+      <div className="flex items-center gap-2.5">
+        <TrendingUp className="h-5 w-5 text-primary" />
         <div>
-          <h1 className="text-2xl font-bold text-foreground">CRM Dashboard</h1>
-          <p className="text-sm text-muted-foreground">Overview of your sales pipeline</p>
+          <h1 className="text-xl font-bold text-foreground">CRM Dashboard</h1>
+          <p className="text-xs text-muted-foreground">Overview of your sales pipeline</p>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
         {stats.map((s) => (
           <StatCard key={s.title} {...s} />
         ))}
       </div>
 
-      <div className="-mx-6">
-        <CRMAnalyticsPage hideHeader />
-      </div>
+      <CRMAnalyticsPage hideHeader />
     </div>
   );
 }

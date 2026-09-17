@@ -27,6 +27,145 @@ const createSystemPost = async (workgroupId, actorUserId, content) => {
   }
 };
 
+/**
+ * Transfer workgroup ownership to moderator or earliest member when creator leaves or is deleted.
+ */
+const handleWorkgroupCreatorDeparture = async (workgroupId, exitingUserId, executorUserId, dbClient = db) => {
+  try {
+    const wgRes = await dbClient.query(
+      `SELECT id, name, created_by, settings, org_id FROM workgroups WHERE id = $1`,
+      [workgroupId]
+    );
+    if (wgRes.rows.length === 0) return null;
+    const wg = wgRes.rows[0];
+
+    const isDirectChat = Boolean(wg.settings?.is_direct_chat);
+    if (isDirectChat) return null;
+
+    // Only transfer if exiting user is actually the creator
+    if (wg.created_by !== exitingUserId) {
+      return null;
+    }
+
+    const modUserId = wg.settings?.member_manager_user_id || null;
+
+    // Priority 1: Moderator (assigned manager or role = 'moderator')
+    let successor = null;
+    if (modUserId && modUserId !== exitingUserId) {
+      const modRes = await dbClient.query(
+        `SELECT wm.user_id, u.full_name 
+         FROM workgroup_members wm
+         JOIN users u ON u.id = wm.user_id
+         WHERE wm.workgroup_id = $1 AND wm.user_id = $2 AND u.is_active = true AND COALESCE(wm.status, 'active') = 'active'
+         LIMIT 1`,
+        [workgroupId, modUserId]
+      );
+      if (modRes.rows.length > 0) {
+        successor = modRes.rows[0];
+      }
+    }
+
+    if (!successor) {
+      const modRoleRes = await dbClient.query(
+        `SELECT wm.user_id, u.full_name 
+         FROM workgroup_members wm
+         JOIN users u ON u.id = wm.user_id
+         WHERE wm.workgroup_id = $1 AND wm.user_id <> $2 AND wm.role = 'moderator' AND u.is_active = true AND COALESCE(wm.status, 'active') = 'active'
+         ORDER BY wm.joined_at ASC
+         LIMIT 1`,
+        [workgroupId, exitingUserId]
+      );
+      if (modRoleRes.rows.length > 0) {
+        successor = modRoleRes.rows[0];
+      }
+    }
+
+    // Priority 2: Earliest joined active member
+    if (!successor) {
+      const firstMemberRes = await dbClient.query(
+        `SELECT wm.user_id, u.full_name 
+         FROM workgroup_members wm
+         JOIN users u ON u.id = wm.user_id
+         WHERE wm.workgroup_id = $1 AND wm.user_id <> $2 AND u.is_active = true AND COALESCE(wm.status, 'active') = 'active'
+         ORDER BY wm.joined_at ASC
+         LIMIT 1`,
+        [workgroupId, exitingUserId]
+      );
+      if (firstMemberRes.rows.length > 0) {
+        successor = firstMemberRes.rows[0];
+      }
+    }
+
+    if (successor) {
+      // Reassign created_by to successor
+      await dbClient.query(
+        `UPDATE workgroups 
+         SET created_by = $1, 
+             updated_at = CURRENT_TIMESTAMP 
+         WHERE id = $2`,
+        [successor.user_id, workgroupId]
+      );
+
+      // Upgrade role in workgroup_members to owner for successor
+      await dbClient.query(
+        `UPDATE workgroup_members 
+         SET role = 'owner' 
+         WHERE workgroup_id = $1 AND user_id = $2`,
+        [workgroupId, successor.user_id]
+      );
+
+      // Demote exiting user in workgroup_members to normal 'member'
+      await dbClient.query(
+        `UPDATE workgroup_members 
+         SET role = 'member' 
+         WHERE workgroup_id = $1 AND user_id = $2`,
+        [workgroupId, exitingUserId]
+      );
+
+      // Announce ownership transfer via system message
+      const systemActorId = executorUserId || successor.user_id;
+      const transferPostId = uuidv4();
+      await dbClient.query(
+        `INSERT INTO workgroup_posts (
+          id, workgroup_id, user_id, content, content_type
+        ) VALUES ($1, $2, $3, $4, 'text')`,
+        [
+          transferPostId,
+          workgroupId,
+          systemActorId,
+          `[SYSTEM] Group creator left. Ownership transferred to ${successor.full_name}.`,
+        ]
+      );
+
+      const postResult = await dbClient.query(
+        `SELECT p.*, u.full_name as author_name, u.avatar_url as author_avatar
+         FROM workgroup_posts p
+         JOIN users u ON p.user_id = u.id
+         WHERE p.id = $1`,
+        [transferPostId]
+      );
+      if (postResult.rows[0]) {
+        realtimeService.emitWorkgroupPost(workgroupId, postResult.rows[0]);
+      }
+
+      realtimeService.emitWorkgroupUpdated(wg.org_id, {
+        action: 'ownership_transferred',
+        workgroup_id: workgroupId,
+        new_creator_id: successor.user_id,
+        workgroup: { id: workgroupId, created_by: successor.user_id }
+      });
+
+      return successor;
+    }
+
+    return null;
+  } catch (err) {
+    console.error('Error transferring workgroup ownership on creator departure:', err);
+    return null;
+  }
+};
+
+
 const markWorkgroupPostsAsRead = async (workgroupId, userId) => {
   try {
     const readResult = await db.query(
@@ -72,51 +211,182 @@ const getWorkgroups = async (req, res, next) => {
         w.*,
         CASE
           WHEN COALESCE((w.settings->>'is_direct_chat')::boolean, false) = true THEN (
-            SELECT u_peer.full_name
-            FROM workgroup_members wm_peer
-            JOIN users u_peer ON u_peer.id = wm_peer.user_id
-            WHERE wm_peer.workgroup_id = w.id
-              AND wm_peer.user_id <> $1
-            ORDER BY wm_peer.joined_at ASC
-            LIMIT 1
+            COALESCE(
+              (
+                SELECT u_peer.full_name
+                FROM users u_peer
+                WHERE u_peer.id = COALESCE(
+                  (
+                    SELECT wm_peer.user_id
+                    FROM workgroup_members wm_peer
+                    WHERE wm_peer.workgroup_id = w.id
+                      AND wm_peer.user_id <> $1
+                    ORDER BY wm_peer.joined_at ASC
+                    LIMIT 1
+                  ),
+                  CASE
+                    WHEN w.settings->>'direct_pair_key' IS NOT NULL THEN (
+                      CASE
+                        WHEN SPLIT_PART(w.settings->>'direct_pair_key', ':', 1) = $1::text 
+                        THEN NULLIF(SPLIT_PART(w.settings->>'direct_pair_key', ':', 2), '')::uuid
+                        ELSE NULLIF(SPLIT_PART(w.settings->>'direct_pair_key', ':', 1), '')::uuid
+                      END
+                    )
+                    ELSE NULL
+                  END
+                )
+              ),
+              w.name
+            )
           )
           ELSE w.name
         END as display_name,
         CASE
           WHEN COALESCE((w.settings->>'is_direct_chat')::boolean, false) = true THEN (
-            SELECT wm_peer.user_id
-            FROM workgroup_members wm_peer
-            WHERE wm_peer.workgroup_id = w.id
-              AND wm_peer.user_id <> $1
-            ORDER BY wm_peer.joined_at ASC
-            LIMIT 1
+            COALESCE(
+              (
+                SELECT wm_peer.user_id
+                FROM workgroup_members wm_peer
+                WHERE wm_peer.workgroup_id = w.id
+                  AND wm_peer.user_id <> $1
+                ORDER BY wm_peer.joined_at ASC
+                LIMIT 1
+              ),
+              CASE
+                WHEN w.settings->>'direct_pair_key' IS NOT NULL THEN (
+                  CASE
+                    WHEN SPLIT_PART(w.settings->>'direct_pair_key', ':', 1) = $1::text 
+                    THEN NULLIF(SPLIT_PART(w.settings->>'direct_pair_key', ':', 2), '')::uuid
+                    ELSE NULLIF(SPLIT_PART(w.settings->>'direct_pair_key', ':', 1), '')::uuid
+                  END
+                )
+                ELSE NULL
+              END
+            )
           )
           ELSE NULL
         END as direct_peer_user_id,
         CASE
           WHEN COALESCE((w.settings->>'is_direct_chat')::boolean, false) = true THEN (
             SELECT COALESCE(u_peer.last_seen_at, u_peer.last_login)
-            FROM workgroup_members wm_peer
-            JOIN users u_peer ON u_peer.id = wm_peer.user_id
-            WHERE wm_peer.workgroup_id = w.id
-              AND wm_peer.user_id <> $1
-            ORDER BY wm_peer.joined_at ASC
-            LIMIT 1
+            FROM users u_peer
+            WHERE u_peer.id = COALESCE(
+              (
+                SELECT wm_peer.user_id
+                FROM workgroup_members wm_peer
+                WHERE wm_peer.workgroup_id = w.id
+                  AND wm_peer.user_id <> $1
+                ORDER BY wm_peer.joined_at ASC
+                LIMIT 1
+              ),
+              CASE
+                WHEN w.settings->>'direct_pair_key' IS NOT NULL THEN (
+                  CASE
+                    WHEN SPLIT_PART(w.settings->>'direct_pair_key', ':', 1) = $1::text 
+                    THEN NULLIF(SPLIT_PART(w.settings->>'direct_pair_key', ':', 2), '')::uuid
+                    ELSE NULLIF(SPLIT_PART(w.settings->>'direct_pair_key', ':', 1), '')::uuid
+                  END
+                )
+                ELSE NULL
+              END
+            )
           )
           ELSE NULL
         END as direct_peer_last_seen_at,
         CASE
           WHEN COALESCE((w.settings->>'is_direct_chat')::boolean, false) = true THEN (
             SELECT u_peer.avatar_url
-            FROM workgroup_members wm_peer
-            JOIN users u_peer ON u_peer.id = wm_peer.user_id
-            WHERE wm_peer.workgroup_id = w.id
-              AND wm_peer.user_id <> $1
-            ORDER BY wm_peer.joined_at ASC
-            LIMIT 1
+            FROM users u_peer
+            WHERE u_peer.id = COALESCE(
+              (
+                SELECT wm_peer.user_id
+                FROM workgroup_members wm_peer
+                WHERE wm_peer.workgroup_id = w.id
+                  AND wm_peer.user_id <> $1
+                ORDER BY wm_peer.joined_at ASC
+                LIMIT 1
+              ),
+              CASE
+                WHEN w.settings->>'direct_pair_key' IS NOT NULL THEN (
+                  CASE
+                    WHEN SPLIT_PART(w.settings->>'direct_pair_key', ':', 1) = $1::text 
+                    THEN NULLIF(SPLIT_PART(w.settings->>'direct_pair_key', ':', 2), '')::uuid
+                    ELSE NULLIF(SPLIT_PART(w.settings->>'direct_pair_key', ':', 1), '')::uuid
+                  END
+                )
+                ELSE NULL
+              END
+            )
           )
           ELSE NULL
         END as direct_peer_avatar_url,
+        CASE
+          WHEN COALESCE((w.settings->>'is_direct_chat')::boolean, false) = true THEN (
+            CASE
+              WHEN EXISTS (
+                SELECT 1 FROM users u_check
+                WHERE u_check.id = COALESCE(
+                  (SELECT wm_peer.user_id FROM workgroup_members wm_peer WHERE wm_peer.workgroup_id = w.id AND wm_peer.user_id <> $1 LIMIT 1),
+                  CASE
+                    WHEN w.settings->>'direct_pair_key' IS NOT NULL THEN (
+                      CASE
+                        WHEN SPLIT_PART(w.settings->>'direct_pair_key', ':', 1) = $1::text 
+                        THEN NULLIF(SPLIT_PART(w.settings->>'direct_pair_key', ':', 2), '')::uuid
+                        ELSE NULLIF(SPLIT_PART(w.settings->>'direct_pair_key', ':', 1), '')::uuid
+                      END
+                    )
+                    ELSE NULL
+                  END
+                )
+                AND u_check.is_active = true
+              ) THEN false
+              ELSE true
+            END
+          )
+          ELSE false
+        END as is_peer_deleted,
+        CASE
+          WHEN COALESCE((w.settings->>'is_direct_chat')::boolean, false) = true THEN (
+            CASE
+              WHEN EXISTS (
+                SELECT 1 FROM users u_check
+                WHERE u_check.id = COALESCE(
+                  (SELECT wm_peer.user_id FROM workgroup_members wm_peer WHERE wm_peer.workgroup_id = w.id AND wm_peer.user_id <> $1 LIMIT 1),
+                  CASE
+                    WHEN w.settings->>'direct_pair_key' IS NOT NULL THEN (
+                      CASE
+                        WHEN SPLIT_PART(w.settings->>'direct_pair_key', ':', 1) = $1::text 
+                        THEN NULLIF(SPLIT_PART(w.settings->>'direct_pair_key', ':', 2), '')::uuid
+                        ELSE NULLIF(SPLIT_PART(w.settings->>'direct_pair_key', ':', 1), '')::uuid
+                      END
+                    )
+                    ELSE NULL
+                  END
+                )
+                AND u_check.is_active = true
+              ) THEN 'active'
+              WHEN EXISTS (
+                SELECT 1 FROM users u_check
+                WHERE u_check.id = COALESCE(
+                  (SELECT wm_peer.user_id FROM workgroup_members wm_peer WHERE wm_peer.workgroup_id = w.id AND wm_peer.user_id <> $1 LIMIT 1),
+                  CASE
+                    WHEN w.settings->>'direct_pair_key' IS NOT NULL THEN (
+                      CASE
+                        WHEN SPLIT_PART(w.settings->>'direct_pair_key', ':', 1) = $1::text 
+                        THEN NULLIF(SPLIT_PART(w.settings->>'direct_pair_key', ':', 2), '')::uuid
+                        ELSE NULLIF(SPLIT_PART(w.settings->>'direct_pair_key', ':', 1), '')::uuid
+                      END
+                    )
+                    ELSE NULL
+                  END
+                )
+                AND u_check.is_active = false
+              ) THEN 'inactive'
+              ELSE 'deleted'
+            END
+          )
+          ELSE NULL
+        END as direct_peer_status,
         u.full_name as created_by_name,
         COUNT(DISTINCT wm.user_id) as member_count,
         COUNT(DISTINCT wp.id) as message_count,
@@ -169,7 +439,13 @@ const getWorkgroups = async (req, res, next) => {
           FROM workgroup_members wm_self
           WHERE wm_self.workgroup_id = w.id
             AND wm_self.user_id = $1
-        ) as user_role
+        ) as user_role,
+        (
+          SELECT wm_self.status
+          FROM workgroup_members wm_self
+          WHERE wm_self.workgroup_id = w.id
+            AND wm_self.user_id = $1
+        ) as user_status
       FROM workgroups w
       LEFT JOIN users u ON w.created_by = u.id
       LEFT JOIN workgroup_members wm ON w.id = wm.workgroup_id
@@ -247,42 +523,200 @@ const getWorkgroup = async (req, res, next) => {
         w.*,
         CASE
           WHEN COALESCE((w.settings->>'is_direct_chat')::boolean, false) = true THEN (
-            SELECT u_peer.full_name
-            FROM workgroup_members wm_peer
-            JOIN users u_peer ON u_peer.id = wm_peer.user_id
-            WHERE wm_peer.workgroup_id = w.id
-              AND wm_peer.user_id <> $1
-            ORDER BY wm_peer.joined_at ASC
-            LIMIT 1
+            COALESCE(
+              (
+                SELECT u_peer.full_name
+                FROM users u_peer
+                WHERE u_peer.id = COALESCE(
+                  (
+                    SELECT wm_peer.user_id
+                    FROM workgroup_members wm_peer
+                    WHERE wm_peer.workgroup_id = w.id
+                      AND wm_peer.user_id <> $1
+                    ORDER BY wm_peer.joined_at ASC
+                    LIMIT 1
+                  ),
+                  CASE
+                    WHEN w.settings->>'direct_pair_key' IS NOT NULL THEN (
+                      CASE
+                        WHEN SPLIT_PART(w.settings->>'direct_pair_key', ':', 1) = $1::text 
+                        THEN NULLIF(SPLIT_PART(w.settings->>'direct_pair_key', ':', 2), '')::uuid
+                        ELSE NULLIF(SPLIT_PART(w.settings->>'direct_pair_key', ':', 1), '')::uuid
+                      END
+                    )
+                    ELSE NULL
+                  END
+                )
+              ),
+              w.name
+            )
           )
           ELSE w.name
         END as display_name,
         CASE
           WHEN COALESCE((w.settings->>'is_direct_chat')::boolean, false) = true THEN (
+            COALESCE(
+              (
+                SELECT wm_peer.user_id
+                FROM workgroup_members wm_peer
+                WHERE wm_peer.workgroup_id = w.id
+                  AND wm_peer.user_id <> $1
+                ORDER BY wm_peer.joined_at ASC
+                LIMIT 1
+              ),
+              CASE
+                WHEN w.settings->>'direct_pair_key' IS NOT NULL THEN (
+                  CASE
+                    WHEN SPLIT_PART(w.settings->>'direct_pair_key', ':', 1) = $1::text 
+                    THEN NULLIF(SPLIT_PART(w.settings->>'direct_pair_key', ':', 2), '')::uuid
+                    ELSE NULLIF(SPLIT_PART(w.settings->>'direct_pair_key', ':', 1), '')::uuid
+                  END
+                )
+                ELSE NULL
+              END
+            )
+          )
+          ELSE NULL
+        END as direct_peer_user_id,
+        CASE
+          WHEN COALESCE((w.settings->>'is_direct_chat')::boolean, false) = true THEN (
+            SELECT COALESCE(u_peer.last_seen_at, u_peer.last_login)
+            FROM users u_peer
+            WHERE u_peer.id = COALESCE(
+              (
+                SELECT wm_peer.user_id
+                FROM workgroup_members wm_peer
+                WHERE wm_peer.workgroup_id = w.id
+                  AND wm_peer.user_id <> $1
+                ORDER BY wm_peer.joined_at ASC
+                LIMIT 1
+              ),
+              CASE
+                WHEN w.settings->>'direct_pair_key' IS NOT NULL THEN (
+                  CASE
+                    WHEN SPLIT_PART(w.settings->>'direct_pair_key', ':', 1) = $1::text 
+                    THEN NULLIF(SPLIT_PART(w.settings->>'direct_pair_key', ':', 2), '')::uuid
+                    ELSE NULLIF(SPLIT_PART(w.settings->>'direct_pair_key', ':', 1), '')::uuid
+                  END
+                )
+                ELSE NULL
+              END
+            )
+          )
+          ELSE NULL
+        END as direct_peer_last_seen_at,
+        CASE
+          WHEN COALESCE((w.settings->>'is_direct_chat')::boolean, false) = true THEN (
             SELECT u_peer.avatar_url
-            FROM workgroup_members wm_peer
-            JOIN users u_peer ON u_peer.id = wm_peer.user_id
-            WHERE wm_peer.workgroup_id = w.id
-              AND wm_peer.user_id <> $1
-            ORDER BY wm_peer.joined_at ASC
-            LIMIT 1
+            FROM users u_peer
+            WHERE u_peer.id = COALESCE(
+              (
+                SELECT wm_peer.user_id
+                FROM workgroup_members wm_peer
+                WHERE wm_peer.workgroup_id = w.id
+                  AND wm_peer.user_id <> $1
+                ORDER BY wm_peer.joined_at ASC
+                LIMIT 1
+              ),
+              CASE
+                WHEN w.settings->>'direct_pair_key' IS NOT NULL THEN (
+                  CASE
+                    WHEN SPLIT_PART(w.settings->>'direct_pair_key', ':', 1) = $1::text 
+                    THEN NULLIF(SPLIT_PART(w.settings->>'direct_pair_key', ':', 2), '')::uuid
+                    ELSE NULLIF(SPLIT_PART(w.settings->>'direct_pair_key', ':', 1), '')::uuid
+                  END
+                )
+                ELSE NULL
+              END
+            )
           )
           ELSE NULL
         END as direct_peer_avatar_url,
+        CASE
+          WHEN COALESCE((w.settings->>'is_direct_chat')::boolean, false) = true THEN (
+            CASE
+              WHEN EXISTS (
+                SELECT 1 FROM users u_check
+                WHERE u_check.id = COALESCE(
+                  (SELECT wm_peer.user_id FROM workgroup_members wm_peer WHERE wm_peer.workgroup_id = w.id AND wm_peer.user_id <> $1 LIMIT 1),
+                  CASE
+                    WHEN w.settings->>'direct_pair_key' IS NOT NULL THEN (
+                      CASE
+                        WHEN SPLIT_PART(w.settings->>'direct_pair_key', ':', 1) = $1::text 
+                        THEN NULLIF(SPLIT_PART(w.settings->>'direct_pair_key', ':', 2), '')::uuid
+                        ELSE NULLIF(SPLIT_PART(w.settings->>'direct_pair_key', ':', 1), '')::uuid
+                      END
+                    )
+                    ELSE NULL
+                  END
+                )
+                AND u_check.is_active = true
+              ) THEN false
+              ELSE true
+            END
+          )
+          ELSE false
+        END as is_peer_deleted,
+        CASE
+          WHEN COALESCE((w.settings->>'is_direct_chat')::boolean, false) = true THEN (
+            CASE
+              WHEN EXISTS (
+                SELECT 1 FROM users u_check
+                WHERE u_check.id = COALESCE(
+                  (SELECT wm_peer.user_id FROM workgroup_members wm_peer WHERE wm_peer.workgroup_id = w.id AND wm_peer.user_id <> $1 LIMIT 1),
+                  CASE
+                    WHEN w.settings->>'direct_pair_key' IS NOT NULL THEN (
+                      CASE
+                        WHEN SPLIT_PART(w.settings->>'direct_pair_key', ':', 1) = $1::text 
+                        THEN NULLIF(SPLIT_PART(w.settings->>'direct_pair_key', ':', 2), '')::uuid
+                        ELSE NULLIF(SPLIT_PART(w.settings->>'direct_pair_key', ':', 1), '')::uuid
+                      END
+                    )
+                    ELSE NULL
+                  END
+                )
+                AND u_check.is_active = true
+              ) THEN 'active'
+              WHEN EXISTS (
+                SELECT 1 FROM users u_check
+                WHERE u_check.id = COALESCE(
+                  (SELECT wm_peer.user_id FROM workgroup_members wm_peer WHERE wm_peer.workgroup_id = w.id AND wm_peer.user_id <> $1 LIMIT 1),
+                  CASE
+                    WHEN w.settings->>'direct_pair_key' IS NOT NULL THEN (
+                      CASE
+                        WHEN SPLIT_PART(w.settings->>'direct_pair_key', ':', 1) = $1::text 
+                        THEN NULLIF(SPLIT_PART(w.settings->>'direct_pair_key', ':', 2), '')::uuid
+                        ELSE NULLIF(SPLIT_PART(w.settings->>'direct_pair_key', ':', 1), '')::uuid
+                      END
+                    )
+                    ELSE NULL
+                  END
+                )
+                AND u_check.is_active = false
+              ) THEN 'inactive'
+              ELSE 'deleted'
+            END
+          )
+          ELSE NULL
+        END as direct_peer_status,
         u.full_name as created_by_name,
         COUNT(DISTINCT wm.user_id) as member_count,
         COUNT(DISTINCT wp.id) as message_count,
         CASE 
           WHEN wm_current.user_id IS NOT NULL THEN wm_current.role 
           ELSE null 
-        END as user_role
+        END as user_role,
+        CASE 
+          WHEN wm_current.user_id IS NOT NULL THEN wm_current.status 
+          ELSE null 
+        END as user_status
       FROM workgroups w
       LEFT JOIN users u ON w.created_by = u.id
       LEFT JOIN workgroup_members wm ON w.id = wm.workgroup_id
       LEFT JOIN workgroup_posts wp ON w.id = wp.workgroup_id AND wp.is_deleted = false
       LEFT JOIN workgroup_members wm_current ON w.id = wm_current.workgroup_id AND wm_current.user_id = $1
       WHERE w.id = $2 AND w.org_id = $3 AND w.is_archived = false
-      GROUP BY w.id, u.full_name, wm_current.user_id, wm_current.role
+      GROUP BY w.id, u.full_name, wm_current.user_id, wm_current.role, wm_current.status
     `;
 
     const result = await db.query(query, [req.user.id, id, req.user.orgId]);
@@ -298,7 +732,19 @@ const getWorkgroup = async (req, res, next) => {
       return res.status(403).json({ error: 'Access denied to private workgroup' });
     }
 
-    res.json(workgroup);
+    let isOnline = false;
+    let lastSeenAt = null;
+    if (workgroup.direct_peer_user_id && !workgroup.is_peer_deleted) {
+      const presence = realtimeService.getUserPresence(workgroup.direct_peer_user_id);
+      isOnline = Boolean(presence.isOnline);
+      lastSeenAt = presence.lastSeenAt || workgroup.direct_peer_last_seen_at || null;
+    }
+
+    res.json({
+      ...workgroup,
+      is_online: isOnline,
+      last_seen_at: lastSeenAt,
+    });
   } catch (err) {
     next(err);
   }
@@ -551,9 +997,9 @@ const deleteWorkgroup = async (req, res, next) => {
   try {
     const { id } = req.params;
 
-    // Check if user is owner, admin, or authorized moderator
+    // Check membership and permissions
     const permissionQuery = `
-      SELECT wm.role, w.settings, w.created_by, w.name
+      SELECT wm.role, wm.status, w.settings, w.created_by, w.name, w.org_id
       FROM workgroup_members wm
       JOIN workgroups w ON w.id = wm.workgroup_id
       WHERE wm.workgroup_id = $1 AND wm.user_id = $2
@@ -561,49 +1007,95 @@ const deleteWorkgroup = async (req, res, next) => {
     const permissionResult = await db.query(permissionQuery, [id, req.user.id]);
 
     if (permissionResult.rows.length === 0) {
-      return res.status(403).json({ error: 'Only workgroup members can delete teams' });
+      // Check if user is org admin or creator even if not currently in wm
+      const wgQuery = `SELECT id, name, created_by, org_id, settings FROM workgroups WHERE id = $1`;
+      const wgRes = await db.query(wgQuery, [id]);
+      if (wgRes.rows.length === 0) {
+        return res.status(404).json({ error: 'Workgroup not found' });
+      }
+      if (wgRes.rows[0].created_by !== req.user.id && req.user.role !== 'admin' && req.user.role !== 'super_admin') {
+        return res.status(403).json({ error: 'Only workgroup members can delete teams' });
+      }
+      await db.query(`UPDATE workgroups SET is_archived = true, updated_at = CURRENT_TIMESTAMP WHERE id = $1`, [id]);
+      realtimeService.emitWorkgroupUpdated(wgRes.rows[0].org_id, {
+        action: 'deleted',
+        workgroup_id: id,
+        workgroup: { id },
+      });
+      return res.json({ message: 'Workgroup deleted successfully', deleted_for_everyone: true });
     }
 
-    const { role, settings, created_by, name } = permissionResult.rows[0];
-    const isOwnerOrAdmin = ['owner', 'admin'].includes(role) || created_by === req.user.id;
+    const { role, status, settings, created_by, name, org_id } = permissionResult.rows[0];
+    const isLeftOrRemoved = status === 'left' || status === 'removed';
+    const isOwner = role === 'owner' || created_by === req.user.id;
     const isModerator = role === 'moderator' || settings?.member_manager_user_id === req.user.id;
 
-    if (!isOwnerOrAdmin) {
-      if (isModerator) {
-        if (!settings?.moderator_permissions?.delete_group) {
-          return res.status(403).json({ error: 'Moderator does not have permission to delete this group' });
-        }
-      } else {
-        return res.status(403).json({ error: 'Only workgroup owners, admins, and authorized moderators can delete teams' });
+    // CASE 1: User has ALREADY LEFT or was removed (including previous owner who left)
+    // -> Delete ONLY for this user (remove their membership record so it disappears from their chat list)
+    if (isLeftOrRemoved) {
+      await db.query(
+        `DELETE FROM workgroup_members WHERE workgroup_id = $1 AND user_id = $2`,
+        [id, req.user.id]
+      );
+      return res.json({
+        message: 'Workgroup removed from your chats',
+        deleted_for_me: true,
+        workgroup_id: id,
+      });
+    }
+
+    // CASE 2: Active OWNER or authorized MODERATOR (who has NOT left)
+    // -> Delete for EVERYONE!
+    if (isOwner || (isModerator && settings?.moderator_permissions?.delete_group)) {
+      const query = `
+        UPDATE workgroups 
+        SET is_archived = true, updated_at = CURRENT_TIMESTAMP
+        WHERE id = $1 AND org_id = $2
+        RETURNING name
+      `;
+      const result = await db.query(query, [id, org_id]);
+
+      if (result.rows.length === 0) {
+        return res.status(404).json({ error: 'Workgroup not found' });
       }
+
+      await logActivity(id, req.user.id, 'workgroup_deleted', {
+        workgroup_name: result.rows[0].name,
+      });
+
+      realtimeService.emitWorkgroupUpdated(org_id, {
+        action: 'deleted',
+        workgroup_id: id,
+        workgroup: { id },
+      });
+
+      return res.json({
+        message: 'Workgroup deleted successfully for all members',
+        deleted_for_everyone: true,
+        workgroup_id: id,
+      });
     }
 
-    // Soft delete by archiving
-    const query = `
-      UPDATE workgroups 
-      SET is_archived = true, updated_at = CURRENT_TIMESTAMP
-      WHERE id = $1 AND org_id = $2
-      RETURNING name
-    `;
+    // CASE 3: Active regular MEMBER (has not left yet)
+    // -> Leave team and delete ONLY for themselves!
+    await db.query(
+      `DELETE FROM workgroup_members WHERE workgroup_id = $1 AND user_id = $2`,
+      [id, req.user.id]
+    );
 
-    const result = await db.query(query, [id, req.user.orgId]);
+    const userRes = await db.query('SELECT full_name FROM users WHERE id = $1', [req.user.id]);
+    const userName = userRes.rows[0]?.full_name || 'A member';
+    try {
+      await createSystemPost(id, req.user.id, `${userName} left the group.`);
+    } catch (e) {}
 
-    if (result.rows.length === 0) {
-      return res.status(404).json({ error: 'Workgroup not found' });
-    }
+    realtimeService.emitWorkgroupMemberRemoved(id, req.user.id);
 
-    // Log activity
-    await logActivity(id, req.user.id, 'workgroup_deleted', {
-      workgroup_name: result.rows[0].name
-    });
-
-    realtimeService.emitWorkgroupUpdated(req.user.orgId, {
-      action: 'deleted',
+    return res.json({
+      message: 'You have left the team and it was removed from your chats',
+      deleted_for_me: true,
       workgroup_id: id,
-      workgroup: { id },
     });
-
-    res.json({ message: 'Workgroup deleted successfully' });
   } catch (err) {
     next(err);
   }
@@ -747,27 +1239,37 @@ const addWorkgroupMember = async (req, res, next) => {
 
     // Check if user is already a member
     const existingQuery = `
-      SELECT id FROM workgroup_members 
+      SELECT id, status FROM workgroup_members 
       WHERE workgroup_id = $1 AND user_id = $2
     `;
     const existingResult = await db.query(existingQuery, [id, user_id]);
 
+    let result;
     if (existingResult.rows.length > 0) {
-      return res.status(400).json({ error: 'User is already a member of this workgroup' });
+      if ((existingResult.rows[0].status || 'active') === 'active') {
+        return res.status(400).json({ error: 'User is already a member of this workgroup' });
+      }
+      // Re-activate member who previously left
+      result = await db.query(
+        `UPDATE workgroup_members 
+         SET status = 'active', role = $1, joined_at = CURRENT_TIMESTAMP, left_at = NULL, invited_by = $2, updated_at = CURRENT_TIMESTAMP
+         WHERE id = $3
+         RETURNING *`,
+        [role || 'member', req.user.id, existingResult.rows[0].id]
+      );
+    } else {
+      const insertQuery = `
+        INSERT INTO workgroup_members (workgroup_id, user_id, role, invited_by, status)
+        VALUES ($1, $2, $3, $4, 'active')
+        RETURNING *
+      `;
+      result = await db.query(insertQuery, [
+        id,
+        user_id,
+        role || 'member',
+        req.user.id
+      ]);
     }
-
-    const insertQuery = `
-      INSERT INTO workgroup_members (workgroup_id, user_id, role, invited_by)
-      VALUES ($1, $2, $3, $4)
-      RETURNING *
-    `;
-
-    const result = await db.query(insertQuery, [
-      id,
-      user_id,
-      role || 'member',
-      req.user.id
-    ]);
 
     // Log activity
     await logActivity(id, req.user.id, 'member_added', {
@@ -813,7 +1315,7 @@ const removeWorkgroupMember = async (req, res, next) => {
 
     // Get member details
     const memberQuery = `
-      SELECT wm.user_id, wm.role, u.full_name
+      SELECT wm.user_id, wm.role, wm.status, u.full_name
       FROM workgroup_members wm
       JOIN users u ON wm.user_id = u.id
       WHERE wm.id = $1 AND wm.workgroup_id = $2
@@ -824,11 +1326,15 @@ const removeWorkgroupMember = async (req, res, next) => {
       return res.status(404).json({ error: 'Member not found' });
     }
 
-    const { user_id: targetUserId, role: targetRole, full_name } = memberResult.rows[0];
+    const { user_id: targetUserId, role: targetRole, status: targetStatus, full_name } = memberResult.rows[0];
+
+    if (targetStatus === 'left' || targetStatus === 'removed') {
+      return res.status(400).json({ error: 'This member has already left or been removed from this workgroup' });
+    }
 
     // Check permissions
     const permissionQuery = `
-      SELECT wm.role, w.created_by, w.settings
+      SELECT wm.role, wm.status, w.created_by, w.settings
       FROM workgroup_members wm
       JOIN workgroups w ON wm.workgroup_id = w.id
       WHERE wm.workgroup_id = $1 AND wm.user_id = $2
@@ -837,6 +1343,10 @@ const removeWorkgroupMember = async (req, res, next) => {
 
     if (permissionResult.rows.length === 0) {
       return res.status(403).json({ error: 'You are not a member of this workgroup' });
+    }
+
+    if (permissionResult.rows[0].status === 'left' || permissionResult.rows[0].status === 'removed') {
+      return res.status(403).json({ error: 'You are no longer an active member of this workgroup' });
     }
 
     const currentUserRole = permissionResult.rows[0].role;
@@ -868,12 +1378,14 @@ const removeWorkgroupMember = async (req, res, next) => {
       }
     }
 
-    const deleteQuery = `
-      DELETE FROM workgroup_members 
-      WHERE id = $1 AND workgroup_id = $2
+    const wasSelfRemoval = targetUserId === req.user.id;
+    const updateMemberStatusQuery = `
+      UPDATE workgroup_members 
+      SET status = $1, left_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP
+      WHERE id = $2 AND workgroup_id = $3
     `;
 
-    await db.query(deleteQuery, [memberId, id]);
+    await db.query(updateMemberStatusQuery, [wasSelfRemoval ? 'left' : 'removed', memberId, id]);
 
     // Log activity
     await logActivity(id, req.user.id, 'member_removed', {
@@ -889,13 +1401,18 @@ const removeWorkgroupMember = async (req, res, next) => {
     const removedName = full_name || 'a user';
     const systemMessage =
       targetUserId === req.user.id
-        ? `${removedName} left the team.`
-        : `${actorName} removed ${removedName} from the team.`;
+        ? `${removedName} left the group.`
+        : `${actorName} removed ${removedName} from the group.`;
     try {
       await createSystemPost(id, req.user.id, systemMessage);
     } catch (systemErr) {
       // Do not fail remove-member API if system activity post fails.
       console.error('Failed to create system activity post (member_removed):', systemErr.message);
+    }
+
+    // Check if exiting user is the creator; if so, transfer ownership to moderator or earliest member
+    if (permissionResult.rows[0].created_by === targetUserId) {
+      await handleWorkgroupCreatorDeparture(id, targetUserId, req.user.id, db);
     }
 
     // Notify all members in the workgroup to refresh their member list.
@@ -924,7 +1441,7 @@ const getWorkgroupPosts = async (req, res, next) => {
 
     // Check access
     const accessQuery = `
-      SELECT w.is_private, wm.user_id
+      SELECT w.is_private, wm.user_id, wm.status, wm.left_at
       FROM workgroups w
       LEFT JOIN workgroup_members wm ON w.id = wm.workgroup_id AND wm.user_id = $1
       WHERE w.id = $2 AND w.org_id = $3
@@ -938,6 +1455,9 @@ const getWorkgroupPosts = async (req, res, next) => {
     if (accessResult.rows[0].is_private && !accessResult.rows[0].user_id) {
       return res.status(403).json({ error: 'Access denied to private workgroup' });
     }
+
+    const isUserLeft = accessResult.rows[0].status === 'left' || accessResult.rows[0].status === 'removed';
+    const cutoffTimestamp = isUserLeft ? accessResult.rows[0].left_at : null;
 
     // Mark all messages from others as read whenever posts are fetched (workgroup is open)
     await markWorkgroupPostsAsRead(id, req.user.id);
@@ -961,10 +1481,11 @@ const getWorkgroupPosts = async (req, res, next) => {
             OR p.is_deleted = true
             OR $2::uuid = ANY(COALESCE(p.deleted_for_users, '{}'::uuid[]))
           )
+          AND ($3::timestamptz IS NULL OR p.created_at <= $3::timestamptz)
     `;
 
-    const params = [id, req.user.id];
-    let paramIndex = 3;
+    const params = [id, req.user.id, cutoffTimestamp];
+    let paramIndex = 4;
 
     if (channel_id) {
       query += ` AND p.channel_id = $${paramIndex}`;
@@ -990,6 +1511,7 @@ const getWorkgroupPosts = async (req, res, next) => {
           OR p.is_deleted = true
           OR $2::uuid = ANY(COALESCE(p.deleted_for_users, '{}'::uuid[]))
         )
+        AND ($3::timestamptz IS NULL OR p.created_at <= $3::timestamptz)
       )
       SELECT * FROM post_tree
       ORDER BY root_created_at DESC, depth ASC, created_at ASC
@@ -1073,7 +1595,7 @@ const createWorkgroupPost = async (req, res, next) => {
 
     // Check if user is member
     const memberQuery = `
-      SELECT id, role FROM workgroup_members 
+      SELECT id, role, status FROM workgroup_members 
       WHERE workgroup_id = $1 AND user_id = $2
     `;
     const memberResult = await db.query(memberQuery, [id, req.user.id]);
@@ -1082,18 +1604,41 @@ const createWorkgroupPost = async (req, res, next) => {
       return res.status(403).json({ error: 'You must be a member to post messages' });
     }
 
-    // Require at least two members before starting team conversation
-    const teamSizeQuery = `
-      SELECT COUNT(*)::int AS total_members
-      FROM workgroup_members
-      WHERE workgroup_id = $1
-    `;
-    const teamSizeResult = await db.query(teamSizeQuery, [id]);
-    const totalMembers = teamSizeResult.rows[0]?.total_members || 0;
-    if (totalMembers < 2) {
-      return res.status(400).json({
-        error: 'Add at least one team member before starting conversation'
-      });
+    if (memberResult.rows[0].status === 'left' || memberResult.rows[0].status === 'removed') {
+      return res.status(403).json({ error: "You can't send messages to this group because you're no longer a participant." });
+    }
+
+    // Check if chat is direct chat or team workgroup
+    const wgSettingsQuery = `SELECT settings, name FROM workgroups WHERE id = $1`;
+    const wgSettingsResult = await db.query(wgSettingsQuery, [id]);
+    const wgSettings = wgSettingsResult.rows[0]?.settings || {};
+    const isDirectChat = Boolean(wgSettings.is_direct_chat);
+
+    if (isDirectChat) {
+      let peerId = null;
+      if (wgSettings.direct_pair_key) {
+        const parts = wgSettings.direct_pair_key.split(':');
+        peerId = parts[0] === req.user.id ? parts[1] : parts[0];
+      }
+      if (!peerId) {
+        const peerMember = await db.query(
+          'SELECT user_id FROM workgroup_members WHERE workgroup_id = $1 AND user_id <> $2 LIMIT 1',
+          [id, req.user.id]
+        );
+        peerId = peerMember.rows[0]?.user_id;
+      }
+
+      if (peerId) {
+        const peerUser = await db.query('SELECT id, is_active FROM users WHERE id = $1', [peerId]);
+        if (peerUser.rows.length === 0) {
+          return res.status(400).json({ error: 'This user no longer exists.' });
+        }
+        if (!peerUser.rows[0].is_active) {
+          return res.status(400).json({ error: 'This user account is inactive.' });
+        }
+      } else {
+        return res.status(400).json({ error: 'User does not exist.' });
+      }
     }
 
     // Check if channel exists and is broadcast
@@ -1108,9 +1653,6 @@ const createWorkgroupPost = async (req, res, next) => {
     }
 
     // Check if chat is locked globally for the workgroup
-    const wgSettingsQuery = `SELECT settings FROM workgroups WHERE id = $1`;
-    const wgSettingsResult = await db.query(wgSettingsQuery, [id]);
-    const wgSettings = wgSettingsResult.rows[0]?.settings || {};
 
     if (wgSettings.is_chat_locked) {
       const userRole = memberResult.rows[0].role;
@@ -1179,13 +1721,12 @@ const createWorkgroupPost = async (req, res, next) => {
     const [wgResult, membersResult] = await Promise.all([
       db.query(`SELECT name, type, settings, avatar_url FROM workgroups WHERE id = $1`, [id]),
       db.query(
-        `SELECT wm.user_id FROM workgroup_members wm WHERE wm.workgroup_id = $1 AND wm.user_id <> $2`,
+        `SELECT wm.user_id FROM workgroup_members wm WHERE wm.workgroup_id = $1 AND wm.user_id <> $2 AND COALESCE(wm.status, 'active') = 'active'`,
         [id, req.user.id]
       ),
     ]);
 
     const workgroup = wgResult.rows[0];
-    const isDirectChat = workgroup?.settings?.is_direct_chat === true || workgroup?.settings?.is_direct_chat === 'true';
     const chatName = isDirectChat ? insertedPost.author_name : (workgroup?.name || 'Team');
     const notifTitle = isDirectChat ? insertedPost.author_name : `${chatName}`;
     const notifBody = insertedPost.content.replace('[SYSTEM] ', '');
@@ -1642,35 +2183,43 @@ const getOrCreateDirectChatWorkgroup = async (req, res, next) => {
       return res.status(400).json({ error: 'Cannot open direct chat with @Everyone' });
     }
 
-    const contactResult = await db.query(
-      `SELECT id, full_name, email FROM users WHERE id = $1 AND org_id = $2`,
-      [contact_user_id, req.user.orgId]
-    );
-    if (contactResult.rows.length === 0) {
-      return res.status(404).json({ error: 'User not found in your organization' });
-    }
+    const pairKey = [currentUserId, contactUserId].sort().join(':');
 
+    // 1. Check if direct chat workgroup ALREADY exists (preserves chat history even if peer was deleted)
     const existingResult = await db.query(
       `
         SELECT w.*
         FROM workgroups w
-        JOIN workgroup_members wm_me ON wm_me.workgroup_id = w.id AND wm_me.user_id = $1
-        JOIN workgroup_members wm_contact ON wm_contact.workgroup_id = w.id AND wm_contact.user_id = $2
-        WHERE w.org_id = $3
+        WHERE w.org_id = $1
           AND w.type = 'private'
           AND w.is_archived = false
           AND COALESCE((w.settings->>'is_direct_chat')::boolean, false) = true
+          AND (
+            w.settings->>'direct_pair_key' = $2
+            OR (
+              EXISTS (SELECT 1 FROM workgroup_members wm_me WHERE wm_me.workgroup_id = w.id AND wm_me.user_id = $3)
+              AND EXISTS (SELECT 1 FROM workgroup_members wm_contact WHERE wm_contact.workgroup_id = w.id AND wm_contact.user_id = $4)
+            )
+          )
         LIMIT 1
       `,
-      [req.user.id, contact_user_id, req.user.orgId]
+      [req.user.orgId, pairKey, req.user.id, contact_user_id]
     );
     if (existingResult.rows.length > 0) {
       return res.json(existingResult.rows[0]);
     }
 
+    // 2. If chat doesn't exist yet, verify contact user exists in organization
+    const contactResult = await db.query(
+      `SELECT id, full_name, email FROM users WHERE id = $1 AND org_id = $2`,
+      [contact_user_id, req.user.orgId]
+    );
+    if (contactResult.rows.length === 0) {
+      return res.status(404).json({ error: 'User does not exist.' });
+    }
+
     const contact = contactResult.rows[0];
     const directChatName = contact.full_name || contact.email || 'Direct Chat';
-    const pairKey = [currentUserId, contactUserId].sort().join(':');
 
     client = await db.pool.connect();
     await client.query('BEGIN');
@@ -1817,5 +2366,6 @@ module.exports = {
   addWorkgroupPostReaction,
   getOrCreateDirectChatWorkgroup,
   getWorkgroupActivities,
-  toggleStarWorkgroup
+  toggleStarWorkgroup,
+  handleWorkgroupCreatorDeparture
 };

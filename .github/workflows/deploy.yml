@@ -44,7 +44,6 @@ jobs:
             echo "2. Building frontend..."
             cd "$SITE_DIR/frontend"
             npm install
-            npm run migrate
             npm run build
             rm -rf "$SITE_DIR/public_html/assets"
             cp -a dist/. "$SITE_DIR/public_html/"
@@ -52,6 +51,7 @@ jobs:
             echo "3. Updating backend..."
             cd "$SITE_DIR/backend"
             npm install --production
+            npm run migrate
             pm2 restart elina-backend || pm2 start src/server.js --name elina-backend
 
             echo "4. Updating permissions..."

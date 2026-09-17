@@ -227,6 +227,11 @@
 }
 
 @layer base {
+  html {
+    font-size: 13.5px;
+    scroll-behavior: smooth;
+  }
+
   * {
     @apply border-border;
   }
@@ -242,6 +247,36 @@
   h5,
   h6 {
     @apply font-semibold tracking-tight;
+  }
+
+  /* Global compact heading scale across all pages */
+  main h1:not([class*="text-4xl"]):not([class*="text-5xl"]):not([class*="text-6xl"]) {
+    font-size: 1.35rem;
+    line-height: 1.75rem;
+    letter-spacing: -0.02em;
+  }
+
+  main h2:not([class*="text-3xl"]):not([class*="text-4xl"]):not([class*="text-5xl"]) {
+    font-size: 1.15rem;
+    line-height: 1.5rem;
+    letter-spacing: -0.01em;
+  }
+
+  /* Compact stat cards and giant numbers across all pages */
+  main [class*="text-3xl"] {
+    font-size: 1.45rem !important;
+    line-height: 1.85rem !important;
+  }
+
+  main [class*="text-2xl"] {
+    font-size: 1.25rem !important;
+    line-height: 1.6rem !important;
+  }
+
+  /* Compact secondary page descriptions */
+  main p.text-muted-foreground.text-sm {
+    font-size: 0.85rem;
+    line-height: 1.25rem;
   }
 
   /* Sidebar specific styling - match frontend-ELINA colors */

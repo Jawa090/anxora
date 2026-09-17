@@ -76,6 +76,7 @@ import {
   Smartphone,
   XSquare,
   GanttChartIcon,
+  UserX,
 } from "lucide-react";
 import { useProject } from "@/hooks/useProjectManagement";
 import {
@@ -184,36 +185,36 @@ const navigation: NavItem[] = [
       { title: "Workgroups", href: "/collaboration/workgroups", icon: Users },
     ],
   },
-  // {
-  //   title: "CRM",
-  //   icon: TrendingUp,
-  //   children: [
-  //     { title: "Dashboard", href: "/crm/dashboard", icon: LayoutDashboard },
-  //     { title: "Unibox", href: "/crm/unibox", icon: Mailbox },
-  //     { title: "Leads", href: "/crm/leads", icon: UserPlus },
-  //     { title: "Deals", href: "/crm/deals", icon: Handshake },
-  //     { title: "Unqualified", href: "/crm/unqualified", icon: ListFilter },
-  //     {
-  //       title: "Customers",
-  //       href: "/crm/customers",
-  //       icon: Building2,
-  //       nestedChildren: [
-  //         { title: "Overview", href: "/crm/customers" },
-  //         { title: "Contacts", href: "/crm/customers/contacts" },
-  //         { title: "Companies", href: "/crm/customers/companies" },
-  //         {
-  //           title: "Signing parties",
-  //           href: "/crm/customers/signing-parties",
-  //           hasNested: true,
-  //         },
-  //         // { title: "Vendors", href: "/inventory/vendors", hasNested: false },
-  //       ],
-  //     },
-  //     // { title: "Sales", href: "/crm/sales", icon: DollarSign },
-  //     // { title: "Analytics", href: "/crm/analytics", icon: BarChart3 },
-  //     { title: "Communications", href: "/crm/communications", icon: Phone },
-  //   ],
-  // },
+  {
+    title: "CRM",
+    icon: TrendingUp,
+    children: [
+      { title: "Dashboard", href: "/crm/dashboard", icon: LayoutDashboard },
+      { title: "Unibox", href: "/crm/unibox", icon: Mailbox },
+      { title: "Leads", href: "/crm/leads", icon: UserPlus },
+      { title: "Deals", href: "/crm/deals", icon: Handshake },
+      { title: "Unqualified", href: "/crm/unqualified", icon: ListFilter },
+      {
+        title: "Customers",
+        href: "/crm/customers",
+        icon: Building2,
+        nestedChildren: [
+          { title: "Overview", href: "/crm/customers" },
+          { title: "Contacts", href: "/crm/customers/contacts" },
+          { title: "Companies", href: "/crm/customers/companies" },
+          {
+            title: "Signing parties",
+            href: "/crm/customers/signing-parties",
+            hasNested: true,
+          },
+          // { title: "Vendors", href: "/inventory/vendors", hasNested: false },
+        ],
+      },
+      // { title: "Sales", href: "/crm/sales", icon: DollarSign },
+      // { title: "Analytics", href: "/crm/analytics", icon: BarChart3 },
+      { title: "Communications", href: "/crm/communications", icon: Phone },
+    ],
+  },
   {
     title: "HRMS",
     icon: Briefcase,
@@ -977,6 +978,10 @@ export function AppSidebar({
                   const unreadCount = Number(dm.unread_count || 0);
                   const isOnline = Boolean(dm.is_online);
                   const isStarred = Boolean(dm.is_starred);
+                  const isPeerDeleted =
+                    Boolean(dm.is_peer_deleted) ||
+                    dm.direct_peer_status === "deleted" ||
+                    dm.direct_peer_status === "inactive";
 
                   return (
                     <div key={dm.id} className="group/dm relative">
@@ -988,6 +993,7 @@ export function AppSidebar({
                           isDMActive
                             ? "bg-primary/10 text-white font-medium"
                             : "text-slate-400 hover:text-white hover:bg-white/[0.03]",
+                          isPeerDeleted && "opacity-80",
                         )}
                       >
                         <div className="relative">
@@ -1002,21 +1008,34 @@ export function AppSidebar({
                               }
                             />
                             <AvatarFallback className="bg-primary text-primary-foreground font-bold text-[10px]">
-                              {(dm.display_name || dm.name || "DM")
-                                .slice(0, 2)
-                                .toUpperCase()}
+                              {isPeerDeleted ? (
+                                <UserX className="h-3 w-3" />
+                              ) : (
+                                (dm.display_name || dm.name || "DM")
+                                  .slice(0, 2)
+                                  .toUpperCase()
+                              )}
                             </AvatarFallback>
                           </Avatar>
                           <span
                             className={cn(
                               "absolute -right-0.5 -bottom-0.5 h-2 w-2 rounded-full border border-[#0c111d]",
-                              isOnline ? "bg-green-500" : "bg-slate-600",
+                              isPeerDeleted
+                                ? "bg-slate-600/60"
+                                : isOnline
+                                  ? "bg-green-500"
+                                  : "bg-slate-600",
                             )}
                           />
                         </div>
                         <span className="flex-1 truncate">
                           {dm.display_name || dm.name}
                         </span>
+                        {isPeerDeleted && (
+                          <span className="text-[9px] px-1 py-0.2  text-destructive ml-1 shrink-0 font-medium">
+                            <UserX className="h-4 w-4" />
+                          </span>
+                        )}
                         {unreadCount > 0 && (
                           <span className="inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[9px] font-bold text-white">
                             {unreadCount > 99 ? "99+" : unreadCount}
@@ -1060,7 +1079,7 @@ export function AppSidebar({
             {/* View All Direct Chats Link */}
             {isDMOpen && directMessages.length > 0 && (
               <NavLink
-                to="/collaboration/direct-chats"
+                to="/collaboration/workgroups"
                 onClick={() => isMobile && onClose?.()}
                 className={cn(
                   "flex items-center gap-2 rounded-lg py-2 pl-9 pr-3 mt-1 text-[12px] transition-all duration-200",
@@ -1613,25 +1632,28 @@ export function AppSidebar({
       <div className="flex-1 overflow-y-auto custom-scrollbar px-1.5 pb-4 space-y-6 pt-10">
         {/* Back to Dashboard Button - Show when a module is focused */}
         {focusedModule && (
-          <Button
-            className={cn(
-              "w-full justify-start gap-2 mb-2  bg-transparent border-2 border-sidebar-primary text-white hover:bg-sidebar-accent/30 hover:border-sidebar-primary rounded-full px-3 py-2",
-              isCollapsed &&
-              "w-10 h-10 ml-5 p-0 justify-center rounded-lg mb-1 border-sidebar-primary bg-transparent",
-            )}
-            onClick={() => {
-              navigate("/");
-              setFocusedModule(null);
-            }}
-            title="Back to Dashboard"
-          >
-            <ArrowLeft
-              className={cn("shrink-0", isCollapsed ? "h-5 w-5" : "h-4 w-4")}
-            />
-            {!isCollapsed && (
-              <span className="text-[12px] font-bold ">Back to Dashboard</span>
-            )}
-          </Button>
+          <div className={cn("w-full", isCollapsed && "flex justify-center mb-3")}>
+            <button
+              type="button"
+              className={cn(
+                "w-full flex items-center justify-start gap-2 mb-2 bg-transparent border-2 border-sidebar-primary text-white hover:bg-sidebar-accent/30 hover:border-sidebar-primary rounded-full px-3 py-2 transition-all",
+                isCollapsed &&
+                "flex h-10 w-10 mx-auto p-0 items-center justify-center rounded-xl mb-0 bg-sidebar-primary text-sidebar-primary-foreground hover:bg-sidebar-primary/90 border-none shadow-md",
+              )}
+              onClick={() => {
+                navigate("/");
+                setFocusedModule(null);
+              }}
+              title="Back to Dashboard"
+            >
+              <ArrowLeft
+                className={cn("shrink-0", isCollapsed ? "h-5 w-5" : "h-4 w-4")}
+              />
+              {!isCollapsed && (
+                <span className="text-[12px] font-bold">Back to Dashboard</span>
+              )}
+            </button>
+          </div>
         )}
 
         <DndContext
@@ -1670,23 +1692,24 @@ export function AppSidebar({
                   // If focused on this module, show its children directly
                   if (focusedModule === item.title && item.children) {
                     return (
-                      <div key={item.title} className="space-y-1">
+                      <div key={item.title} className={cn("space-y-1", isCollapsed && "space-y-2")}>
                         {/* Module Header - with border and rounded styling - FRONTEND-ELINA STYLE */}
                         <div
                           className={cn(
                             "flex items-center justify-between rounded-full border-2 border-sidebar-primary px-3 py-2 bg-sidebar-primary text-sidebar-primary-foreground shadow-md light:border-[#2DD4BF]",
                             isCollapsed &&
-                            "px-2 py-1.5 justify-center rounded-lg",
+                            "h-10 w-10 mx-auto p-0 justify-center rounded-xl mb-3",
                           )}
+                          title={item.title === "Projects" && activeProject ? activeProject.name : item.title}
                         >
                           <div
                             className={cn(
                               "flex items-center gap-2 min-w-0",
-                              isCollapsed && "flex-col gap-1",
+                              isCollapsed && "justify-center",
                             )}
                           >
                             <div className="grid size-5 place-items-center rounded-md text-sidebar-primary-foreground shrink-0">
-                              <item.icon className="size-3.5" />
+                              <item.icon className={cn("size-3.5", isCollapsed && "size-5")} />
                             </div>
                             {!isCollapsed && (
                               <span className="text-[12px] font-bold text-sidebar-primary-foreground truncate max-w-[120px]">
@@ -1709,27 +1732,29 @@ export function AppSidebar({
                           )}
                         </div>
                         {/* Sub-modules */}
-                        {item.children
-                          .filter((child) => {
-                            if (
-                              child.roles &&
-                              !child.roles.includes(userRole?.role ?? "")
-                            ) {
-                              return false;
-                            }
-                            if (child.title === "Communications") {
-                              const role = userRole?.role;
-                              const dept = profile?.department?.toLowerCase();
-                              return (
-                                role === "super_admin" ||
-                                role === "admin" ||
-                                dept === "sales" ||
-                                dept === "marketing"
-                              );
-                            }
-                            return true;
-                          })
-                          .map((child) => renderSubItem(child, item.title))}
+                        <div className={cn("space-y-1", isCollapsed && "space-y-2")}>
+                          {item.children
+                            .filter((child) => {
+                              if (
+                                child.roles &&
+                                !child.roles.includes(userRole?.role ?? "")
+                              ) {
+                                return false;
+                              }
+                              if (child.title === "Communications") {
+                                const role = userRole?.role;
+                                const dept = profile?.department?.toLowerCase();
+                                return (
+                                  role === "super_admin" ||
+                                  role === "admin" ||
+                                  dept === "sales" ||
+                                  dept === "marketing"
+                                );
+                              }
+                              return true;
+                            })
+                            .map((child) => renderSubItem(child, item.title))}
+                        </div>
                       </div>
                     );
                   }
@@ -1766,36 +1791,6 @@ export function AppSidebar({
       {/* Bottom Fixed Items - Admin Portal & Settings */}
       {!focusedModule && (
         <div className="border-t border-white/5 px-4 py-3 space-y-1">
-          {/* {!isElectron &&
-            !(
-              typeof window !== "undefined" &&
-              (window as any).Capacitor?.isNative
-            ) && (
-              <NavLink
-                to="/desktop-app"
-                onClick={() => isMobile && onClose?.()}
-                className={cn(
-                  "flex items-center justify-between rounded-xl px-4 py-2.5 text-[13px] font-medium transition-all duration-200 mb-1",
-                  isActive("/desktop-app")
-                    ? "bg-primary/10 text-white"
-                    : "text-slate-400 hover:text-white hover:bg-white/[0.03]",
-                )}
-              >
-                <div className="flex items-center gap-3">
-                  <Laptop
-                    className={cn(
-                      "h-4 w-4",
-                      isActive("/desktop-app")
-                        ? "text-primary"
-                        : "text-slate-500",
-                    )}
-                  />
-                  <span>Try our new Desktop & Mobile apps</span>
-                </div>
-                <ArrowRight className="h-3.5 w-3.5 text-slate-500" />
-              </NavLink>
-            )} */}
-
           {filteredNavigation.bottomItems.map((item) => {
             if (isCollapsed) {
               if (item.children) {
@@ -1805,7 +1800,6 @@ export function AppSidebar({
                     key={item.title}
                     onClick={() => {
                       setFocusedModule(item.title);
-                      onWidthChange?.(256);
                     }}
                     className={cn(
                       "flex h-10 w-10 items-center justify-center rounded-xl mx-auto transition-all duration-200",
@@ -2002,7 +1996,6 @@ function SortableNavItem({
           <button
             onClick={() => {
               toggleSection(item.title);
-              onWidthChange?.(256);
             }}
             className={cn(
               "flex size-10 items-center justify-center rounded-xl mx-auto transition-all duration-200",

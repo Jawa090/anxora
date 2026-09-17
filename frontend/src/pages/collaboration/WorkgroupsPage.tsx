@@ -604,7 +604,7 @@ export default function WorkgroupsPage() {
             try {
               await workgroupsApi.uploadAvatar(newWg.id, avatarFile);
               queryClient.invalidateQueries({ queryKey: ["workgroups"] });
-            } catch {}
+            } catch { }
           }
 
           // Add selected members
@@ -665,7 +665,7 @@ export default function WorkgroupsPage() {
             try {
               await workgroupsApi.uploadAvatar(editing.id, avatarFile);
               queryClient.invalidateQueries({ queryKey: ["workgroups"] });
-            } catch {}
+            } catch { }
           }
           setEditing(null);
           setManageMembersUserId("none");
@@ -700,15 +700,19 @@ export default function WorkgroupsPage() {
       wg.settings?.manage_member_user_id === user?.id ||
       (wg as any).manage_member_user_id === user?.id;
 
-    const canEdit =
-      wg.user_role === "owner" ||
-      wg.created_by === user?.id ||
-      (isModerator && wg.settings?.moderator_permissions?.edit_group);
+    const isLeft =
+      (wg as any).user_status === "left" ||
+      (wg as any).user_status === "removed";
+    const isOwner =
+      wg.user_role === "owner" || wg.created_by === user?.id;
 
-    const canDelete =
-      wg.user_role === "owner" ||
-      wg.created_by === user?.id ||
-      (isModerator && wg.settings?.moderator_permissions?.delete_group);
+    // Edit: ONLY owner/creator and authorized moderator, and never if user has left
+    const canEdit =
+      !isLeft &&
+      (isOwner || (isModerator && !!wg.settings?.moderator_permissions?.edit_group));
+
+    // Delete: Available to everyone (owner deletes for all, left users/members delete only for themselves)
+    const canDelete = true;
 
     const isPinned = pinnedTeams.has(wg.id);
 
@@ -716,11 +720,10 @@ export default function WorkgroupsPage() {
       <div
         key={wg.id}
         onClick={() => openWorkgroup(wg.id)}
-        className={`relative group flex flex-col rounded-xl border border-primary dark:border dark:hover:border-2 p-4 cursor-pointer hover:shadow-md ${
-          unreadCount > 0
+        className={`relative group flex flex-col rounded-xl border border-primary dark:border dark:hover:border-2 p-4 cursor-pointer hover:shadow-md ${unreadCount > 0
             ? "bg-primary/10 shadow-sm shadow-primary/20"
             : "bg-card"
-        }`}
+          }`}
       >
         {unreadCount > 0 && (
           <div className="absolute top-0 left-0 bottom-0 w-1.5 bg-primary rounded-l-xl" />
@@ -790,9 +793,8 @@ export default function WorkgroupsPage() {
         <div className="flex-1 min-w-0">
           <div className="flex items-center justify-between gap-2">
             <h3
-              className={`font-bold text-base truncate ${
-                unreadCount > 0 ? "text-primary" : "text-foreground"
-              }`}
+              className={`font-bold text-base truncate ${unreadCount > 0 ? "text-primary" : "text-foreground"
+                }`}
             >
               {wg.name}
             </h3>
@@ -843,7 +845,7 @@ export default function WorkgroupsPage() {
 
   if (selectedId) {
     return (
-      <div className="-mx-4 md:-mx-6 lg:-mx-8 -my-4 md:-my-6 lg:-my-8 h-[calc(100vh-4rem)] overflow-hidden">
+      <div className="h-full w-full overflow-hidden flex flex-col">
         <WorkgroupDetailView
           key={selectedId}
           workgroupId={selectedId}
@@ -968,8 +970,8 @@ export default function WorkgroupsPage() {
                             src={
                               getAvatarUrl(
                                 chat.avatar_url ||
-                                  chat.direct_peer_avatar_url ||
-                                  (chat as any).avatar,
+                                chat.direct_peer_avatar_url ||
+                                (chat as any).avatar,
                               ) || undefined
                             }
                           />
@@ -978,9 +980,8 @@ export default function WorkgroupsPage() {
                           </AvatarFallback>
                         </Avatar>
                         <span
-                          className={`absolute -right-0.5 -bottom-0.5 h-3.5 w-3.5 rounded-full border-2 border-background ${
-                            isOnline ? "bg-emerald-500" : "bg-slate-400"
-                          }`}
+                          className={`absolute -right-0.5 -bottom-0.5 h-3.5 w-3.5 rounded-full border-2 border-background ${isOnline ? "bg-emerald-500" : "bg-slate-400"
+                            }`}
                         />
                       </div>
 
@@ -990,9 +991,8 @@ export default function WorkgroupsPage() {
                         </h3>
                         <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
                           <span
-                            className={`text-xs font-semibold ${
-                              isOnline ? "text-emerald-500" : "text-red-500"
-                            }`}
+                            className={`text-xs font-semibold ${isOnline ? "text-emerald-500" : "text-red-500"
+                              }`}
                           >
                             {isOnline ? "Online" : "Offline"}
                           </span>
@@ -1000,9 +1000,9 @@ export default function WorkgroupsPage() {
                             <span className="text-[11px] text-muted-foreground truncate">
                               {chat.last_seen_at
                                 ? `• Last seen ${formatDistanceToNow(
-                                    new Date(chat.last_seen_at),
-                                    { addSuffix: true },
-                                  )}`
+                                  new Date(chat.last_seen_at),
+                                  { addSuffix: true },
+                                )}`
                                 : "• Offline"}
                             </span>
                           )}
@@ -1331,41 +1331,41 @@ export default function WorkgroupsPage() {
                             {manageMembersUserId === "none"
                               ? "None (Owner/Admin only)"
                               : (() => {
-                                  const selectedMember = orgMembers.find(
-                                    (m: any) =>
-                                      String(m.id || m.user_id) ===
-                                      String(manageMembersUserId),
-                                  );
-                                  if (!selectedMember)
-                                    return orgMembers.length === 0
-                                      ? "Loading moderator..."
-                                      : "Moderator assigned";
-                                  const initials =
-                                    selectedMember.full_name
-                                      ?.split(" ")
-                                      .map((w: string) => w[0])
-                                      .join("")
-                                      .toUpperCase()
-                                      .slice(0, 2) || "?";
-                                  return (
-                                    <div className="flex items-center gap-2 truncate">
-                                      <Avatar className="h-6 w-6 shrink-0">
-                                        <AvatarImage
-                                          src={getAvatarUrl(
-                                            selectedMember.avatar_url,
-                                          )}
-                                        />
-                                        <AvatarFallback className="bg-primary/10 text-primary text-[9px] font-bold">
-                                          {initials}
-                                        </AvatarFallback>
-                                      </Avatar>
-                                      <span className="truncate">
-                                        {selectedMember.full_name ||
-                                          selectedMember.email}
-                                      </span>
-                                    </div>
-                                  );
-                                })()}
+                                const selectedMember = orgMembers.find(
+                                  (m: any) =>
+                                    String(m.id || m.user_id) ===
+                                    String(manageMembersUserId),
+                                );
+                                if (!selectedMember)
+                                  return orgMembers.length === 0
+                                    ? "Loading moderator..."
+                                    : "Moderator assigned";
+                                const initials =
+                                  selectedMember.full_name
+                                    ?.split(" ")
+                                    .map((w: string) => w[0])
+                                    .join("")
+                                    .toUpperCase()
+                                    .slice(0, 2) || "?";
+                                return (
+                                  <div className="flex items-center gap-2 truncate">
+                                    <Avatar className="h-6 w-6 shrink-0">
+                                      <AvatarImage
+                                        src={getAvatarUrl(
+                                          selectedMember.avatar_url,
+                                        )}
+                                      />
+                                      <AvatarFallback className="bg-primary/10 text-primary text-[9px] font-bold">
+                                        {initials}
+                                      </AvatarFallback>
+                                    </Avatar>
+                                    <span className="truncate">
+                                      {selectedMember.full_name ||
+                                        selectedMember.email}
+                                    </span>
+                                  </div>
+                                );
+                              })()}
                             <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                           </Button>
                         </PopoverTrigger>
@@ -1751,10 +1751,41 @@ export default function WorkgroupsPage() {
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete "{deleteTarget?.name}"?</AlertDialogTitle>
+            <AlertDialogTitle>
+              {(() => {
+                const isLeft =
+                  (deleteTarget as any)?.user_status === "left" ||
+                  (deleteTarget as any)?.user_status === "removed";
+                const isOwner =
+                  deleteTarget?.user_role === "owner" ||
+                  deleteTarget?.created_by === user?.id;
+
+                if (isLeft) {
+                  return `Remove "${deleteTarget?.name}" from your chats?`;
+                }
+                if (isOwner) {
+                  return `Delete "${deleteTarget?.name}" for everyone?`;
+                }
+                return `Remove "${deleteTarget?.name}" from your chats?`;
+              })()}
+            </AlertDialogTitle>
             <AlertDialogDescription>
-              This will permanently delete the team, all its messages, and
-              member associations. This cannot be undone.
+              {(() => {
+                const isLeft =
+                  (deleteTarget as any)?.user_status === "left" ||
+                  (deleteTarget as any)?.user_status === "removed";
+                const isOwner =
+                  deleteTarget?.user_role === "owner" ||
+                  deleteTarget?.created_by === user?.id;
+
+                if (isLeft) {
+                  return "This will delete this group from your chat list. It will not affect other members.";
+                }
+                if (isOwner) {
+                  return "As the owner, this will delete this group for all members. This cannot be undone.";
+                }
+                return "This will remove you from this group and delete it from your chat list. It will not affect other members.";
+              })()}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

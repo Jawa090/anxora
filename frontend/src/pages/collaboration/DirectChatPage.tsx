@@ -9,6 +9,7 @@ import {
   UserRound,
   Users,
   Video,
+  UserX,
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { useQueryClient } from "@tanstack/react-query";
@@ -106,9 +107,9 @@ export default function DirectChatPage() {
         return prev.map((wg) =>
           wg?.id === id
             ? {
-                ...wg,
-                unread_count: 0,
-              }
+              ...wg,
+              unread_count: 0,
+            }
             : wg,
         );
       },
@@ -180,13 +181,13 @@ export default function DirectChatPage() {
           return prev.map((wg) =>
             wg?.direct_peer_user_id === payload.userId
               ? {
-                  ...wg,
-                  is_online: payload.is_online ?? wg.is_online,
-                  last_seen_at:
-                    payload.last_seen_at !== undefined
-                      ? payload.last_seen_at
-                      : wg.last_seen_at,
-                }
+                ...wg,
+                is_online: payload.is_online ?? wg.is_online,
+                last_seen_at:
+                  payload.last_seen_at !== undefined
+                    ? payload.last_seen_at
+                    : wg.last_seen_at,
+              }
               : wg,
           );
         },
@@ -208,9 +209,9 @@ export default function DirectChatPage() {
         return prev.map((wg) =>
           wg?.id === selectedId
             ? {
-                ...wg,
-                unread_count: 0,
-              }
+              ...wg,
+              unread_count: 0,
+            }
             : wg,
         );
       },
@@ -295,7 +296,7 @@ export default function DirectChatPage() {
 
   if (selectedId) {
     return (
-      <div className="-mx-4 md:-mx-6 lg:-mx-8 -my-4 md:-my-6 lg:-my-8 h-[calc(100vh-4rem)] overflow-hidden">
+      <div className="h-full w-full overflow-hidden flex flex-col">
         <WorkgroupDetailView key={selectedId} workgroupId={selectedId} onBack={closeChat} />
       </div>
     );
@@ -417,7 +418,11 @@ export default function DirectChatPage() {
           <div className="flex-1 overflow-y-auto p-2 space-y-1 custom-scrollbar">
             {directChats.map((chat) => {
               const isActive = selectedId === chat.id;
-              const isOnline = Boolean(chat.is_online);
+              const isPeerDeleted =
+                Boolean((chat as any).is_peer_deleted) ||
+                (chat as any).direct_peer_status === "deleted" ||
+                (chat as any).direct_peer_status === "inactive";
+              const isOnline = !isPeerDeleted && Boolean(chat.is_online);
               const unreadCount = isActive ? 0 : Number(chat.unread_count || 0);
               const chatDisplayName = chat.display_name || chat.name;
 
@@ -428,11 +433,10 @@ export default function DirectChatPage() {
                 >
                   <button
                     onClick={() => openChat(chat.id)}
-                    className={`w-full flex items-center gap-3 shadow-sm shadow-primary/20 rounded-xl px-3 py-3 text-left transition-all duration-200 ${
-                      isActive
+                    className={`w-full flex items-center gap-3 shadow-sm shadow-primary/20 rounded-xl px-3 py-3 text-left transition-all duration-200 ${isActive
                         ? "bg-primary shadow-lg shadow-primary/20 text-white"
                         : "dark:bg-muted/30 bg-muted/80"
-                    }`}
+                      } ${isPeerDeleted ? "opacity-80" : ""}`}
                   >
                     <div className="relative shrink-0">
                       <Avatar
@@ -442,59 +446,92 @@ export default function DirectChatPage() {
                           src={
                             getAvatarUrl(
                               chat.avatar_url ||
-                                chat.direct_peer_avatar_url ||
-                                chat.avatar,
+                              chat.direct_peer_avatar_url ||
+                              chat.avatar,
                             ) || undefined
                           }
                         />
                         <AvatarFallback
                           className={`${chat.avatar_color} text-white font-bold text-sm bg-secondary-foreground dark:bg-primary`}
                         >
-                          {chatDisplayName.slice(0, 2).toUpperCase()}
+                          {isPeerDeleted ? (
+                            <UserX className="h-4 w-4" />
+                          ) : (
+                            chatDisplayName.slice(0, 2).toUpperCase()
+                          )}
                         </AvatarFallback>
                       </Avatar>
                       <span
-                        className={`absolute -right-0.5 -bottom-0.5 h-3.5 w-3.5 rounded-full border-2 ${
-                          isActive ? "border-primary" : "border-card"
-                        } ${isOnline ? "bg-emerald-500" : "bg-gray-400"}`}
+                        className={`absolute -right-0.5 -bottom-0.5 h-3.5 w-3.5 rounded-full border-2 ${isActive ? "border-primary" : "border-card"
+                          } ${isPeerDeleted ? "bg-gray-500/50" : isOnline ? "bg-emerald-500" : "bg-gray-400"}`}
                       />
                     </div>
 
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center justify-between gap-1">
-                        <p
-                          className={`text-sm font-bold truncate ${isActive ? "text-white" : "text-foreground"}`}
-                        >
-                          {chatDisplayName}
-                        </p>
+                        <div className="flex items-center gap-1.5 min-w-0">
+                          <p
+                            className={`text-sm font-bold truncate ${isActive ? "text-white" : "text-foreground"}`}
+                          >
+                            {chatDisplayName}
+                          </p>
+                          {isPeerDeleted && (
+                            <span className="text-[9px] px-1.5 py-0.2 rounded-full bg-destructive/15 text-destructive border border-destructive/25 font-semibold shrink-0">
+                              no longer
+                            </span>
+                          )}
+                        </div>
                       </div>
                       <div className="flex items-center gap-2">
-                      <div className="flex flex-col">
-                        <p
-                          className={`text-[11px] font-bold ${isActive ? "text-white/80" : isOnline ? "text-emerald-500" : "text-red-500"}`}
-                        >
-                          {isOnline ? "Online" : "Offline"}
-                        </p>
-                        {!isOnline && (
-                          <p className={`text-[10px] ${isActive ? "text-white/60" : "text-muted-foreground"} truncate leading-tight`}>
-                            {chat.last_seen_at
-                              ? `Last seen ${formatDistanceToNow(new Date(chat.last_seen_at), { addSuffix: true })}`
-                              : "Last seen recently"}
-                          </p>
-                        )}
-                      </div>
+                        <div className="flex flex-col">
+                          {isPeerDeleted ? (
+                            <p
+                              className={`text-[11px] font-medium ${isActive ? "text-white/70" : "text-muted-foreground"
+                                }`}
+                            >
+                              This user no longer exists
+                            </p>
+                          ) : (
+                            <>
+                              <p
+                                className={`text-[11px] font-bold ${isActive
+                                    ? "text-white/80"
+                                    : isOnline
+                                      ? "text-emerald-500"
+                                      : "text-red-500"
+                                  }`}
+                              >
+                                {isOnline ? "Online" : "Offline"}
+                              </p>
+                              {!isOnline && (
+                                <p
+                                  className={`text-[10px] ${isActive
+                                      ? "text-white/60"
+                                      : "text-muted-foreground"
+                                    } truncate leading-tight`}
+                                >
+                                  {chat.last_seen_at
+                                    ? `Last seen ${formatDistanceToNow(
+                                      new Date(chat.last_seen_at),
+                                      { addSuffix: true },
+                                    )}`
+                                    : "Last seen recently"}
+                                </p>
+                              )}
+                            </>
+                          )}
+                        </div>
                       </div>
                     </div>
 
                     <div className="flex items-center gap-1.5 shrink-0">
-                      {isOnline && (
+                      {isOnline && !isPeerDeleted && (
                         <>
                           <Button
                             variant="secondary"
                             size="icon"
-                            className={`h-8 w-8 rounded-full shadow-sm transition-all ${
-                              isActive ? "bg-white/20 text-white hover:bg-white/30" : "bg-card hover:text-primary hover:bg-primary/10"
-                            }`}
+                            className={`h-8 w-8 rounded-full shadow-sm transition-all ${isActive ? "bg-white/20 text-white hover:bg-white/30" : "bg-card hover:text-primary hover:bg-primary/10"
+                              }`}
                             onClick={(e) => {
                               e.stopPropagation();
                               if (callState !== "idle") {
@@ -515,9 +552,8 @@ export default function DirectChatPage() {
                           <Button
                             variant="secondary"
                             size="icon"
-                            className={`h-8 w-8 rounded-full shadow-sm transition-all ${
-                              isActive ? "bg-white/20 text-white hover:bg-white/30" : "bg-card hover:text-primary hover:bg-primary/10"
-                            }`}
+                            className={`h-8 w-8 rounded-full shadow-sm transition-all ${isActive ? "bg-white/20 text-white hover:bg-white/30" : "bg-card hover:text-primary hover:bg-primary/10"
+                              }`}
                             onClick={(e) => {
                               e.stopPropagation();
                               if (callState !== "idle") {
@@ -540,9 +576,8 @@ export default function DirectChatPage() {
                       <Button
                         variant="secondary"
                         size="icon"
-                        className={`h-8 w-8 rounded-full shadow-sm transition-all ${
-                          isActive ? "bg-white/20 text-white hover:bg-white/30" : "bg-card hover:text-red-500 hover:bg-red-500/10"
-                        }`}
+                        className={`h-8 w-8 rounded-full shadow-sm transition-all ${isActive ? "bg-white/20 text-white hover:bg-white/30" : "bg-card hover:text-red-500 hover:bg-red-500/10"
+                          }`}
                         onClick={(e) => {
                           e.stopPropagation();
                           setDeleteChatId(chat.id);
@@ -550,14 +585,13 @@ export default function DirectChatPage() {
                       >
                         <Trash2 className="h-3.5 w-3.5" />
                       </Button>
-                      
+
                       {unreadCount > 0 && (
                         <span
-                          className={`h-5 min-w-[20px] flex items-center justify-center rounded-full px-1.5 text-[10px] font-black ${
-                            isActive
+                          className={`h-5 min-w-[20px] flex items-center justify-center rounded-full px-1.5 text-[10px] font-black ${isActive
                               ? "bg-white text-primary shadow-sm"
                               : "bg-primary text-white shadow-md shadow-primary/20"
-                          }`}
+                            }`}
                         >
                           {unreadCount}
                         </span>

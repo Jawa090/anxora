@@ -392,16 +392,16 @@ export default function UniboxPage() {
       )}
 
       {/* Horizontal Search, Status, and Toggles Filter Bar */}
-      <div className="flex flex-col md:flex-row gap-3 items-center justify-between bg-card/60 backdrop-blur p-3 rounded-lg border border-border/50 shadow-sm mb-3">
+      <div className="flex flex-col md:flex-row gap-2.5 items-center justify-between bg-card/60 backdrop-blur p-2.5 px-3 rounded-xl border border-border/50 shadow-sm mb-3">
         {/* Search Input and Starred/Unread toggles */}
-        <div className="flex items-center gap-3 w-full md:w-auto flex-wrap md:flex-nowrap">
-          <div className="relative w-full md:w-72 shrink-0">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+        <div className="flex items-center gap-2 w-full md:w-auto flex-nowrap shrink-0">
+          <div className="relative w-full md:w-64 shrink-0">
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
             <Input
               placeholder="Search emails..."
               value={searchVal}
               onChange={(e) => handleSearchChange(e.target.value)}
-              className="pl-9 h-9 bg-background/50 border-border/50 focus-visible:ring-primary"
+              className="pl-8 h-8 text-xs bg-background/50 border-border/50 focus-visible:ring-primary rounded-lg"
             />
           </div>
           <Button
@@ -410,9 +410,9 @@ export default function UniboxPage() {
             onClick={() => {
               updateParams({ unread: !showUnreadOnly, page: 1 });
             }}
-            className="h-9 gap-1.5 px-3"
+            className="h-8 text-xs gap-1.5 px-3 rounded-full whitespace-nowrap shrink-0 font-medium"
           >
-            <EyeOff className="h-4 w-4" />
+            <EyeOff className="h-3.5 w-3.5" />
             <span>Unread Only</span>
           </Button>
           <Button
@@ -421,9 +421,9 @@ export default function UniboxPage() {
             onClick={() => {
               updateParams({ starred: !showStarredOnly, page: 1 });
             }}
-            className="h-9 gap-1.5 px-3"
+            className="h-8 text-xs gap-1.5 px-3 rounded-full whitespace-nowrap shrink-0 font-medium"
           >
-            <Star className="h-4 w-4" />
+            <Star className="h-3.5 w-3.5" />
             <span>Starred Only</span>
           </Button>
         </div>
@@ -517,9 +517,9 @@ export default function UniboxPage() {
                               className={cn(
                                 "w-full text-left p-3 hover:bg-accent/50 transition-colors relative border-l-2 border-transparent",
                                 selectedEmail?.id === email.id &&
-                                  "bg-accent border-l-primary",
+                                "bg-accent border-l-primary",
                                 !email.is_read &&
-                                  "bg-blue-50/50 dark:bg-blue-950/20",
+                                "bg-blue-50/50 dark:bg-blue-950/20",
                               )}
                             >
                               <div className="flex items-start justify-between gap-2">
@@ -566,7 +566,7 @@ export default function UniboxPage() {
                                           className={cn(
                                             "text-[10px] px-1.5 py-0",
                                             PRIORITY_COLORS[email.priority] ||
-                                              "",
+                                            "",
                                           )}
                                         >
                                           {email.priority.toUpperCase()}
@@ -960,16 +960,16 @@ export default function UniboxPage() {
                     {/* Contact Person */}
                     {(matchedLead?.contact_person ||
                       selectedEmail?.sender_name) && (
-                      <div className="flex flex-col pb-2 border-b border-border/50">
-                        <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider mb-1">
-                          Contact Person
-                        </span>
-                        <span className="text-xs text-foreground font-semibold">
-                          {matchedLead?.contact_person ||
-                            selectedEmail?.sender_name}
-                        </span>
-                      </div>
-                    )}
+                        <div className="flex flex-col pb-2 border-b border-border/50">
+                          <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider mb-1">
+                            Contact Person
+                          </span>
+                          <span className="text-xs text-foreground font-semibold">
+                            {matchedLead?.contact_person ||
+                              selectedEmail?.sender_name}
+                          </span>
+                        </div>
+                      )}
 
                     {/* Email */}
                     <div className="flex flex-col pb-2 border-b border-border/50">

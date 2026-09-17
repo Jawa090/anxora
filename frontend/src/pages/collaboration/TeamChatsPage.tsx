@@ -505,7 +505,7 @@ export default function TeamChatsPage() {
 
   if (selectedId) {
     return (
-      <div className="-mx-4 md:-mx-6 lg:-mx-8 -my-4 md:-my-6 lg:-my-8 h-[calc(100vh-4rem)] overflow-hidden">
+      <div className="h-full w-full overflow-hidden flex flex-col">
         <WorkgroupDetailView
           key={selectedId}
           workgroupId={selectedId}
@@ -628,17 +628,21 @@ export default function TeamChatsPage() {
                   wg.settings?.manage_member_user_id === user?.id ||
                   (wg as any).manage_member_user_id === user?.id;
 
-                const canEdit =
-                  wg.user_role === "owner" ||
-                  wg.created_by === user?.id ||
-                  (isModerator &&
-                    wg.settings?.moderator_permissions?.edit_group);
+                const isLeft =
+                  (wg as any).user_status === "left" ||
+                  (wg as any).user_status === "removed";
+                const isOwner =
+                  wg.user_role === "owner" || wg.created_by === user?.id;
 
-                const canDelete =
-                  wg.user_role === "owner" ||
-                  wg.created_by === user?.id ||
-                  (isModerator &&
-                    wg.settings?.moderator_permissions?.delete_group);
+                // Edit: ONLY owner/creator and authorized moderator, never if left
+                const canEdit =
+                  !isLeft &&
+                  (isOwner ||
+                    (isModerator &&
+                      !!wg.settings?.moderator_permissions?.edit_group));
+
+                // Delete: Available to everyone (owner deletes for all, left users/members delete for themselves)
+                const canDelete = true;
 
                 const isPinned = pinnedTeams.has(wg.id);
 
@@ -785,17 +789,21 @@ export default function TeamChatsPage() {
                   wg.settings?.manage_member_user_id === user?.id ||
                   (wg as any).manage_member_user_id === user?.id;
 
-                const canEdit =
-                  wg.user_role === "owner" ||
-                  wg.created_by === user?.id ||
-                  (isModerator &&
-                    wg.settings?.moderator_permissions?.edit_group);
+                const isLeft =
+                  (wg as any).user_status === "left" ||
+                  (wg as any).user_status === "removed";
+                const isOwner =
+                  wg.user_role === "owner" || wg.created_by === user?.id;
 
-                const canDelete =
-                  wg.user_role === "owner" ||
-                  wg.created_by === user?.id ||
-                  (isModerator &&
-                    wg.settings?.moderator_permissions?.delete_group);
+                // Edit: ONLY owner/creator and authorized moderator, never if left
+                const canEdit =
+                  !isLeft &&
+                  (isOwner ||
+                    (isModerator &&
+                      !!wg.settings?.moderator_permissions?.edit_group));
+
+                // Delete: Available to everyone (owner deletes for all, left users/members delete for themselves)
+                const canDelete = true;
 
                 const isPinned = pinnedTeams.has(wg.id);
 
@@ -1470,10 +1478,41 @@ export default function TeamChatsPage() {
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete "{deleteTarget?.name}"?</AlertDialogTitle>
+            <AlertDialogTitle>
+              {(() => {
+                const isLeft =
+                  (deleteTarget as any)?.user_status === "left" ||
+                  (deleteTarget as any)?.user_status === "removed";
+                const isOwner =
+                  deleteTarget?.user_role === "owner" ||
+                  deleteTarget?.created_by === user?.id;
+
+                if (isLeft) {
+                  return `Remove "${deleteTarget?.name}" from your chats?`;
+                }
+                if (isOwner) {
+                  return `Delete "${deleteTarget?.name}" for everyone?`;
+                }
+                return `Remove "${deleteTarget?.name}" from your chats?`;
+              })()}
+            </AlertDialogTitle>
             <AlertDialogDescription>
-              This will permanently delete the team, all its messages, and
-              member associations. This cannot be undone.
+              {(() => {
+                const isLeft =
+                  (deleteTarget as any)?.user_status === "left" ||
+                  (deleteTarget as any)?.user_status === "removed";
+                const isOwner =
+                  deleteTarget?.user_role === "owner" ||
+                  deleteTarget?.created_by === user?.id;
+
+                if (isLeft) {
+                  return "This will delete this group from your chat list. It will not affect other members.";
+                }
+                if (isOwner) {
+                  return "As the owner, this will delete this group for all members. This cannot be undone.";
+                }
+                return "This will remove you from this group and delete it from your chat list. It will not affect other members.";
+              })()}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

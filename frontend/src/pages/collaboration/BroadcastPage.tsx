@@ -546,7 +546,7 @@ export default function BroadcastPage() {
 
   if (selectedId) {
     return (
-      <div className="-mx-4 md:-mx-6 lg:-mx-8 -my-4 md:-my-6 lg:-my-8 h-[calc(100vh-4rem)] overflow-hidden">
+      <div className="h-full w-full overflow-hidden flex flex-col">
         <WorkgroupDetailView
           key={selectedId}
           workgroupId={selectedId}
@@ -643,7 +643,24 @@ export default function BroadcastPage() {
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {filtered.map((wg) => {
             const unreadCount = Number(wg.unread_count || 0);
-            const canEditOrDelete = wg.created_by === user?.id;
+            const isModerator =
+              wg.settings?.member_manager_user_id === user?.id ||
+              wg.settings?.manage_member_user_id === user?.id ||
+              (wg as any).manage_member_user_id === user?.id;
+
+            const isLeft =
+              (wg as any).user_status === "left" ||
+              (wg as any).user_status === "removed";
+            const isOwner =
+              wg.user_role === "owner" || wg.created_by === user?.id;
+
+            const canEdit =
+              !isLeft &&
+              (isOwner ||
+                (isModerator &&
+                  !!wg.settings?.moderator_permissions?.edit_group));
+
+            const canDelete = true;
             return (
               <div
                 key={wg.id}
@@ -695,8 +712,8 @@ export default function BroadcastPage() {
                           className={`h-3.5 w-3.5 ${pinnedBroadcasts.has(wg.id) ? "fill-current" : ""}`}
                         />
                       </Button>
-                      {canEditOrDelete && (
-                        <div className="flex items-center gap-1">
+                      <div className="flex items-center gap-1">
+                        {canEdit && (
                           <Button
                             variant="ghost"
                             size="icon"
@@ -705,16 +722,18 @@ export default function BroadcastPage() {
                           >
                             <Edit className="h-3.5 w-3.5" />
                           </Button>
+                        )}
+                        {canDelete && (
                           <Button
                             variant="ghost"
                             size="icon"
-                            className="h-7 w-7  text-muted-foreground hover:bg-red-500/10 hover:text-destructive"
+                            className="h-7 w-7 text-muted-foreground hover:bg-red-500/10 hover:text-destructive"
                             onClick={() => setDeleteTarget(wg)}
                           >
                             <Trash2 className="h-3.5 w-3.5" />
                           </Button>
-                        </div>
-                      )}
+                        )}
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -782,7 +801,24 @@ export default function BroadcastPage() {
         <div className="space-y-3">
           {filtered.map((wg) => {
             const unreadCount = Number(wg.unread_count || 0);
-            const canEditOrDelete = wg.created_by === user?.id;
+            const isModerator =
+              wg.settings?.member_manager_user_id === user?.id ||
+              wg.settings?.manage_member_user_id === user?.id ||
+              (wg as any).manage_member_user_id === user?.id;
+
+            const isLeft =
+              (wg as any).user_status === "left" ||
+              (wg as any).user_status === "removed";
+            const isOwner =
+              wg.user_role === "owner" || wg.created_by === user?.id;
+
+            const canEdit =
+              !isLeft &&
+              (isOwner ||
+                (isModerator &&
+                  !!wg.settings?.moderator_permissions?.edit_group));
+
+            const canDelete = true;
             return (
               <div
                 key={wg.id}
@@ -890,8 +926,8 @@ export default function BroadcastPage() {
                       className={`h-4 w-4 ${pinnedBroadcasts.has(wg.id) ? "fill-current" : ""}`}
                     />
                   </Button>
-                  {canEditOrDelete && (
-                    <>
+                  <div className="flex items-center gap-1">
+                    {canEdit && (
                       <Button
                         variant="ghost"
                         size="icon"
@@ -901,6 +937,8 @@ export default function BroadcastPage() {
                       >
                         <Edit className="h-4 w-4" />
                       </Button>
+                    )}
+                    {canDelete && (
                       <Button
                         variant="ghost"
                         size="icon"
@@ -910,8 +948,8 @@ export default function BroadcastPage() {
                       >
                         <Trash2 className="h-4 w-4" />
                       </Button>
-                    </>
-                  )}
+                    )}
+                  </div>
                 </div>
               </div>
             );
@@ -1801,10 +1839,41 @@ export default function BroadcastPage() {
       <Dialog open={!!deleteTarget} onOpenChange={() => setDeleteTarget(null)}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Delete Broadcast</DialogTitle>
+            <DialogTitle>
+              {(() => {
+                const isLeft =
+                  (deleteTarget as any)?.user_status === "left" ||
+                  (deleteTarget as any)?.user_status === "removed";
+                const isOwner =
+                  deleteTarget?.user_role === "owner" ||
+                  deleteTarget?.created_by === user?.id;
+
+                if (isLeft) {
+                  return `Remove "${deleteTarget?.name}" from your chats?`;
+                }
+                if (isOwner) {
+                  return `Delete "${deleteTarget?.name}" for everyone?`;
+                }
+                return `Remove "${deleteTarget?.name}" from your chats?`;
+              })()}
+            </DialogTitle>
             <DialogDescription>
-              Are you sure you want to delete the broadcast "
-              {deleteTarget?.name}"? This action cannot be undone.
+              {(() => {
+                const isLeft =
+                  (deleteTarget as any)?.user_status === "left" ||
+                  (deleteTarget as any)?.user_status === "removed";
+                const isOwner =
+                  deleteTarget?.user_role === "owner" ||
+                  deleteTarget?.created_by === user?.id;
+
+                if (isLeft) {
+                  return "This will delete this broadcast from your chat list. It will not affect other members.";
+                }
+                if (isOwner) {
+                  return "As the owner, this will delete this broadcast for all members. This cannot be undone.";
+                }
+                return "This will remove you from this broadcast and delete it from your chat list. It will not affect other members.";
+              })()}
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
@@ -1816,7 +1885,10 @@ export default function BroadcastPage() {
               onClick={() => {
                 if (deleteTarget) {
                   deleteWg.mutate(deleteTarget.id, {
-                    onSuccess: () => setDeleteTarget(null),
+                    onSuccess: () => {
+                      setDeleteTarget(null);
+                      queryClient.invalidateQueries({ queryKey: ["workgroups"] });
+                    },
                   });
                 }
               }}

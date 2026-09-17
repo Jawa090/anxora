@@ -27,29 +27,29 @@ type PageHeaderProps = {
 
 export function PageHeader({ title, description, meta, actions, breadcrumb, subdued }: PageHeaderProps) {
   return (
-    <div className={cn("w-full", subdued ? "pb-2" : "pb-4 border-b border-border/60")}>
-      <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-        <div className="space-y-1">
+    <div className={cn("w-full", subdued ? "pb-1.5" : "pb-3 border-b border-border/60")}>
+      <div className="flex flex-col gap-2.5 md:flex-row md:items-center md:justify-between">
+        <div className="space-y-0.5">
           {breadcrumb}
-          <div className="flex flex-col gap-2">
-            <div className="flex flex-wrap items-center gap-3">
-              <h1 className="text-2xl md:text-3xl font-semibold tracking-tight text-foreground">{title}</h1>
+          <div className="flex flex-col gap-1.5">
+            <div className="flex flex-wrap items-center gap-2.5">
+              <h1 className="text-xl md:text-2xl font-bold tracking-tight text-foreground">{title}</h1>
               {meta && meta.length > 0 && (
-                <div className="flex flex-wrap items-center gap-2">
+                <div className="flex flex-wrap items-center gap-1.5">
                   {meta.map((item) => (
                     <Badge
                       key={`${item.label}-${item.value}`}
                       variant="outline"
-                      className={cn("font-medium", toneClassNames[item.tone || "default"])}
+                      className={cn("font-medium py-0.5 px-2", toneClassNames[item.tone || "default"])}
                     >
-                      <span className="text-xs uppercase tracking-wide text-muted-foreground mr-1">{item.label}</span>
-                      <span className="text-sm text-foreground">{item.value}</span>
+                      <span className="text-[10px] uppercase tracking-wide text-muted-foreground mr-1">{item.label}</span>
+                      <span className="text-xs text-foreground font-semibold">{item.value}</span>
                     </Badge>
                   ))}
                 </div>
               )}
             </div>
-            {description && <p className="text-sm text-muted-foreground max-w-2xl">{description}</p>}
+            {description && <p className="text-xs text-muted-foreground max-w-2xl">{description}</p>}
           </div>
         </div>
         {actions && <div className="flex items-center gap-2 flex-wrap justify-end">{actions}</div>}

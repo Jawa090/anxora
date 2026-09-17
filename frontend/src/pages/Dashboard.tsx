@@ -384,7 +384,7 @@ export default function Dashboard() {
 
 
       {/* ── Row 3: Projects + Pipeline + HRMS ── */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Projects */}
         <div className="rounded-[22px] border border-border/40 bg-card overflow-hidden shadow-sm flex flex-col justify-between">
           <div>
@@ -505,111 +505,6 @@ export default function Dashboard() {
                   </div>
                 ))
               )}
-            </div>
-          </div>
-        </div>
-
-        {/* HRMS Quick View */}
-        <div className="rounded-[22px] border border-border/40 bg-card overflow-hidden shadow-sm flex flex-col justify-between">
-          <div>
-            <div className="px-5 py-3 border-b border-border/40 flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Users className="h-4 w-4 text-[#2DD4BF]" />
-                <span className="text-sm font-bold tracking-tight text-foreground">
-                  People
-                </span>
-              </div>
-              <button
-                onClick={() => navigate("/hrms")}
-                className="text-xs font-semibold text-[#2DD4BF] hover:text-[#14858E] transition-colors flex items-center gap-0.5"
-              >
-                HRMS <ArrowUpRight className="h-3 w-3" />
-              </button>
-            </div>
-            <div className="p-4 space-y-3">
-              {/* Attendance ring */}
-              <div className="flex items-center gap-3.5 bg-secondary/10 p-3 rounded-2xl">
-                <div className="relative h-12 w-12 shrink-0">
-                  <svg className="h-12 w-12 -rotate-90" viewBox="0 0 36 36">
-                    <circle
-                      cx="18"
-                      cy="18"
-                      r="15.9"
-                      fill="none"
-                      stroke="hsl(var(--muted)/40%)"
-                      strokeWidth="3"
-                    />
-                    <circle
-                      cx="18"
-                      cy="18"
-                      r="15.9"
-                      fill="none"
-                      stroke="hsl(142 76% 36%)"
-                      strokeWidth="3"
-                      strokeDasharray={`${attendanceRate} ${100 - attendanceRate}`}
-                      strokeLinecap="round"
-                    />
-                  </svg>
-                  <span className="absolute inset-0 flex items-center justify-center text-xs font-bold">
-                    {attendanceRate}%
-                  </span>
-                </div>
-                <div className="space-y-0.5 leading-tight">
-                  <p className="text-xs font-bold text-foreground">
-                    Attendance Today
-                  </p>
-                  <p className="text-[11px] text-muted-foreground">
-                    {hrmsStats?.presentToday ?? 0} of{" "}
-                    {hrmsStats?.totalEmployees ?? 0} present
-                  </p>
-                  {(hrmsStats?.lateToday ?? 0) > 0 && (
-                    <p className="text-[10px] font-bold text-orange-500 mt-0.5">
-                      {hrmsStats.lateToday} late arrivals
-                    </p>
-                  )}
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-2">
-                {[
-                  {
-                    label: "Total Staff",
-                    value: hrmsStats?.totalEmployees ?? "—",
-                    color: "text-foreground",
-                  },
-                  {
-                    label: "On Leave",
-                    value: hrmsStats?.approvedLeaves ?? "—",
-                    color: "text-blue-500",
-                  },
-                  {
-                    label: "Pending Leaves",
-                    value: hrmsStats?.pendingLeaves ?? "—",
-                    color: "text-orange-500",
-                  },
-                  {
-                    label: "Avg Hours",
-                    value: hrmsStats?.averageWorkHours
-                      ? `${hrmsStats.averageWorkHours.toFixed(1)}h`
-                      : "—",
-                    color: "text-muted-foreground",
-                  },
-                ].map((s) => (
-                  <div
-                    key={s.label}
-                    className="rounded-xl bg-secondary/20 px-3 py-2"
-                  >
-                    <p
-                      className={cn("text-base font-bold tabular-nums", s.color)}
-                    >
-                      {s.value}
-                    </p>
-                    <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
-                      {s.label}
-                    </p>
-                  </div>
-                ))}
-              </div>
             </div>
           </div>
         </div>
