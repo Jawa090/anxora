@@ -294,12 +294,39 @@ const viewWorkgroupFile = async (req, res, next) => {
       return res.status(404).json({ error: 'File not found on disk' });
     }
 
-    res.setHeader('Content-Disposition', `inline; filename="${file.original_name}"`);
-    res.setHeader('Content-Type', file.file_type || 'application/octet-stream');
-    res.setHeader('Content-Length', file.file_size);
+    const stat = fs.statSync(resolvedPath);
+    const fileSize = stat.size;
+    const range = req.headers.range;
 
-    const fileStream = fs.createReadStream(resolvedPath);
-    fileStream.pipe(res);
+    if (range) {
+      const parts = range.replace(/bytes=/, "").split("-");
+      const start = parseInt(parts[0], 10);
+      const end = parts[1] ? parseInt(parts[1], 10) : fileSize - 1;
+
+      if (start >= fileSize) {
+        res.status(416).send('Requested range not satisfiable\n' + start + ' >= ' + fileSize);
+        return;
+      }
+
+      const chunksize = (end - start) + 1;
+      const fileStream = fs.createReadStream(resolvedPath, { start, end });
+      res.writeHead(206, {
+        'Content-Range': `bytes ${start}-${end}/${fileSize}`,
+        'Accept-Ranges': 'bytes',
+        'Content-Length': chunksize,
+        'Content-Type': file.file_type || 'application/octet-stream',
+        'Content-Disposition': `inline; filename="${encodeURIComponent(file.original_name || 'file')}"`
+      });
+      fileStream.pipe(res);
+    } else {
+      res.writeHead(200, {
+        'Content-Length': fileSize,
+        'Accept-Ranges': 'bytes',
+        'Content-Type': file.file_type || 'application/octet-stream',
+        'Content-Disposition': `inline; filename="${encodeURIComponent(file.original_name || 'file')}"`
+      });
+      fs.createReadStream(resolvedPath).pipe(res);
+    }
   } catch (err) {
     next(err);
   }

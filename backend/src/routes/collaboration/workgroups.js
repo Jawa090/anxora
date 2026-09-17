@@ -18,12 +18,16 @@ const {
   addWorkgroupPostReaction,
   getOrCreateDirectChatWorkgroup,
   getWorkgroupActivities,
-  toggleStarWorkgroup
+  toggleStarWorkgroup,
+  getLinkPreview
 } = require('../../controllers/collaboration/workgroupController');
 const { auth } = require('../../middleware/auth');
 
 // Apply authentication to all routes
 router.use(auth);
+
+// Link preview route (must be before /:id)
+router.get('/link-preview', getLinkPreview);
 
 // Workgroup routes
 router.get('/', getWorkgroups);

@@ -2348,6 +2348,89 @@ const toggleStarWorkgroup = async (req, res, next) => {
   }
 };
 
+// Fetch link preview metadata (title, description, image) for links shared in chat
+const getLinkPreview = async (req, res) => {
+  try {
+    const { url } = req.query;
+    if (!url || typeof url !== 'string' || !/^https?:\/\//i.test(url)) {
+      return res.status(400).json({ error: 'Valid URL is required' });
+    }
+
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 3500);
+
+    const response = await fetch(url, {
+      signal: controller.signal,
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+      },
+    });
+    clearTimeout(timeout);
+
+    if (!response.ok) {
+      return res.json({ url, success: false });
+    }
+
+    const contentType = response.headers.get('content-type') || '';
+    if (!contentType.includes('text/html')) {
+      return res.json({ url, success: false });
+    }
+
+    // Read first 64KB
+    const reader = response.body.getReader();
+    let received = '';
+    const decoder = new TextDecoder();
+    while (received.length < 65536) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      received += decoder.decode(value, { stream: true });
+    }
+    reader.cancel();
+
+    // Extract og:title or <title>
+    const ogTitleMatch = received.match(/<meta\s+[^>]*property=["']og:title["'][^>]*content=["']([^"']+)["']/i)
+      || received.match(/<meta\s+[^>]*content=["']([^"']+)["'][^>]*property=["']og:title["']/i);
+    const titleTagMatch = received.match(/<title[^>]*>([^<]+)<\/title>/i);
+    const title = (ogTitleMatch ? ogTitleMatch[1] : (titleTagMatch ? titleTagMatch[1] : '')).trim();
+
+    // Extract og:description or meta description
+    const ogDescMatch = received.match(/<meta\s+[^>]*property=["']og:description["'][^>]*content=["']([^"']+)["']/i)
+      || received.match(/<meta\s+[^>]*content=["']([^"']+)["'][^>]*property=["']og:description["']/i)
+      || received.match(/<meta\s+[^>]*name=["']description["'][^>]*content=["']([^"']+)["']/i);
+    const description = (ogDescMatch ? ogDescMatch[1] : '').trim();
+
+    // Extract og:image
+    const ogImgMatch = received.match(/<meta\s+[^>]*property=["']og:image["'][^>]*content=["']([^"']+)["']/i)
+      || received.match(/<meta\s+[^>]*content=["']([^"']+)["'][^>]*property=["']og:image["']/i);
+    let image = ogImgMatch ? ogImgMatch[1].trim() : '';
+    if (image && image.startsWith('/')) {
+      const urlObj = new URL(url);
+      image = `${urlObj.origin}${image}`;
+    }
+
+    // Extract og:site_name
+    const ogSiteMatch = received.match(/<meta\s+[^>]*property=["']og:site_name["'][^>]*content=["']([^"']+)["']/i)
+      || received.match(/<meta\s+[^>]*content=["']([^"']+)["'][^>]*property=["']og:site_name["']/i);
+    const siteName = (ogSiteMatch ? ogSiteMatch[1] : '').trim();
+
+    return res.json({
+      success: true,
+      url,
+      title: title || '',
+      description: description || '',
+      image: image || '',
+      siteName: siteName || '',
+    });
+  } catch (err) {
+    return res.json({
+      success: false,
+      url: req.query.url,
+      error: err.message,
+    });
+  }
+};
+
 module.exports = {
   getWorkgroups,
   getWorkgroup,
@@ -2367,5 +2450,6 @@ module.exports = {
   getOrCreateDirectChatWorkgroup,
   getWorkgroupActivities,
   toggleStarWorkgroup,
-  handleWorkgroupCreatorDeparture
+  handleWorkgroupCreatorDeparture,
+  getLinkPreview
 };

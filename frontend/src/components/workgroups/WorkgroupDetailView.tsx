@@ -63,6 +63,7 @@ import {
   Star,
   Download,
   Copy,
+  Link2,
   Forward,
   ChevronDown,
   ChevronLeft,
@@ -81,9 +82,15 @@ import {
   FileSpreadsheet,
   FileArchive,
   Music,
+  Play,
+  Pause,
+  RotateCcw,
+  RotateCw,
   Edit2,
   UserX,
   Info,
+  Eye,
+  Presentation,
 } from "lucide-react";
 import {
   useWorkgroup,
@@ -111,6 +118,8 @@ import { useRealtime, useWorkgroupRealtime } from "@/hooks/useRealtime";
 import { useQueryClient } from "@tanstack/react-query";
 import { useVideoCall } from "@/contexts/VideoCallContext";
 import { CreateEventDialog } from "@/components/calendar/CreateEventDialog";
+import { FileViewerModal } from "./FileViewerModal";
+import { LinkPreviewCard } from "./LinkPreviewCard";
 
 interface Props {
   workgroupId: string;
@@ -483,6 +492,14 @@ export default function WorkgroupDetailView({ workgroupId, onBack }: Props) {
   >([]);
   const [lightboxIndex, setLightboxIndex] = useState(0);
   const [showLightbox, setShowLightbox] = useState(false);
+  const [viewerFile, setViewerFile] = useState<{
+    isOpen: boolean;
+    fileName: string;
+    fileUrl: string;
+    downloadUrl: string;
+    fileSize?: number;
+    fileType?: string;
+  } | null>(null);
   const dragCounterRef = useRef(0);
 
   // Typing Indicator states
@@ -527,6 +544,28 @@ export default function WorkgroupDetailView({ workgroupId, onBack }: Props) {
       myTypingTimeoutRef.current = null;
     }
   }, [workgroupId]);
+
+  // Audio / Voice Memo Recording State
+  const [isRecording, setIsRecording] = useState(false);
+  const [recordingDuration, setRecordingDuration] = useState(0);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
+  const recordingTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (recordingTimerRef.current) clearInterval(recordingTimerRef.current);
+      if (
+        mediaRecorderRef.current &&
+        mediaRecorderRef.current.state !== "inactive"
+      ) {
+        mediaRecorderRef.current.stop();
+        mediaRecorderRef.current.stream
+          .getTracks()
+          .forEach((track) => track.stop());
+      }
+    };
+  }, []);
 
   // When workgroupId changes: save previous draft is already in localStorage via onChange,
   // load the new chat's draft and reset other composer state
@@ -1108,6 +1147,124 @@ export default function WorkgroupDetailView({ workgroupId, onBack }: Props) {
     } finally {
       if (hasFiles) setIsSendingFile(false);
     }
+  };
+
+  const formatRecordTime = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins < 10 ? "0" : ""}${mins}:${secs < 10 ? "0" : ""}${secs}`;
+  };
+
+  const startRecording = async () => {
+    try {
+      if (!navigator.mediaDevices?.getUserMedia) {
+        toast.error("Audio recording is not supported on this browser");
+        return;
+      }
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mimeType = MediaRecorder.isTypeSupported("audio/webm;codecs=opus")
+        ? "audio/webm;codecs=opus"
+        : MediaRecorder.isTypeSupported("audio/webm")
+          ? "audio/webm"
+          : MediaRecorder.isTypeSupported("audio/ogg")
+            ? "audio/ogg"
+            : "";
+
+      const options = mimeType ? { mimeType } : undefined;
+      const mediaRecorder = new MediaRecorder(stream, options);
+      mediaRecorderRef.current = mediaRecorder;
+      audioChunksRef.current = [];
+
+      mediaRecorder.ondataavailable = (event) => {
+        if (event.data && event.data.size > 0) {
+          audioChunksRef.current.push(event.data);
+        }
+      };
+
+      mediaRecorder.start(100);
+      setIsRecording(true);
+      setRecordingDuration(0);
+
+      recordingTimerRef.current = setInterval(() => {
+        setRecordingDuration((prev) => prev + 1);
+      }, 1000);
+    } catch (err: any) {
+      console.error("Microphone access error:", err);
+      toast.error("Microphone permission denied or not available");
+    }
+  };
+
+  const cancelRecording = () => {
+    if (recordingTimerRef.current) {
+      clearInterval(recordingTimerRef.current);
+      recordingTimerRef.current = null;
+    }
+    if (mediaRecorderRef.current) {
+      if (mediaRecorderRef.current.state !== "inactive") {
+        mediaRecorderRef.current.stop();
+      }
+      mediaRecorderRef.current.stream.getTracks().forEach((t) => t.stop());
+      mediaRecorderRef.current = null;
+    }
+    audioChunksRef.current = [];
+    setIsRecording(false);
+    setRecordingDuration(0);
+  };
+
+  const stopAndSendRecording = async () => {
+    if (!mediaRecorderRef.current) return;
+    const recorder = mediaRecorderRef.current;
+
+    if (recordingTimerRef.current) {
+      clearInterval(recordingTimerRef.current);
+      recordingTimerRef.current = null;
+    }
+
+    recorder.onstop = async () => {
+      try {
+        recorder.stream.getTracks().forEach((t) => t.stop());
+        const mimeType = recorder.mimeType || "audio/webm";
+        const audioBlob = new Blob(audioChunksRef.current, { type: mimeType });
+        if (audioBlob.size === 0) {
+          toast.error("Recorded audio is empty");
+          return;
+        }
+
+        const ext = mimeType.includes("ogg") ? "ogg" : "webm";
+        const voiceFile = new File(
+          [audioBlob],
+          `voice_memo_${Date.now()}.${ext}`,
+          { type: mimeType },
+        );
+
+        setIsSendingFile(true);
+        const uploaded = await workgroupsApi.uploadFile(workgroupId, voiceFile);
+        await createPost.mutateAsync({
+          workgroupId,
+          content: "",
+          files: [
+            {
+              id: uploaded.id,
+              original_name: uploaded.original_name,
+              file_type: uploaded.file_type || mimeType,
+              file_size: uploaded.file_size || audioBlob.size,
+              download_url: `/api/workgroups/${workgroupId}/files/${uploaded.id}/download`,
+            },
+          ],
+        });
+      } catch (err: any) {
+        console.error("Failed to upload voice memo:", err);
+        toast.error(err?.message || "Failed to send voice memo");
+      } finally {
+        setIsSendingFile(false);
+      }
+    };
+
+    if (recorder.state !== "inactive") {
+      recorder.stop();
+    }
+    setIsRecording(false);
+    setRecordingDuration(0);
   };
 
   const filteredMentionMembers = useMemo(() => {
@@ -2146,8 +2303,8 @@ export default function WorkgroupDetailView({ workgroupId, onBack }: Props) {
                       {isCurrentUserLeft
                         ? "Remove from my chats"
                         : isOwner || isTeamCreator
-                        ? "Delete Team"
-                        : "Leave & Remove Team"}
+                          ? "Delete Team"
+                          : "Leave & Remove Team"}
                     </DropdownMenuItem>
                   )}
                 </DropdownMenuContent>
@@ -2830,6 +2987,12 @@ export default function WorkgroupDetailView({ workgroupId, onBack }: Props) {
                                     setLightboxIndex(idx);
                                     setShowLightbox(true);
                                   }}
+                                  onOpenFile={(file) => {
+                                    setViewerFile({
+                                      isOpen: true,
+                                      ...file,
+                                    });
+                                  }}
                                   postAuthorRole={
                                     members.find(
                                       (m) => m.user_id === post.user_id,
@@ -3281,135 +3444,185 @@ export default function WorkgroupDetailView({ workgroupId, onBack }: Props) {
                                 ref={composerEmojiRef}
                                 className="flex-1 relative"
                               >
-                                <Textarea
-                                  ref={messageInputRef}
-                                  value={newPost}
-                                  onChange={(e) =>
-                                    handleComposerChange(
-                                      e.target.value,
-                                      e.target.selectionStart ??
-                                      e.target.value.length,
-                                    )
-                                  }
-                                  onPaste={handlePaste}
-                                  placeholder={
-                                    !canSendMessages
-                                      ? "This chat has been locked by an administrator"
-                                      : pendingFiles.length > 1
-                                        ? "Captions disabled for multiple files"
-                                        : replyTo
-                                          ? "Type a reply..."
-                                          : "Type a message..."
-                                  }
-                                  disabled={
-                                    !canSendMessages || pendingFiles.length > 1
-                                  }
-                                  rows={1}
-                                  className="w-full pl-4 pr-32 bg-muted border dark:border-primary rounded-2xl min-h-[44px] max-h-[160px] focus-visible:ring-1 focus-visible:ring-primary shadow-inner resize-none overflow-y-auto py-2.5 leading-6 scrollbar-none"
-                                  style={{ height: "auto" }}
-                                  onInput={(e) => {
-                                    const el = e.currentTarget;
-                                    el.style.height = "auto";
-                                    el.style.height =
-                                      Math.min(el.scrollHeight, 160) + "px";
-                                  }}
-                                  onKeyDown={(e) => {
-                                    if (e.key === "Enter" && !e.shiftKey) {
-                                      e.preventDefault();
-                                      handlePost();
-                                    }
-                                    // Shift+Enter: allow default (new line)
-                                  }}
-                                />
-                                {showMentionSuggestions &&
-                                  filteredMentionMembers.length > 0 && (
-                                    <div className="absolute bottom-12 left-0 z-30 w-[60%] max-w-[92vw] rounded-xl border border-border bg-card shadow-lg max-h-56 overflow-y-auto scrollbar-none">
-                                      {filteredMentionMembers.map((member) => (
-                                        <button
-                                          key={member.user_id}
-                                          type="button"
-                                          onClick={() => insertMention(member)}
-                                          className="w-full px-3 py-2 text-left hover:bg-muted/50 flex items-center gap-2"
-                                        >
-                                          <Checkbox
-                                            checked={selectedMentions.some(
-                                              (m) => m.id === member.user_id,
-                                            )}
-                                            className="pointer-events-none"
-                                          />
-                                          <Avatar className="h-7 w-7">
-                                            <AvatarFallback className="text-[10px]">
-                                              {(
-                                                member.full_name ||
-                                                member.email ||
-                                                "?"
-                                              )
-                                                .slice(0, 2)
-                                                .toUpperCase()}
-                                            </AvatarFallback>
-                                          </Avatar>
-                                          <div className="min-w-0">
-                                            <p className="text-sm font-medium truncate">
-                                              {member.full_name || member.email}
-                                            </p>
-                                          </div>
-                                        </button>
-                                      ))}
+                                {isRecording ? (
+                                  <div className="flex-1 flex items-center justify-between bg-muted border border-primary/50 rounded-2xl px-4 py-2 min-h-[44px]">
+                                    <div className="flex items-center gap-3">
+                                      <span className="relative flex h-3 w-3">
+                                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                                        <span className="relative inline-flex rounded-full h-3 w-3 bg-red-500"></span>
+                                      </span>
+                                      <span className="text-xs font-semibold text-red-500 animate-pulse">
+                                        Recording Voice Memo...
+                                      </span>
+                                      <span className="font-mono text-xs font-bold bg-primary/10 px-2.5 py-0.5 rounded-full border border-primary/20">
+                                        {formatRecordTime(recordingDuration)}
+                                      </span>
                                     </div>
-                                  )}
-                                <div className="absolute right-2 top-1/2 transform -translate-y-1/2 flex items-center gap-1">
-                                  <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    className="h-8 w-8 text-gray-400 hover:text-secondary-foreground dark:hover:text-primary hover:bg-transparent"
-                                    disabled={!canSendMessages}
-                                    onClick={() =>
-                                      setShowInputEmojiPicker((prev) => !prev)
-                                    }
-                                  >
-                                    <Smile className="h-5 w-5" />
-                                  </Button>
-                                  <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    className="h-8 w-8 text-gray-400 hover:text-secondary-foreground dark:hover:text-primary hover:bg-transparent"
-                                    disabled={isSendingFile}
-                                    onClick={() =>
-                                      attachmentInputRef.current?.click()
-                                    }
-                                  >
-                                    {isSendingFile ? (
-                                      <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-                                    ) : (
-                                      <Paperclip className="h-5 w-5" />
-                                    )}
-                                  </Button>
-                                  <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    className="h-8 w-8 text-gray-400 hover:text-secondary-foreground dark:hover:text-primary hover:bg-transparent"
-                                    disabled={!canSendMessages}
-                                    onClick={() => setShowEventDialog(true)}
-                                    title="Schedule Meeting"
-                                  >
-                                    <Calendar className="h-5 w-5 hover:text-secondary-foreground dark:hover:text-primary hover:text-secondary-foreground/80 dark:hover:text-primary/80" />
-                                  </Button>
-                                  <button
-                                    onClick={handlePost}
-                                    disabled={
-                                      !canSendMessages ||
-                                      (!newPost.trim() &&
-                                        pendingFiles.length === 0) ||
-                                      createPost.isPending
-                                    }
-                                    className={`h-8 w-8 flex items-center justify-center rounded-full transition-all ${newPost.trim() || pendingFiles.length > 0
-                                      ? "bg-secondary-foreground text-secondary dark:bg-primary dark:text-primary-foreground text-white shadow-md hover:scale-105 active:scale-95"
-                                      : "bg-muted text-muted-foreground pointer-events-none"
-                                      }`}
-                                  >
-                                    <Send className="h-4 w-4" />
-                                  </button>
-                                </div>
+                                    <div className="flex items-center gap-2">
+                                      <Button
+                                        type="button"
+                                        variant="ghost"
+                                        size="icon"
+                                        onClick={cancelRecording}
+                                        className="h-8 w-8 text-gray-400 hover:text-red-500 hover:bg-red-500/10 rounded-full"
+                                        title="Cancel"
+                                      >
+                                        <X className="h-4 w-4" />
+                                      </Button>
+                                      <Button
+                                        type="button"
+                                        onClick={stopAndSendRecording}
+                                        className="h-8 w-8 flex items-center justify-center rounded-full shadow-md hover:scale-105 active:scale-95 transition-all"
+                                        title="Send Voice Memo"
+                                      >
+                                        <Send className="h-4 w-4" />
+                                      </Button>
+                                    </div>
+                                  </div>
+                                ) : (
+                                  <>
+                                    <Textarea
+                                      ref={messageInputRef}
+                                      value={newPost}
+                                      onChange={(e) =>
+                                        handleComposerChange(
+                                          e.target.value,
+                                          e.target.selectionStart ??
+                                          e.target.value.length,
+                                        )
+                                      }
+                                      onPaste={handlePaste}
+                                      placeholder={
+                                        !canSendMessages
+                                          ? "This chat has been locked by an administrator"
+                                          : pendingFiles.length > 1
+                                            ? "Captions disabled for multiple files"
+                                            : replyTo
+                                              ? "Type a reply..."
+                                              : "Type a message..."
+                                      }
+                                      disabled={
+                                        !canSendMessages || pendingFiles.length > 1
+                                      }
+                                      rows={1}
+                                      className="w-full pl-4 pr-36 bg-muted border dark:border-primary rounded-2xl min-h-[44px] max-h-[160px] focus-visible:ring-1 focus-visible:ring-primary shadow-inner resize-none overflow-y-auto py-2.5 leading-6 scrollbar-none"
+                                      style={{ height: "auto" }}
+                                      onInput={(e) => {
+                                        const el = e.currentTarget;
+                                        el.style.height = "auto";
+                                        el.style.height =
+                                          Math.min(el.scrollHeight, 160) + "px";
+                                      }}
+                                      onKeyDown={(e) => {
+                                        if (e.key === "Enter" && !e.shiftKey) {
+                                          e.preventDefault();
+                                          handlePost();
+                                        }
+                                        // Shift+Enter: allow default (new line)
+                                      }}
+                                    />
+                                    {showMentionSuggestions &&
+                                      filteredMentionMembers.length > 0 && (
+                                        <div className="absolute bottom-12 left-0 z-30 w-[60%] max-w-[92vw] rounded-xl border border-border bg-card shadow-lg max-h-56 overflow-y-auto scrollbar-none">
+                                          {filteredMentionMembers.map((member) => (
+                                            <button
+                                              key={member.user_id}
+                                              type="button"
+                                              onClick={() => insertMention(member)}
+                                              className="w-full px-3 py-2 text-left hover:bg-muted/50 flex items-center gap-2"
+                                            >
+                                              <Checkbox
+                                                checked={selectedMentions.some(
+                                                  (m) => m.id === member.user_id,
+                                                )}
+                                                className="pointer-events-none"
+                                              />
+                                              <Avatar className="h-7 w-7">
+                                                <AvatarFallback className="text-[10px]">
+                                                  {(
+                                                    member.full_name ||
+                                                    member.email ||
+                                                    "?"
+                                                  )
+                                                    .slice(0, 2)
+                                                    .toUpperCase()}
+                                                </AvatarFallback>
+                                              </Avatar>
+                                              <div className="min-w-0">
+                                                <p className="text-sm font-medium truncate">
+                                                  {member.full_name || member.email}
+                                                </p>
+                                              </div>
+                                            </button>
+                                          ))}
+                                        </div>
+                                      )}
+                                    <div className="absolute right-2 top-1/2 transform -translate-y-1/2 flex items-center gap-1">
+                                      <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        className="h-8 w-8 text-gray-400 hover:text-secondary-foreground dark:hover:text-primary hover:bg-transparent"
+                                        disabled={!canSendMessages}
+                                        onClick={() =>
+                                          setShowInputEmojiPicker((prev) => !prev)
+                                        }
+                                      >
+                                        <Smile className="h-5 w-5" />
+                                      </Button>
+                                      <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        className="h-8 w-8 text-gray-400 hover:text-secondary-foreground dark:hover:text-primary hover:bg-transparent"
+                                        disabled={isSendingFile}
+                                        onClick={() =>
+                                          attachmentInputRef.current?.click()
+                                        }
+                                      >
+                                        {isSendingFile ? (
+                                          <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                                        ) : (
+                                          <Paperclip className="h-5 w-5" />
+                                        )}
+                                      </Button>
+                                      <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        className="h-8 w-8 text-gray-400 hover:text-secondary-foreground dark:hover:text-primary hover:bg-transparent"
+                                        disabled={!canSendMessages}
+                                        onClick={() => setShowEventDialog(true)}
+                                        title="Schedule Meeting"
+                                      >
+                                        <Calendar className="h-5 w-5 hover:text-secondary-foreground dark:hover:text-primary hover:text-secondary-foreground/80 dark:hover:text-primary/80" />
+                                      </Button>
+                                      <Button
+                                        type="button"
+                                        variant="ghost"
+                                        size="icon"
+                                        className="h-8 w-8 text-gray-400 hover:text-secondary-foreground dark:hover:text-primary hover:bg-transparen"
+                                        disabled={!canSendMessages || isSendingFile}
+                                        onClick={startRecording}
+                                        title="Record Voice Memo"
+                                      >
+                                        <Mic className="h-5 w-5" />
+                                      </Button>
+                                      <button
+                                        onClick={handlePost}
+                                        disabled={
+                                          !canSendMessages ||
+                                          (!newPost.trim() &&
+                                            pendingFiles.length === 0) ||
+                                          createPost.isPending
+                                        }
+                                        className={`h-8 w-8 flex items-center justify-center rounded-full transition-all ${newPost.trim() || pendingFiles.length > 0
+                                          ? "bg-secondary-foreground text-secondary dark:bg-primary dark:text-primary-foreground text-white shadow-md hover:scale-105 active:scale-95"
+                                          : "bg-muted text-muted-foreground pointer-events-none"
+                                          }`}
+                                      >
+                                        <Send className="h-4 w-4" />
+                                      </button>
+                                    </div>
+                                  </>
+                                )}
                                 {showInputEmojiPicker && (
                                   <div className="absolute bottom-16 left-2 z-20 shadow-xl rounded-xl overflow-hidden border border-gray-200 dark:border-gray-700">
                                     <EmojiPicker
@@ -4837,6 +5050,19 @@ export default function WorkgroupDetailView({ workgroupId, onBack }: Props) {
           )}
         </div>
       )}
+
+      {/* File Viewer Modal (PDF, Excel, JSON, Text/Code) */}
+      {viewerFile && (
+        <FileViewerModal
+          isOpen={viewerFile.isOpen}
+          onClose={() => setViewerFile(null)}
+          fileName={viewerFile.fileName}
+          fileUrl={viewerFile.fileUrl}
+          downloadUrl={viewerFile.downloadUrl}
+          fileSize={viewerFile.fileSize}
+          fileType={viewerFile.fileType}
+        />
+      )}
     </div>
   );
 }
@@ -4894,7 +5120,377 @@ function getMemberColor(userId: string) {
   return MEMBER_BUBBLE_COLORS[Math.abs(hash) % MEMBER_BUBBLE_COLORS.length];
 }
 
-const isImageAttachment = (fileType = "") => fileType.startsWith("image/");
+const isImageAttachment = (fileType = "", fileName = "") => {
+  const ext = (fileName || "").split(".").pop()?.toLowerCase();
+  return (
+    fileType.startsWith("image/") ||
+    ["jpg", "jpeg", "png", "gif", "webp", "svg", "bmp"].includes(ext || "")
+  );
+};
+
+const isVideoAttachment = (fileType = "", fileName = "") => {
+  const ext = (fileName || "").split(".").pop()?.toLowerCase();
+  if (fileType.startsWith("video/")) return true;
+  if (fileType.startsWith("audio/")) return false;
+  if ((fileName || "").toLowerCase().includes("voice_memo")) return false;
+  return (
+    ["mp4", "mov", "mkv", "avi", "m4v"].includes(ext || "") ||
+    (ext === "webm" && !(fileName || "").toLowerCase().includes("voice"))
+  );
+};
+
+const isAudioAttachment = (fileType = "", fileName = "") => {
+  const ext = (fileName || "").split(".").pop()?.toLowerCase();
+  if (fileType.startsWith("audio/")) return true;
+  if (fileType.startsWith("video/")) return false;
+  if ((fileName || "").toLowerCase().includes("voice_memo")) return true;
+  return (
+    ["mp3", "wav", "m4a", "aac", "ogg", "flac"].includes(ext || "") ||
+    (ext === "webm" && (fileName || "").toLowerCase().includes("voice"))
+  );
+};
+
+const isOtherAttachment = (fileType = "", fileName = "") => {
+  return (
+    !isImageAttachment(fileType, fileName) &&
+    !isVideoAttachment(fileType, fileName) &&
+    !isAudioAttachment(fileType, fileName)
+  );
+};
+
+interface VoiceMemoPlayerProps {
+  src: string;
+  downloadUrl: string;
+  fileName: string;
+  fileSize: number;
+  onDownload: () => void;
+  downloadProgress?: number;
+}
+
+function VoiceMemoPlayer({
+  src,
+  downloadUrl,
+  fileName,
+  fileSize,
+  onDownload,
+  downloadProgress,
+}: VoiceMemoPlayerProps) {
+  const audioRef = useRef<HTMLAudioElement>(null);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [duration, setDuration] = useState(0);
+  const [isSeeking, setIsSeeking] = useState(false);
+
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (!audio) return;
+
+    const onLoadedMetadata = () => {
+      if (Number.isFinite(audio.duration) && audio.duration > 0) {
+        setDuration(audio.duration);
+      }
+    };
+
+    const onDurationChange = () => {
+      if (Number.isFinite(audio.duration) && audio.duration > 0) {
+        setDuration(audio.duration);
+      }
+    };
+
+    const onTimeUpdate = () => {
+      if (!isSeeking) {
+        setCurrentTime(audio.currentTime);
+      }
+    };
+
+    const onEnded = () => {
+      setIsPlaying(false);
+      setCurrentTime(0);
+      if (audioRef.current) {
+        audioRef.current.currentTime = 0;
+      }
+    };
+
+    audio.addEventListener("loadedmetadata", onLoadedMetadata);
+    audio.addEventListener("durationchange", onDurationChange);
+    audio.addEventListener("timeupdate", onTimeUpdate);
+    audio.addEventListener("ended", onEnded);
+
+    return () => {
+      audio.removeEventListener("loadedmetadata", onLoadedMetadata);
+      audio.removeEventListener("durationchange", onDurationChange);
+      audio.removeEventListener("timeupdate", onTimeUpdate);
+      audio.removeEventListener("ended", onEnded);
+    };
+  }, [isSeeking]);
+
+  const togglePlay = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    const audio = audioRef.current;
+    if (!audio) return;
+
+    if (isPlaying) {
+      audio.pause();
+      setIsPlaying(false);
+    } else {
+      audio.play().then(() => {
+        setIsPlaying(true);
+      }).catch((err) => {
+        console.error("Audio playback error:", err);
+      });
+    }
+  };
+
+  const handleSeekChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    e.stopPropagation();
+    const val = parseFloat(e.target.value);
+    setCurrentTime(val);
+    if (audioRef.current) {
+      audioRef.current.currentTime = val;
+    }
+  };
+
+  const skipSeconds = (secs: number, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!audioRef.current) return;
+    const maxDur = duration || audioRef.current.duration || 0;
+    const target = Math.max(0, Math.min(maxDur, audioRef.current.currentTime + secs));
+    audioRef.current.currentTime = target;
+    setCurrentTime(target);
+  };
+
+  const formatTime = (secs: number) => {
+    if (!secs || isNaN(secs) || !Number.isFinite(secs) || secs < 0) return "00:00";
+    const m = Math.floor(secs / 60);
+    const s = Math.floor(secs % 60);
+    return `${m < 10 ? "0" : ""}${m}:${s < 10 ? "0" : ""}${s}`;
+  };
+
+  const progressPercent = duration > 0 ? Math.min(100, (currentTime / duration) * 100) : 0;
+
+  return (
+    <div
+      className="w-full max-w-[260px] rounded-xl p-2.5 bg-card/80 dark:bg-card/50 backdrop-blur-sm border border-primary/30 dark:border-primary/40 shadow-xs relative overflow-hidden group select-none text-foreground"
+      onClick={(e) => e.stopPropagation()}
+    >
+      <audio ref={audioRef} src={src} preload="metadata" />
+
+      {/* Header: • VOICE RECORD + Download */}
+      <div className="flex items-center justify-between mb-2">
+        <div className="flex items-center gap-1.5">
+          <span className="w-2 h-2 rounded-full bg-primary animate-pulse" />
+          <span className="text-[11px] font-extrabold tracking-wider text-foreground/90 uppercase">
+            Voice Record
+          </span>
+        </div>
+        <button
+          type="button"
+          onClick={onDownload}
+          className="p-1 rounded-md text-foreground/60 hover:text-foreground hover:bg-black/10 dark:hover:bg-white/10 transition-all opacity-0 group-hover:opacity-100"
+          title="Download audio"
+        >
+          <Download className="h-3.5 w-3.5" />
+        </button>
+      </div>
+
+      {/* Main Controls Row */}
+      <div className="flex items-center gap-2.5">
+        {/* Play / Pause button */}
+        <button
+          type="button"
+          onClick={togglePlay}
+          className="w-7 h-7 rounded-full bg-secondary-foreground text-white dark:bg-primary hover:bg-secondary-foreground/80 dark:hover:bg-primary/80 active:scale-95 dark:text-gray-900 flex items-center justify-center shrink-0 shadow-md shadow-amber-500/20 transition-all cursor-pointer"
+          title={isPlaying ? "Pause" : "Play"}
+        >
+          {isPlaying ? (
+            <Pause className="h-4 w-4 fill-current" />
+          ) : (
+            <Play className="h-4 w-4 fill-current ml-0.5" />
+          )}
+        </button>
+
+        {/* Seek & Time container */}
+        <div className="flex-1 min-w-0 flex flex-col justify-center gap-1">
+          {/* Slider with track */}
+          <div className="relative flex items-center group/slider">
+            <input
+              type="range"
+              min={0}
+              max={duration || 100}
+              step={0.1}
+              value={currentTime}
+              onMouseDown={() => setIsSeeking(true)}
+              onMouseUp={() => setIsSeeking(false)}
+              onTouchStart={() => setIsSeeking(true)}
+              onTouchEnd={() => setIsSeeking(false)}
+              onChange={handleSeekChange}
+              className="w-full h-1.5 bg-neutral-700/80 rounded-lg appearance-none cursor-pointer accent-primary hover:accent-primary transition-all"
+              style={{
+                background: `linear-gradient(to right, #00D6C1 ${progressPercent}%, #404040 ${progressPercent}%)`
+              }}
+            />
+          </div>
+
+          {/* Times & Quick Jump controls */}
+          <div className="flex justify-between items-center text-[10.5px] font-mono text-foreground/80 font-medium">
+            <div className="flex items-center gap-1">
+              <span>{formatTime(currentTime)}</span>
+              <button
+                type="button"
+                onClick={(e) => skipSeconds(-5, e)}
+                title="Rewind 5s"
+                className="hover:text-foreground text-foreground/60 p-0.5 transition-colors"
+              >
+                <RotateCcw className="h-2.5 w-2.5" />
+              </button>
+            </div>
+            <div className="flex items-center gap-1">
+              <button
+                type="button"
+                onClick={(e) => skipSeconds(5, e)}
+                title="Forward 5s"
+                className="hover:text-foreground text-foreground/60 p-0.5 transition-colors"
+              >
+                <RotateCw className="h-2.5 w-2.5" />
+              </button>
+              <span>{formatTime(duration)}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+interface VideoPlayerProps {
+  src: string;
+  downloadUrl: string;
+  fileName: string;
+  fileSize: number;
+  onDownload: () => void;
+  downloadProgress?: number;
+}
+
+function VideoPlayer({
+  src,
+  downloadUrl,
+  fileName,
+  fileSize,
+  onDownload,
+  downloadProgress,
+}: VideoPlayerProps) {
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [showCenterPlay, setShowCenterPlay] = useState(true);
+
+  const togglePlay = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    const video = videoRef.current;
+    if (!video) return;
+
+    if (video.paused) {
+      video.play().then(() => {
+        setIsPlaying(true);
+        setShowCenterPlay(false);
+      }).catch((err) => {
+        console.error("Video play error:", err);
+      });
+    } else {
+      video.pause();
+      setIsPlaying(false);
+      setShowCenterPlay(true);
+    }
+  };
+
+  const skipSeconds = (secs: number, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!videoRef.current) return;
+    const maxDur = videoRef.current.duration || 0;
+    videoRef.current.currentTime = Math.max(0, Math.min(maxDur, videoRef.current.currentTime + secs));
+  };
+
+  return (
+    <div
+      className="w-full max-w-[260px] rounded-xl overflow-hidden border border-amber-500/20 bg-black/70 shadow-sm relative group"
+      onClick={(e) => e.stopPropagation()}
+    >
+      <div className="relative w-full aspect-video bg-black flex items-center justify-center overflow-hidden">
+        <video
+          ref={videoRef}
+          src={src}
+          controls
+          controlsList="nodownload"
+          preload="metadata"
+          className="w-full h-full object-contain"
+          onPlay={() => {
+            setIsPlaying(true);
+            setShowCenterPlay(false);
+          }}
+          onPause={() => {
+            setIsPlaying(false);
+            setShowCenterPlay(true);
+          }}
+          onEnded={() => {
+            setIsPlaying(false);
+            setShowCenterPlay(true);
+          }}
+        />
+
+        {/* Center Play Button Overlay */}
+        {showCenterPlay && (
+          <button
+            type="button"
+            onClick={togglePlay}
+            className="absolute inset-0 m-auto w-10 h-10 rounded-full bg-white/90 hover:bg-white text-black flex items-center justify-center shadow-xl transition-all transform hover:scale-110 active:scale-95 z-10 cursor-pointer"
+            title="Play video"
+          >
+            <Play className="h-5 w-5 fill-current ml-0.5" />
+          </button>
+        )}
+
+        {/* Quick -10s and +10s overlay controls on hover */}
+        <div className="absolute top-2 right-2 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity z-20">
+          <button
+            type="button"
+            onClick={(e) => skipSeconds(-10, e)}
+            className="p-1.5 rounded-full bg-black/60 hover:bg-black/80 text-white backdrop-blur-sm"
+            title="Rewind 10s"
+          >
+            <RotateCcw className="h-3.5 w-3.5" />
+          </button>
+          <button
+            type="button"
+            onClick={(e) => skipSeconds(10, e)}
+            className="p-1.5 rounded-full bg-black/60 hover:bg-black/80 text-white backdrop-blur-sm"
+            title="Forward 10s"
+          >
+            <RotateCw className="h-3.5 w-3.5" />
+          </button>
+        </div>
+      </div>
+
+      {/* Bottom Info Bar: Name, Size, Download */}
+      <div className="flex items-center justify-between px-2.5 py-1.5 bg-neutral-900/90 border-t border-white/10 text-xs">
+        <div className="min-w-0 flex-1 mr-2">
+          <p className="font-semibold text-gray-200 truncate text-[11px]" title={fileName}>
+            {fileName || "Video"}
+          </p>
+          <p className="text-[10px] text-gray-400 font-mono">
+            {formatFileSize(fileSize)}
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={onDownload}
+          className="p-1.5 rounded-lg text-gray-400 hover:text-white hover:bg-white/10 transition-all opacity-0 group-hover:opacity-100 shrink-0"
+          title="Download video"
+        >
+          <Download className="h-3.5 w-3.5" />
+        </button>
+      </div>
+    </div>
+  );
+}
 const formatFileSize = (size = 0) => {
   if (size === 0) return "0 B";
   if (size < 1024) return `${size} B`;
@@ -4914,7 +5510,9 @@ const getFileIcon = (fileName: string, fileType: string) => {
   if (ext === "pdf")
     return <FileText className="h-5 w-5 text-red-500 shrink-0" />;
   if (["doc", "docx"].includes(ext!))
-    return <FileText className="h-5 w-5 text-primary shrink-0" />;
+    return <FileText className="h-5 w-5 text-blue-500 shrink-0" />;
+  if (["ppt", "pptx", "pps", "ppsx"].includes(ext!))
+    return <Presentation className="h-5 w-5 text-amber-500 shrink-0" />;
   if (["xls", "xlsx", "csv"].includes(ext!))
     return <FileSpreadsheet className="h-5 w-5 text-emerald-500 shrink-0" />;
   if (["zip", "rar", "7z"].includes(ext!))
@@ -4962,6 +5560,13 @@ interface PostCardProps {
     images: { url: string; downloadUrl?: string; name: string }[],
     index: number,
   ) => void;
+  onOpenFile?: (file: {
+    fileName: string;
+    fileUrl: string;
+    downloadUrl: string;
+    fileSize?: number;
+    fileType?: string;
+  }) => void;
   onEdit?: (postId: string, currentContent: string) => void;
 }
 
@@ -4997,6 +5602,7 @@ function PostCard({
   isBroadcast = false,
   isDirectChat = false,
   onImageClick,
+  onOpenFile,
   onEdit,
 }: PostCardProps) {
   const navigate = useNavigate();
@@ -5218,6 +5824,45 @@ function PostCard({
     .replace(/\[Forwarded\]\s*/gi, "")
     .replace(/^📎 .*/gm, "") // Strip paperclip and filename lines
     .trim();
+
+  const firstUrl = useMemo(() => {
+    if (isDeletedMessage || !displayContent) return null;
+    const match = displayContent.match(/https?:\/\/[^\s<>"{}|\^`\\]+/i);
+    if (!match) return null;
+    let url = match[0];
+    url = url.replace(/[.,;:!?)]+$/, "");
+    return url;
+  }, [displayContent, isDeletedMessage]);
+
+  const { copyType, copyLabel, copyText, linkUrl } = useMemo(() => {
+    const raw = displayContent || post.content || "";
+    const hasLink = Boolean(firstUrl);
+    const textWithoutUrls = raw.replace(/https?:\/\/[^\s<>"{}|\^`\\]+/gi, "").trim();
+    const hasText = textWithoutUrls.length > 0;
+
+    if (hasLink && hasText) {
+      return {
+        copyType: "both" as const,
+        copyLabel: "Copy",
+        copyText: raw,
+        linkUrl: firstUrl,
+      };
+    } else if (hasLink && !hasText) {
+      return {
+        copyType: "link" as const,
+        copyLabel: "Copy Link",
+        copyText: firstUrl || raw,
+        linkUrl: firstUrl,
+      };
+    } else {
+      return {
+        copyType: "text" as const,
+        copyLabel: "Copy Text",
+        copyText: raw,
+        linkUrl: null,
+      };
+    }
+  }, [displayContent, post.content, firstUrl]);
 
   const escapeRegex = (value: string) =>
     value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -5523,9 +6168,9 @@ function PostCard({
           {/* The Actual Bubble */}
           <div
             className={`relative min-w-[120px] order-1 ${isAuthor
-              ? "bg-primary/10 text-foreground dark:bg-primary/20 rounded-2xl rounded-tr-sm"
-              : `${memberColor!.bg} ${memberColor!.text} rounded-2xl rounded-tl-sm`
-              } px-3 py-2 shadow-sm group/bubble border border-black/5`}
+              ? "bg-primary/20 text-foreground dark:bg-primary/25 rounded-2xl rounded-tr-sm border border-primary/30 dark:border-primary/40 shadow-sm"
+              : `${memberColor!.bg} ${memberColor!.text} rounded-2xl rounded-tl-sm border border-black/5 shadow-sm`
+              } px-3 py-2 group/bubble`}
           >
             {isForwarded && (
               <div className="flex items-center gap-1 text-[11px] font-medium text-gray-500 italic mb-1.5 opacity-80 group-hover:opacity-100 transition-opacity">
@@ -5535,7 +6180,7 @@ function PostCard({
             )}
             {/* Dropdown Chevron - Inside Bubble top-right */}
             <div
-              className={`absolute top-1 right-1 z-[20] opacity-0 group-hover/bubble:opacity-100 transition-opacity`}
+              className={`absolute top-1.5 right-1.5 z-[20] opacity-0 group-hover/bubble:opacity-100 transition-opacity`}
             >
               {isDeletedMessage ? (
                 /* Deleted message: show delete options via selection mode */
@@ -5543,8 +6188,8 @@ function PostCard({
                 isMember && (
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                      <button className="transition-colors p-0.5 rounded text-gray-400 hover:text-gray-600 dark:text-white/70 dark:hover:text-white">
-                        <MoreVertical className="h-4 w-4" />
+                      <button className="transition-colors p-1 rounded-md bg-gray-700 hover:bg-gray-800 dark:hover:bg-gray-600 text-white shadow-xs cursor-pointer">
+                        <MoreVertical className="h-4 w-4 stroke-[2.5]" />
                       </button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent
@@ -5564,12 +6209,9 @@ function PostCard({
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <button
-                      className={`transition-colors p-0.5 rounded ${isAuthor
-                        ? "text-gray-400 hover:text-gray-600 dark:text-white/70 dark:hover:text-white"
-                        : "text-gray-400 hover:text-gray-600 dark:text-white/70 dark:hover:text-white"
-                        }`}
+                      className="transition-colors p-1 rounded-md bg-gray-700 hover:bg-gray-800 dark:hover:bg-gray-600 text-white shadow-xs cursor-pointer"
                     >
-                      <MoreVertical className="h-4 w-4" />
+                      <MoreVertical className="h-4 w-4 stroke-[2.5]" />
                     </button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent
@@ -5619,17 +6261,41 @@ function PostCard({
                     >
                       <Forward className="h-4 w-4 mr-2" /> Forward Message
                     </DropdownMenuItem>
-                    <DropdownMenuItem
-                      onClick={() => {
-                        navigator.clipboard.writeText(post.content);
-                        toast.success("Copied to clipboard");
-                      }}
-                    >
-                      <Copy className="h-4 w-4 mr-2" />{" "}
-                      {/(https?:\/\/[^\s]+)/gi.test(post.content || "")
-                        ? "Copy Link"
-                        : "Copy Text"}
-                    </DropdownMenuItem>
+                    {copyType === "both" ? (
+                      <>
+                        <DropdownMenuItem
+                          onClick={() => {
+                            navigator.clipboard.writeText(copyText);
+                            toast.success("Copied to clipboard");
+                          }}
+                        >
+                          <Copy className="h-4 w-4 mr-2" /> Copy
+                        </DropdownMenuItem>
+                        {linkUrl && (
+                          <DropdownMenuItem
+                            onClick={() => {
+                              navigator.clipboard.writeText(linkUrl);
+                              toast.success("Link copied to clipboard");
+                            }}
+                          >
+                            <Link2 className="h-4 w-4 mr-2" /> Copy Link
+                          </DropdownMenuItem>
+                        )}
+                      </>
+                    ) : (
+                      <DropdownMenuItem
+                        onClick={() => {
+                          navigator.clipboard.writeText(copyText);
+                          toast.success(
+                            copyType === "link"
+                              ? "Link copied to clipboard"
+                              : "Text copied to clipboard"
+                          );
+                        }}
+                      >
+                        <Copy className="h-4 w-4 mr-2" /> {copyLabel}
+                      </DropdownMenuItem>
+                    )}
                     {/* Quick emoji row inside dropdown */}
                     <div className="px-2 py-1.5 border-t border-gray-100 dark:border-gray-700">
                       <div className="flex gap-1.5">
@@ -5835,50 +6501,53 @@ function PostCard({
                 </Button>
               </div>
             ) : (
-              <p
-                className={`text-[13px] leading-relaxed whitespace-pre-wrap break-words pr-6 text-gray-800 ${isAuthor ? "dark:text-white" : "dark:text-gray-200"
-                  }`}
-              >
-                {isDeletedMessage ? (
-                  <span className="italic text-gray-500 dark:text-gray-400">
-                    🚫 {deletedPlaceholder}
-                  </span>
-                ) : (
-                  <>
-                    {(() => {
-                      const content = displayContent;
-                      const lines = content.split("\n");
-                      const isLong = lines.length > 10;
-                      const hasMore = visibleLinesCount < lines.length;
-                      const displayedContent = !isLong
-                        ? content
-                        : lines.slice(0, visibleLinesCount).join("\n");
+              <>
+                {firstUrl && <LinkPreviewCard url={firstUrl} />}
+                <p
+                  className={`text-[13px] leading-relaxed whitespace-pre-wrap break-words pr-6 text-gray-800 ${isAuthor ? "dark:text-white" : "dark:text-gray-200"
+                    }`}
+                >
+                  {isDeletedMessage ? (
+                    <span className="italic text-gray-500 dark:text-gray-400">
+                      🚫 {deletedPlaceholder}
+                    </span>
+                  ) : (
+                    <>
+                      {(() => {
+                        const content = displayContent;
+                        const lines = content.split("\n");
+                        const isLong = lines.length > 10;
+                        const hasMore = visibleLinesCount < lines.length;
+                        const displayedContent = !isLong
+                          ? content
+                          : lines.slice(0, visibleLinesCount).join("\n");
 
-                      return (
-                        <>
-                          {renderMessageWithMentions(displayedContent)}
-                          {isLong && (
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                if (hasMore) {
-                                  setVisibleLinesCount((prev) => prev + 10);
-                                } else {
-                                  setVisibleLinesCount(10);
-                                }
-                              }}
-                              className="text-[11px] font-bold text-primary hover:underline mt-1 block w-fit"
-                            >
-                              {hasMore ? "Read More" : "Show Less"}
-                            </button>
-                          )}
-                        </>
-                      );
-                    })()}
-                  </>
-                )}
-              </p>
+                        return (
+                          <>
+                            {renderMessageWithMentions(displayedContent)}
+                            {isLong && (
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  if (hasMore) {
+                                    setVisibleLinesCount((prev) => prev + 10);
+                                  } else {
+                                    setVisibleLinesCount(10);
+                                  }
+                                }}
+                                className="text-[11px] font-bold text-primary hover:underline mt-1 block w-fit"
+                              >
+                                {hasMore ? "Read More" : "Show Less"}
+                              </button>
+                            )}
+                          </>
+                        );
+                      })()}
+                    </>
+                  )}
+                </p>
+              </>
             )}
 
             {!isDeletedMessage && attachments.length > 0 && (
@@ -6178,9 +6847,83 @@ function PostCard({
                   );
                 })()}
 
-                {/* Non-Image Files */}
+                {/* Audio / Voice Memo Files */}
                 {attachments
-                  .filter((a) => !isImageAttachment(a.file_type))
+                  .filter((a) => isAudioAttachment(a.file_type, a.original_name))
+                  .map((attachment: any, idx: number) => {
+                    const downloadUrl = attachment.id
+                      ? getAuthedFileUrlForPost(
+                        attachment.id,
+                        "download",
+                        attachment.workgroup_id,
+                      )
+                      : attachment.download_url || "#";
+                    const previewUrl = attachment.id
+                      ? getAuthedFileUrlForPost(
+                        attachment.id,
+                        "view",
+                        attachment.workgroup_id,
+                      )
+                      : attachment.download_url || "#";
+
+                    return (
+                      <VoiceMemoPlayer
+                        key={attachment.id || `${post.id}-audio-${idx}`}
+                        src={previewUrl}
+                        downloadUrl={downloadUrl}
+                        fileName={attachment.original_name || "Voice Memo"}
+                        fileSize={attachment.file_size || 0}
+                        onDownload={() =>
+                          handleDownload(
+                            downloadUrl,
+                            attachment.original_name || "voice_memo.mp3",
+                          )
+                        }
+                        downloadProgress={downloadProgress[downloadUrl]}
+                      />
+                    );
+                  })}
+
+                {/* Video Files */}
+                {attachments
+                  .filter((a) => isVideoAttachment(a.file_type, a.original_name))
+                  .map((attachment: any, idx: number) => {
+                    const downloadUrl = attachment.id
+                      ? getAuthedFileUrlForPost(
+                        attachment.id,
+                        "download",
+                        attachment.workgroup_id,
+                      )
+                      : attachment.download_url || "#";
+                    const previewUrl = attachment.id
+                      ? getAuthedFileUrlForPost(
+                        attachment.id,
+                        "view",
+                        attachment.workgroup_id,
+                      )
+                      : attachment.download_url || "#";
+
+                    return (
+                      <VideoPlayer
+                        key={attachment.id || `${post.id}-video-${idx}`}
+                        src={previewUrl}
+                        downloadUrl={downloadUrl}
+                        fileName={attachment.original_name || "Video"}
+                        fileSize={attachment.file_size || 0}
+                        onDownload={() =>
+                          handleDownload(
+                            downloadUrl,
+                            attachment.original_name || "video.mp4",
+                          )
+                        }
+                        downloadProgress={downloadProgress[downloadUrl]}
+                      />
+                    );
+                  })}
+
+                {/* Other Non-Media Files */}
+                {attachments
+                  .filter((a) => isOtherAttachment(a.file_type, a.original_name))
                   .map((attachment: any, idx: number) => {
                     const downloadUrl = attachment.id
                       ? getAuthedFileUrlForPost(
@@ -6208,58 +6951,71 @@ function PostCard({
                     return (
                       <div
                         key={attachment.id || `${post.id}-file-${idx}`}
-                        className="max-w-[320px] rounded-xl border border-emerald-200/50 dark:border-emerald-800/50 bg-emerald-100/50 dark:bg-emerald-950/20 overflow-hidden shadow-sm relative group/file"
+                        className="w-full min-w-[270px] max-w-[290px] rounded-xl border border-primary/30 bg-card/80 dark:bg-card/50 hover:border-primary/50 transition-all shadow-xs relative overflow-hidden flex flex-col p-2.5 gap-2 select-none"
                       >
                         {isDownloading && (
                           <div
-                            className="absolute top-0 left-0 h-1 bg-emerald-500 transition-all duration-300 z-10"
+                            className="absolute top-0 left-0 h-1 bg-primary transition-all duration-300 z-10 rounded-t-xl"
                             style={{ width: `${progress}%` }}
                           />
                         )}
-                        <div className="flex items-start gap-4 p-4">
-                          <div className="h-12 w-12 flex items-center justify-center bg-white dark:bg-black/40 rounded-xl shadow-sm shrink-0 border border-emerald-100 dark:border-emerald-900/50">
+
+                        {/* File info row */}
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          <div className="h-9 w-9 flex items-center justify-center bg-primary/15 dark:bg-primary/20 rounded-lg shadow-xs shrink-0 border border-primary/20">
                             {getFileIcon(
                               attachment.original_name || "",
                               attachment.file_type || "",
                             )}
                           </div>
-                          <div className="min-w-0 flex-1 py-0.5">
-                            <p className="text-[13px] font-bold truncate text-foreground leading-tight mb-1">
+                          <div className="min-w-0 flex-1">
+                            <p
+                              className="text-[12px] font-bold truncate text-foreground leading-snug"
+                              title={attachment.original_name}
+                            >
                               {attachment.original_name || "Attachment"}
                             </p>
-                            <p className="text-[11px] text-gray-500 font-bold uppercase tracking-wider">
-                              {fileExt} •{" "}
-                              {formatFileSize(attachment.file_size || 0)}
+                            <p className="text-[10px] text-muted-foreground font-medium font-mono uppercase">
+                              {fileExt} • {formatFileSize(attachment.file_size || 0)}
                             </p>
                           </div>
                         </div>
-                        <div className="flex border-t border-emerald-200/50 dark:border-emerald-800/50">
+
+                        {/* Action buttons: Open & Save as */}
+                        <div className="flex items-center gap-2 pt-1.5 border-t border-border/50">
                           <button
-                            disabled={isDownloading}
-                            className={`flex-1 py-2.5 text-[12px] font-bold transition-colors flex items-center justify-center gap-2 ${isDownloading
-                              ? "text-emerald-500 bg-emerald-100/30"
-                              : "text-emerald-700 dark:text-emerald-400 hover:bg-emerald-200/30 dark:hover:bg-emerald-800/30"
-                              }`}
+                            type="button"
                             onClick={(e) => {
                               e.stopPropagation();
-                              handleDownload(
-                                downloadUrl,
-                                attachment.original_name,
-                              );
+                              onOpenFile?.({
+                                fileName: attachment.original_name || "File",
+                                fileUrl: previewUrl,
+                                downloadUrl: downloadUrl,
+                                fileSize: attachment.file_size || 0,
+                                fileType: attachment.file_type || "",
+                              });
                             }}
+                            className="flex-1 min-w-0 flex items-center justify-center gap-1.5 py-1.5 px-3 rounded-lg bg-primary/10 hover:bg-primary/20 text-primary text-[11px] font-semibold transition-colors cursor-pointer whitespace-nowrap"
+                            title="Open file preview"
                           >
-                            {isDownloading ? (
-                              <>
-                                <span className="animate-pulse">
-                                  Downloading...
-                                </span>
-                                <span className="text-[10px] bg-emerald-500 text-white px-1.5 py-0.5 rounded-full">
-                                  {progress}%
-                                </span>
-                              </>
-                            ) : (
-                              "Save as..."
-                            )}
+                            <Eye className="h-3.5 w-3.5 shrink-0" />
+                            <span className="whitespace-nowrap">Open</span>
+                          </button>
+
+                          <button
+                            type="button"
+                            disabled={isDownloading}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (!isDownloading) {
+                                handleDownload(downloadUrl, attachment.original_name);
+                              }
+                            }}
+                            className="flex-1 min-w-0 flex items-center justify-center gap-1.5 py-1.5 px-3 rounded-lg bg-black/5 dark:bg-white/10 hover:bg-black/10 dark:hover:bg-white/15 text-foreground text-[11px] font-semibold transition-colors disabled:opacity-50 cursor-pointer whitespace-nowrap"
+                            title="Save file"
+                          >
+                            <Download className="h-3.5 w-3.5 shrink-0" />
+                            <span className="whitespace-nowrap">{isDownloading ? `${progress}%` : "Save as"}</span>
                           </button>
                         </div>
                       </div>
