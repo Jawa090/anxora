@@ -10,6 +10,6 @@ CREATE TABLE IF NOT EXISTS project_milestone_assignees (
 );
 
 -- Create index for faster queries
-CREATE INDEX idx_milestone_assignees_milestone_id ON project_milestone_assignees(milestone_id);
-CREATE INDEX idx_milestone_assignees_assigned_to ON project_milestone_assignees(assigned_to);
-CREATE INDEX idx_milestone_assignees_org_id ON project_milestone_assignees(org_id);
+CREATE INDEX IF NOT EXISTS idx_milestone_assignees_milestone_id ON project_milestone_assignees(milestone_id);
+CREATE INDEX IF NOT EXISTS idx_milestone_assignees_assigned_to ON project_milestone_assignees(assigned_to);
+CREATE INDEX IF NOT EXISTS idx_milestone_assignees_org_id ON project_milestone_assignees(org_id);

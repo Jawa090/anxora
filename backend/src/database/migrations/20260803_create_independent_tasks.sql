@@ -1,4 +1,4 @@
-CREATE TABLE public.independent_tasks (
+CREATE TABLE IF NOT EXISTS public.independent_tasks (
     id uuid DEFAULT gen_random_uuid() NOT NULL PRIMARY KEY,
     org_id uuid NOT NULL,
     title character varying(255) NOT NULL,

@@ -1,8 +1,11 @@
 -- Add final_result column to candidate_interviews table
 ALTER TABLE candidate_interviews 
-ADD COLUMN final_result VARCHAR(50);
+ADD COLUMN IF NOT EXISTS final_result VARCHAR(50);
 
 -- Add constraint to ensure valid values
+ALTER TABLE candidate_interviews 
+DROP CONSTRAINT IF EXISTS final_result_check;
+
 ALTER TABLE candidate_interviews 
 ADD CONSTRAINT final_result_check 
 CHECK (final_result IS NULL OR final_result IN ('selected', 'rejected'));
