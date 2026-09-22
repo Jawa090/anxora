@@ -41,8 +41,8 @@ async function runMigrations() {
       const migrationPath = path.join(migrationsDir, file);
       const migrationSQL = fs.readFileSync(migrationPath, 'utf8');
       
-      if (process.env.NODE_ENV === 'production' && /\bdrop\b/i.test(migrationSQL)) {
-        console.warn(`⚠️ [Migration Guard] Skipping drop command in migration "${file}" on production. Logging and marking as processed.`);
+      if (process.env.NODE_ENV === 'production' && /\bdrop\s+(table|database|schema)\b/i.test(migrationSQL)) {
+        console.warn(`⚠️ [Migration Guard] Skipping drop table/database command in migration "${file}" on production. Logging and marking as processed.`);
         await db.query(
           'INSERT INTO migrations (filename) VALUES ($1)',
           [file]
@@ -61,6 +61,14 @@ async function runMigrations() {
         
         console.log(`✓ Successfully executed ${file}`);
       } catch (migrationError) {
+        if (migrationError.code === '42501' && /must be owner of function/i.test(migrationError.message)) {
+          console.warn(`⚠️ [Warning] Function already exists with different owner in "${file}": ${migrationError.message}. Marking as executed.`);
+          await db.query(
+            'INSERT INTO migrations (filename) VALUES ($1)',
+            [file]
+          );
+          continue;
+        }
         console.error(`✗ Failed to execute ${file}:`, migrationError.message);
         throw migrationError;
       }

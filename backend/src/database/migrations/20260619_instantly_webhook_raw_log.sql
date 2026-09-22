@@ -12,6 +12,12 @@ CREATE TABLE IF NOT EXISTS instantly_webhook_raw_log (
 CREATE INDEX IF NOT EXISTS idx_iwrl_org_received ON instantly_webhook_raw_log (org_id, received_at DESC);
 
 -- Auto-purge logs older than 7 days (keep table small)
-CREATE OR REPLACE FUNCTION purge_old_webhook_raw_logs() RETURNS void LANGUAGE sql AS $$
-  DELETE FROM instantly_webhook_raw_log WHERE received_at < now() - interval '7 days';
-$$;
+DO $$ 
+BEGIN 
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_proc WHERE proname = 'purge_old_webhook_raw_logs'
+  ) THEN 
+    EXECUTE 'CREATE FUNCTION purge_old_webhook_raw_logs() RETURNS void LANGUAGE sql AS $f$ DELETE FROM instantly_webhook_raw_log WHERE received_at < now() - interval ''7 days''; $f$';
+  END IF; 
+END $$;
+
