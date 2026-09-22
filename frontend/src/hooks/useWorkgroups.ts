@@ -72,6 +72,7 @@ export interface WorkgroupPost {
     user_id: string;
     full_name: string;
     avatar_url?: string;
+    seen_at?: string;
   }>;
   author_name: string;
   author_avatar?: string;

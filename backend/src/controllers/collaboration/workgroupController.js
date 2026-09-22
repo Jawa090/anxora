@@ -178,7 +178,7 @@ const markWorkgroupPostsAsRead = async (workgroupId, userId) => {
           AND p.is_deleted = false
           AND NOT ($2::uuid = ANY(COALESCE(p.deleted_for_users, '{}'::uuid[])))
         ON CONFLICT (post_id, user_id) DO NOTHING
-        RETURNING post_id
+        RETURNING post_id, read_at
       `,
       [workgroupId, userId],
     );
@@ -190,9 +190,13 @@ const markWorkgroupPostsAsRead = async (workgroupId, userId) => {
       );
       const userInfo = userResult.rows[0];
       if (userInfo) {
+        const readAt = readResult.rows[0]?.read_at || new Date().toISOString();
         realtimeService.emitWorkgroupPostSeen(workgroupId, {
           postIds: readResult.rows.map((r) => r.post_id),
-          user: userInfo,
+          user: {
+            ...userInfo,
+            seen_at: readAt,
+          },
         });
       }
     }
@@ -1135,11 +1139,12 @@ const getWorkgroupMembers = async (req, res, next) => {
         u.last_login,
         u.last_seen_at as persisted_last_seen_at,
         u.role as user_role,
+        u.is_active,
         ui.full_name as invited_by_name
       FROM workgroup_members wm
       JOIN users u ON wm.user_id = u.id
       LEFT JOIN users ui ON wm.invited_by = ui.id
-      WHERE wm.workgroup_id = $1 AND (u.is_active = true OR u.is_active IS NULL)
+      WHERE wm.workgroup_id = $1
       ORDER BY 
         CASE wm.role 
           WHEN 'owner' THEN 1 
@@ -1534,8 +1539,9 @@ const getWorkgroupPosts = async (req, res, next) => {
             json_agg(json_build_object(
               'user_id', u.id,
               'full_name', u.full_name,
-              'avatar_url', u.avatar_url
-            )) as seen_by
+              'avatar_url', u.avatar_url,
+              'seen_at', r.read_at
+            ) ORDER BY r.read_at DESC) as seen_by
           FROM workgroup_post_reads r
           JOIN users u ON r.user_id = u.id
           WHERE post_id = ANY($1::uuid[])

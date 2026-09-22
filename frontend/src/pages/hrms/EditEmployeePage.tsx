@@ -654,7 +654,7 @@ export default function EditEmployeePage() {
                             {dept}
                           </SelectItem>
                         ))}
-                        {formData.department && !DEPARTMENTS.some(d => d.toLowerCase() === formData.department.toLowerCase()) && (
+                        {formData.department && formData.department.toLowerCase() !== 'executive' && !DEPARTMENTS.some(d => d.toLowerCase() === formData.department.toLowerCase()) && (
                           <SelectItem value={formData.department}>
                             {formData.department}
                           </SelectItem>

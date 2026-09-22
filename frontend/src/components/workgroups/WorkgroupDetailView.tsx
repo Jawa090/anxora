@@ -89,6 +89,7 @@ import {
   Edit2,
   UserX,
   Info,
+  CheckCheck,
   Eye,
   Presentation,
 } from "lucide-react";
@@ -298,6 +299,70 @@ export default function WorkgroupDetailView({ workgroupId, onBack }: Props) {
     };
   }, [onRealtime, offRealtime, queryClient, workgroupId]);
 
+  useEffect(() => {
+    const handleUserUpdated = (payload: any) => {
+      if (!payload?.id) return;
+      const targetId = String(payload.id).toLowerCase();
+      const isInactive = payload.is_active === false || payload.is_deleted === true;
+
+      // Update workgroup query cache if peer user was updated
+      queryClient.setQueryData(["workgroup", workgroupId], (prev: any) => {
+        if (!prev) return prev;
+        const isPeer =
+          String(prev.direct_peer_user_id || "").toLowerCase() === targetId ||
+          (Array.isArray(prev.members) &&
+            prev.members.some(
+              (m: any) =>
+                String(m.user_id || m.id || "").toLowerCase() === targetId &&
+                String(m.user_id || m.id || "") !== String(user?.id || ""),
+            ));
+
+        if (isPeer) {
+          return {
+            ...prev,
+            is_peer_deleted: isInactive,
+            direct_peer_status: isInactive
+              ? (payload.is_deleted ? "deleted" : "inactive")
+              : "active",
+            is_online: isInactive ? false : prev.is_online,
+          };
+        }
+        return prev;
+      });
+
+      // Update workgroup-members query cache
+      queryClient.setQueryData(["workgroup-members", workgroupId], (prev: any[] | undefined) => {
+        if (!Array.isArray(prev)) return prev;
+        return prev.map((m) => {
+          if (String(m.user_id || m.id || "").toLowerCase() === targetId) {
+            return {
+              ...m,
+              is_active: !isInactive,
+              status: isInactive ? "inactive" : (m.status === "inactive" ? "active" : m.status),
+            };
+          }
+          return m;
+        });
+      });
+
+      queryClient.invalidateQueries({ queryKey: ["workgroup", workgroupId] });
+      queryClient.invalidateQueries({ queryKey: ["workgroup-members", workgroupId] });
+      queryClient.invalidateQueries({ queryKey: ["workgroups"] });
+    };
+
+    const handleUserDeleted = (payload: any) => {
+      if (!payload?.id) return;
+      handleUserUpdated({ id: payload.id, is_active: false, is_deleted: true });
+    };
+
+    onRealtime("user:updated", handleUserUpdated);
+    onRealtime("user:deleted", handleUserDeleted);
+    return () => {
+      offRealtime("user:updated", handleUserUpdated);
+      offRealtime("user:deleted", handleUserDeleted);
+    };
+  }, [onRealtime, offRealtime, queryClient, workgroupId]);
+
   // Track active group call in this workgroup (for rejoin button)
   const [activeGroupCall, setActiveGroupCall] = useState<{
     callId: string;
@@ -360,7 +425,7 @@ export default function WorkgroupDetailView({ workgroupId, onBack }: Props) {
 
     const handlePostSeen = (payload: {
       postIds: string[];
-      user: { user_id: string; full_name: string; avatar_url?: string };
+      user: { user_id: string; full_name: string; avatar_url?: string; seen_at?: string };
     }) => {
       if (!payload?.postIds || !payload?.user) return;
 
@@ -368,16 +433,21 @@ export default function WorkgroupDetailView({ workgroupId, onBack }: Props) {
         { queryKey: ["workgroup-posts", workgroupId] },
         (prev: WorkgroupPost[] | undefined) => {
           if (!Array.isArray(prev)) return prev;
+          const seenUser = {
+            ...payload.user,
+            seen_at: payload.user.seen_at || new Date().toISOString(),
+          };
           return prev.map((post) => {
             if (payload.postIds.includes(post.id)) {
               const currentSeenBy = post.seen_by || [];
-              if (
-                !currentSeenBy.some((u) => u.user_id === payload.user.user_id)
-              ) {
+              const exists = currentSeenBy.some(
+                (u) => u.user_id === payload.user.user_id,
+              );
+              if (!exists) {
                 return {
                   ...post,
                   seen_count: (post.seen_count || 0) + 1,
-                  seen_by: [...currentSeenBy, payload.user],
+                  seen_by: [seenUser, ...currentSeenBy],
                 };
               }
             }
@@ -863,6 +933,9 @@ export default function WorkgroupDetailView({ workgroupId, onBack }: Props) {
     if ((workgroup as any)?.direct_peer_status === "inactive") return true;
     const otherMembers = members.filter((m) => m.user_id !== user?.id);
     if (members.length > 0 && otherMembers.length === 0) {
+      return true;
+    }
+    if (otherMembers.length > 0 && otherMembers[0].is_active === false) {
       return true;
     }
     return false;
@@ -2328,25 +2401,27 @@ export default function WorkgroupDetailView({ workgroupId, onBack }: Props) {
             )}
 
             {/* Quick Actions (Meeting & Call inside Sidebar) */}
-            <div className="flex gap-2">
-              <Button
-                size="sm"
-                className="flex-1 bg-secondary-foreground hover:bg-secondary-foreground/80 text-white gap-2 h-9 text-xs font-semibold rounded-lg shadow-sm"
-                onClick={handleStartMeeting}
-              >
-                <Video className="h-4 w-4" />
-                Meeting
-              </Button>
-              <Button
-                size="sm"
-                variant="outline"
-                className="flex-1 border-border text-foreground  hover:text-white hover:bg-secondary-foreground dark:hover:bg-primary  gap-2 h-9 text-xs font-semibold rounded-lg"
-                onClick={handleStartCall}
-              >
-                <Phone className="h-4 w-4" />
-                Call
-              </Button>
-            </div>
+            {!isPeerDeleted && (
+              <div className="flex gap-2">
+                <Button
+                  size="sm"
+                  className="flex-1 bg-secondary-foreground hover:bg-secondary-foreground/80 text-white gap-2 h-9 text-xs font-semibold rounded-lg shadow-sm"
+                  onClick={handleStartMeeting}
+                >
+                  <Video className="h-4 w-4" />
+                  Meeting
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="flex-1 border-border text-foreground hover:text-white hover:bg-secondary-foreground dark:hover:bg-primary gap-2 h-9 text-xs font-semibold rounded-lg"
+                  onClick={handleStartCall}
+                >
+                  <Phone className="h-4 w-4" />
+                  Call
+                </Button>
+              </div>
+            )}
           </div>
 
           {/* Channels */}
@@ -2458,59 +2533,94 @@ export default function WorkgroupDetailView({ workgroupId, onBack }: Props) {
               ref={membersScrollRef}
               className="space-y-2 flex-1 overflow-y-auto pr-1 scrollbar-none"
             >
-              {sortedMembers.map((member) => (
-                <div
-                  key={member.id}
-                  className="group flex items-start gap-2 p-2.5 rounded-xl border border-border bg-background/60 hover:border-primary/30 hover:bg-primary/5 transition-colors"
-                >
-                  <div className="relative">
-                    <Avatar className="h-8 w-8 shrink-0">
-                      <AvatarImage src={getAvatarUrl(member.avatar_url)} />
-                      <AvatarFallback className="bg-secondary-foreground dark:bg-primary text-white text-xs">
-                        {(member.full_name || "?").slice(0, 2).toUpperCase()}
-                      </AvatarFallback>
-                    </Avatar>
-                    <span
-                      className={`absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full border-2 border-background ${member.is_online ? "bg-emerald-500" : "bg-gray-400"}`}
-                    />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
-                        {member.full_name || member.email || "Unknown"}
-                      </p>
-                      {assignedMemberManagerId &&
-                        String(member.user_id || (member as any).id) ===
-                        String(assignedMemberManagerId) && (
-                          <Badge className="bg-secondary-foreground hover:bg-secondary-foreground dark:bg-primary text-white font-bold px-2 py-0.5 ml-8 text-[9px]">
-                            Moderator
+              {sortedMembers.map((member) => {
+                const isMemberInactive =
+                  member.is_active === false ||
+                  (member as any)?.status === "inactive" ||
+                  (member as any)?.status === "left" ||
+                  (member as any)?.status === "removed";
+
+                return (
+                  <div
+                    key={member.id}
+                    className={`group flex items-start gap-2 p-2.5 rounded-xl border border-border bg-background/60 hover:border-primary/30 hover:bg-primary/5 transition-colors ${
+                      isMemberInactive ? "opacity-75" : ""
+                    }`}
+                  >
+                    <div className="relative">
+                      <Avatar className={`h-8 w-8 shrink-0 ${isMemberInactive ? "border border-destructive/40" : ""}`}>
+                        <AvatarImage src={getAvatarUrl(member.avatar_url)} />
+                        <AvatarFallback className={`${isMemberInactive ? "bg-destructive/15 text-destructive" : "bg-secondary-foreground dark:bg-primary text-white"} text-xs font-bold`}>
+                          {isMemberInactive ? (
+                            <UserX className="h-4 w-4 text-destructive" />
+                          ) : (
+                            (member.full_name || "?").slice(0, 2).toUpperCase()
+                          )}
+                        </AvatarFallback>
+                      </Avatar>
+                      {isMemberInactive ? (
+                        <span
+                          className="absolute -top-1 -right-1 h-3.5 w-3.5 rounded-full bg-destructive text-white flex items-center justify-center shadow-xs ring-1 ring-background z-10"
+                          title="Deactivated user"
+                        >
+                          <UserX className="h-2 w-2 stroke-[2.5]" />
+                        </span>
+                      ) : (
+                        <span
+                          className={`absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full border-2 border-background ${
+                            member.is_online ? "bg-emerald-500" : "bg-gray-400"
+                          }`}
+                        />
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
+                          {member.full_name || member.email || "Unknown"}
+                        </p>
+                        {assignedMemberManagerId &&
+                          String(member.user_id || (member as any).id) ===
+                          String(assignedMemberManagerId) && (
+                            <Badge className="bg-secondary-foreground hover:bg-secondary-foreground dark:bg-primary text-white font-bold px-2 py-0.5 ml-auto text-[9px]">
+                              Moderator
+                            </Badge>
+                          )}
+                        {isMemberInactive && (
+                          <Badge
+                            variant="outline"
+                            className="text-destructive border-destructive/30 bg-destructive/10 text-[9px] px-1.5 py-0 gap-0.5 ml-auto shrink-0 font-semibold"
+                          >
+                            <UserX className="h-2.5 w-2.5" />
+                            {member.is_active === false ? "Deactivated" : "Left"}
                           </Badge>
                         )}
-                      {((member as any)?.status === "left" ||
-                        (member as any)?.status === "removed") && (
-                          <UserX className="h-4 w-4 text-destructive" />
+                      </div>
+                      <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5">
+                        {!isDirectChat && member.role === "owner" && (
+                          <Crown className="h-3 w-3 text-yellow-500" />
                         )}
-                    </div>
-                    <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5">
-                      {!isDirectChat && member.role === "owner" && (
-                        <Crown className="h-3 w-3 text-yellow-500" />
-                      )}
-                      {!isDirectChat && (
-                        <span className="text-xs text-gray-500 dark:text-gray-400">
-                          {member.role}
-                        </span>
-                      )}
+                        {!isDirectChat && (
+                          <span className="text-xs text-gray-500 dark:text-gray-400">
+                            {member.role}
+                          </span>
+                        )}
 
-                      <span
-                        className={`text-xs font-bold ${member.is_online
-                          ? "text-emerald-500 text-[10px]"
-                          : "text-red-500 dark:text-red-400 text-[10px]"
-                          }`}
-                      >
-                        {member.is_online ? "Online" : "Offline"}
-                      </span>
-
-                    </div>
+                        {isMemberInactive ? (
+                          <span className="text-destructive text-[10px] font-medium flex items-center gap-0.5">
+                            <UserX className="h-2.5 w-2.5" /> Deactivated
+                          </span>
+                        ) : (
+                          <span
+                            className={`text-xs font-bold ${
+                              member.is_online
+                                ? "text-emerald-500 text-[10px]"
+                                : "text-red-500 dark:text-red-400 text-[10px]"
+                            }`}
+                          >
+                            {member.is_online ? "Online" : "Offline"}
+                          </span>
+                        )}
+                      </div>
                     {!member.is_online && (
                       <div className="mt-0.5">
                         <p className="text-[10px] text-gray-500 dark:text-gray-400 leading-tight font-medium">
@@ -2631,7 +2741,8 @@ export default function WorkgroupDetailView({ workgroupId, onBack }: Props) {
                     );
                   })()}
                 </div>
-              ))}
+              );
+            })}
             </div>
           </div>
         </div>
@@ -2668,11 +2779,16 @@ export default function WorkgroupDetailView({ workgroupId, onBack }: Props) {
                       <h1 className="text-base font-semibold text-gray-900 dark:text-white truncate leading-tight">
                         {workgroupDisplayName}
                       </h1>
+                      {isDirectChat && isPeerDeleted && (
+                        <Badge variant="destructive" className="gap-1 text-[10px] px-1.5 py-0 font-semibold">
+                          <UserX className="w-3 h-3" /> Deactivated
+                        </Badge>
+                      )}
                     </div>
                     <p className="text-xs text-gray-600 dark:text-gray-400 font-medium leading-tight truncate">
                       {isDirectChat
                         ? isPeerDeleted
-                          ? "This user no longer exists"
+                          ? "This user is no longer available in the organization"
                           : (() => {
                             const peer = members.find(
                               (m) => m.user_id !== user?.id,
@@ -3144,10 +3260,10 @@ export default function WorkgroupDetailView({ workgroupId, onBack }: Props) {
                             </p>
                           </div>
                         ) : isPeerDeleted ? (
-                          <div className="flex items-center justify-center p-3.5 bg-muted/30 dark:bg-card/60 rounded-xl border border-dashed border-border">
-                            <p className="text-sm text-muted-foreground flex items-center gap-2 font-medium">
-                              <UserX className="h-4 w-4 text-destructive shrink-0" />
-                              This user no longer exists.
+                          <div className="flex items-center justify-center p-3.5 bg-destructive/10 dark:bg-destructive/15 rounded-xl border border-dashed border-destructive/30">
+                            <p className="text-sm text-destructive flex items-center gap-2 font-semibold">
+                              <UserX className="h-4.5 w-4.5 text-destructive shrink-0" />
+                              This user is no longer available in the organization.
                             </p>
                           </div>
                         ) : !canSendMessages ? (
@@ -5540,6 +5656,9 @@ interface PostCardProps {
     user_id: string;
     full_name?: string;
     email?: string;
+    is_active?: boolean;
+    status?: string;
+    [key: string]: any;
   }>;
   isForwardSelectMode?: boolean;
   isSelectedForForward?: boolean;
@@ -6256,6 +6375,13 @@ function PostCard({
                           Member
                         </DropdownMenuItem>
                       )}
+                    {!isDeletedMessage && (
+                      <DropdownMenuItem
+                        onClick={() => setShowSeenByDialog(true)}
+                      >
+                        <Info className="h-4 w-4 mr-2" /> Message Info
+                      </DropdownMenuItem>
+                    )}
                     <DropdownMenuItem
                       onClick={() => onStartForwardSelection?.(post.id)}
                     >
@@ -6423,9 +6549,29 @@ function PostCard({
             {/* Author name for received */}
             {!isAuthor && (
               <p
-                className={`text-[11px] font-bold mb-0.5 ${memberColor!.name}`}
+                className={`text-[11px] font-bold mb-0.5 ${memberColor!.name} flex items-center gap-1`}
               >
-                {post.author_name || "Unknown"}
+                <span>{post.author_name || "Unknown"}</span>
+                {(() => {
+                  const authorMember = memberDirectory.find(
+                    (m: any) => m.user_id === post.user_id,
+                  );
+                  if (
+                    authorMember?.is_active === false ||
+                    (authorMember as any)?.status === "left" ||
+                    (authorMember as any)?.status === "removed"
+                  ) {
+                    return (
+                      <span
+                        title="This user is no longer active"
+                        className="inline-flex items-center text-destructive"
+                      >
+                        <UserX className="h-3 w-3" />
+                      </span>
+                    );
+                  }
+                  return null;
+                })()}
               </p>
             )}
 
@@ -7036,7 +7182,12 @@ function PostCard({
               </span>
               {isAuthor && (
                 <span
-                  className={`text-[9px] ${(post.seen_count || 0) > 0
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setShowSeenByDialog(true);
+                  }}
+                  title="View seen details"
+                  className={`text-[9px] cursor-pointer hover:opacity-80 transition-opacity ${(post.seen_count || 0) > 0
                     ? "text-primary"
                     : "text-gray-400"
                     }`}
@@ -7188,11 +7339,12 @@ function PostCard({
         </div>
       )}
 
-      {/* Seen By tracking - Restricted to Author within Broadcasts only */}
-      {isAuthor && isBroadcast && post.seen_by && post.seen_by.length > 0 && (
+      {/* Seen By tracking - Show in Groups & Broadcasts */}
+      {isAuthor && !isDirectChat && post.seen_by && post.seen_by.length > 0 && (
         <div
           className={`flex items-center gap-1.5 mt-1 px-1 mb-2 cursor-pointer hover:opacity-80 transition-opacity ${isAuthor ? "justify-end mr-9" : "justify-start ml-9"}`}
           onClick={() => setShowSeenByDialog(true)}
+          title="Click to see who read this message"
         >
           <div className="flex -space-x-1 overflow-hidden">
             {post.seen_by.slice(0, 6).map((u: any) => (
@@ -7202,7 +7354,7 @@ function PostCard({
               >
                 <AvatarImage src={getAvatarUrl(u.avatar_url)} />
                 <AvatarFallback className="text-[6px] bg-muted">
-                  {u.full_name.slice(0, 2).toUpperCase()}
+                  {(u.full_name || "?").slice(0, 2).toUpperCase()}
                 </AvatarFallback>
               </Avatar>
             ))}
@@ -7220,32 +7372,85 @@ function PostCard({
 
       {/* Seen By Full List Dialog */}
       <Dialog open={showSeenByDialog} onOpenChange={setShowSeenByDialog}>
-        <DialogContent className="max-w-[320px] p-0 overflow-hidden border-none shadow-2xl">
-          <DialogHeader className="p-4 border-b bg-muted/30">
-            <DialogTitle className="text-sm font-bold flex items-center gap-2">
+        <DialogContent className="max-w-[340px] p-0 overflow-hidden border border-border shadow-2xl rounded-2xl bg-card">
+          <DialogHeader className="p-4 border-b border-border bg-muted/40 flex flex-row items-center justify-between">
+            <DialogTitle className="text-sm font-bold flex items-center gap-2 text-foreground">
               <Users className="h-4 w-4 text-primary" />
               Message Seen By
             </DialogTitle>
+            {post.seen_by && post.seen_by.length > 0 && (
+              <Badge variant="secondary" className="text-[11px] font-semibold h-5 px-1.5 mr-6">
+                {post.seen_by.length}
+              </Badge>
+            )}
           </DialogHeader>
-          <div className="max-h-[350px] overflow-y-auto py-2">
-            {post.seen_by?.map((u: any) => (
-              <div
-                key={u.user_id}
-                className="flex items-center gap-3 px-4 py-2 bg-primary/30 hover:bg-primary/50 transition-colors"
-              >
-                <Avatar className="h-8 w-8">
-                  <AvatarImage src={getAvatarUrl(u.avatar_url)} />
-                  <AvatarFallback className="text-xs">
-                    {u.full_name.slice(0, 2).toUpperCase()}
-                  </AvatarFallback>
-                </Avatar>
-                <div className="min-w-0 flex-1">
-                  <p className="text-sm font-semibold truncate text-foreground">
-                    {u.full_name}
-                  </p>
-                </div>
+          <div className="max-h-[350px] overflow-y-auto py-1 divide-y divide-border/40">
+            {(!post.seen_by || post.seen_by.length === 0) ? (
+              <div className="py-8 px-4 text-center">
+                <Users className="h-8 w-8 mx-auto mb-2 text-muted-foreground/30" />
+                <p className="text-xs font-medium text-muted-foreground">
+                  No one has seen this message yet
+                </p>
               </div>
-            ))}
+            ) : (
+              post.seen_by.map((u: any) => {
+                const formattedTime = (() => {
+                  if (!u.seen_at) return null;
+                  try {
+                    const d = new Date(u.seen_at);
+                    if (isNaN(d.getTime())) return null;
+                    const now = new Date();
+                    const isToday = d.toDateString() === now.toDateString();
+                    const timeStr = d.toLocaleTimeString([], {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    });
+                    if (isToday) return `Today, ${timeStr}`;
+                    const yesterday = new Date();
+                    yesterday.setDate(now.getDate() - 1);
+                    if (d.toDateString() === yesterday.toDateString()) {
+                      return `Yesterday, ${timeStr}`;
+                    }
+                    return `${d.toLocaleDateString([], {
+                      month: "short",
+                      day: "numeric",
+                    })}, ${timeStr}`;
+                  } catch {
+                    return null;
+                  }
+                })();
+
+                return (
+                  <div
+                    key={u.user_id}
+                    className="flex items-center gap-3 px-4 py-2.5 hover:bg-muted/50 transition-colors"
+                  >
+                    <Avatar className="h-9 w-9 border border-border/40 shrink-0">
+                      <AvatarImage src={getAvatarUrl(u.avatar_url)} />
+                      <AvatarFallback className="text-xs font-bold bg-primary/15 text-primary">
+                        {(u.full_name || "?").slice(0, 2).toUpperCase()}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-semibold truncate text-foreground leading-snug">
+                        {u.full_name}
+                      </p>
+                      {formattedTime ? (
+                        <p className="text-[11px] text-muted-foreground flex items-center gap-1 mt-0.5 font-medium">
+                          <CheckCheck className="h-3.5 w-3.5 text-emerald-500 shrink-0" />
+                          <span>{formattedTime}</span>
+                        </p>
+                      ) : (
+                        <p className="text-[11px] text-muted-foreground flex items-center gap-1 mt-0.5">
+                          <CheckCheck className="h-3.5 w-3.5 text-slate-400 shrink-0" />
+                          <span>Seen</span>
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                );
+              })
+            )}
           </div>
         </DialogContent>
       </Dialog>

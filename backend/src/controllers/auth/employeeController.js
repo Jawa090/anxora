@@ -94,9 +94,8 @@ const getStats = async (req, res, next) => {
         COUNT(*) FILTER (WHERE role = 'admin')                         AS admins
        FROM public.users
        WHERE org_id = $1
-         AND role != 'super_admin'
-         AND id != $2`,
-      [req.user.orgId, req.user.id]
+         AND role != 'super_admin'`,
+      [req.user.orgId]
     );
     res.json(result.rows[0]);
   } catch (err) {
@@ -107,15 +106,17 @@ const getStats = async (req, res, next) => {
 // GET /api/members/departments — distinct departments saved for users/employees in DB (case-normalized)
 const getDepartments = async (req, res, next) => {
   try {
+    const { includeExecutive } = req.query;
+    const executiveFilter = includeExecutive === 'true' ? '' : `AND LOWER(TRIM(department)) != 'executive'`;
     const result = await db.query(
       `SELECT DISTINCT ON (LOWER(TRIM(dept))) 
-              INITCAP(TRIM(dept)) AS department
+              TRIM(dept) AS department
        FROM (
          SELECT department AS dept FROM public.users 
-         WHERE org_id = $1 AND department IS NOT NULL AND TRIM(department) != ''
+         WHERE org_id = $1 AND department IS NOT NULL AND TRIM(department) != '' AND department NOT LIKE '%@%' ${executiveFilter}
          UNION
          SELECT department AS dept FROM public.employees 
-         WHERE org_id = $1 AND department IS NOT NULL AND TRIM(department) != ''
+         WHERE org_id = $1 AND department IS NOT NULL AND TRIM(department) != '' AND department NOT LIKE '%@%' ${executiveFilter}
        ) sub
        ORDER BY LOWER(TRIM(dept)) ASC`,
       [req.user.orgId]
@@ -250,12 +251,14 @@ const update = async (req, res, next) => {
     // Normalize department (Title Case and trimmed)
     const normalizedDept = department ? department.trim().replace(/\b\w/g, (c) => c.toUpperCase()) : department;
 
+    const effectiveIsActive = is_active !== undefined ? Boolean(is_active) : (status !== undefined ? status === 'active' : undefined);
+
     if (fullName !== undefined)              { userFields.push(`full_name = $${uIdx++}`);              userValues.push(fullName); }
     if (phone !== undefined)                 { userFields.push(`phone = $${uIdx++}`);                  userValues.push(phone); }
     if (position !== undefined)              { userFields.push(`"position" = $${uIdx++}`);             userValues.push(position); }
     if (role !== undefined)                  { userFields.push(`role = $${uIdx++}`);                   userValues.push(role); }
     if (normalizedDept !== undefined)        { userFields.push(`department = $${uIdx++}`);             userValues.push(normalizedDept); }
-    if (is_active !== undefined)             { userFields.push(`is_active = $${uIdx++}`);              userValues.push(is_active); }
+    if (effectiveIsActive !== undefined)     { userFields.push(`is_active = $${uIdx++}`);              userValues.push(effectiveIsActive); }
     if (module_permissions !== undefined)    { userFields.push(`module_permissions = $${uIdx++}`);     userValues.push(JSON.stringify(module_permissions)); }
     if (password_change_required !== undefined) { userFields.push(`password_change_required = $${uIdx++}`); userValues.push(password_change_required); }
     
@@ -316,8 +319,8 @@ const update = async (req, res, next) => {
       empFields.push(`phone = $${eIdx++}`);
       empValues.push(phone);
     }
-    if (is_active !== undefined) {
-      const empStatus = is_active ? 'active' : 'inactive';
+    if (effectiveIsActive !== undefined) {
+      const empStatus = effectiveIsActive ? 'active' : 'inactive';
       empFields.push(`status = $${eIdx++}`);
       empValues.push(empStatus);
     }
@@ -346,7 +349,7 @@ const update = async (req, res, next) => {
 
     const updatedUser = finalResult.rows[0];
     const realtimeService = require('../../services/realtimeService');
-    realtimeService.emitUserUpdated(id, updatedUser);
+    realtimeService.emitUserUpdated(id, updatedUser, orgId);
 
     res.json(updatedUser);
   } catch (err) {

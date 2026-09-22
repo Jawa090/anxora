@@ -25,7 +25,7 @@ import {
   AlertCircle
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { recruitmentApi } from '@/lib/api';
+import { recruitmentApi, usersApi } from '@/lib/api';
 import { DEPARTMENTS } from '@/lib/constants';
 import {
   validateOfferForm,
@@ -73,6 +73,15 @@ export default function OffersPage() {
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [viewDialogOpen, setViewDialogOpen] = useState(false);
   const [selectedOffer, setSelectedOffer] = useState<Offer | null>(null);
+  const [departmentOptions, setDepartmentOptions] = useState<string[]>(DEPARTMENTS);
+
+  useEffect(() => {
+    usersApi.getDepartments()
+      .then((depts) => {
+        if (depts && depts.length > 0) setDepartmentOptions(depts);
+      })
+      .catch(() => {});
+  }, []);
   const [candidates, setCandidates] = useState<any[]>([]);
   const [requisitions, setRequisitions] = useState<any[]>([]);
   const [creating, setCreating] = useState(false);
@@ -766,7 +775,7 @@ export default function OffersPage() {
                       <SelectValue placeholder="Select Department" />
                     </SelectTrigger>
                     <SelectContent>
-                      {DEPARTMENTS.map((d) => (
+                      {departmentOptions.map((d) => (
                         <SelectItem key={d} value={d}>{d}</SelectItem>
                       ))}
                     </SelectContent>

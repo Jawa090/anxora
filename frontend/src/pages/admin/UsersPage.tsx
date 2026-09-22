@@ -1,4 +1,6 @@
 import { useState, useMemo } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { usersApi } from "@/lib/api";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -14,17 +16,40 @@ import { useAdminUsers, AdminUser } from "@/hooks/useAdminUsers";
 import { Skeleton } from "@/components/ui/skeleton";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { format } from "date-fns";
-import { DEPARTMENTS } from "@/lib/constants";
+import { ADMIN_DEPARTMENTS } from "@/lib/constants";
 
 const PAGE_SIZE = 10;
 
 export default function UsersPage() {
-  const { users, invites, roles, isLoading, sendInvite, adminCreateUser, updateUser, updateUserRole, deleteInvite, resetPassword } = useAdminUsers();
+  const { users: rawUsers, invites, roles, isLoading, sendInvite, adminCreateUser, updateUser, updateUserRole, deleteInvite, resetPassword } = useAdminUsers();
+  const users = useMemo(() => (rawUsers || []).filter(u => u.role !== "super_admin"), [rawUsers]);
   const [search, setSearch] = useState("");
   const [roleFilter, setRoleFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
   const [deptFilter, setDeptFilter] = useState("all");
   const [page, setPage] = useState(0);
+
+  // Dynamically fetch departments from DB
+  const { data: dbDepartments = [] } = useQuery({
+    queryKey: ["admin-users-departments"],
+    queryFn: () => usersApi.getDepartments({ includeExecutive: true }),
+  });
+
+  const dynamicDepartments = useMemo(() => {
+    const set = new Set<string>();
+    set.add("Executive");
+    (dbDepartments || []).forEach((d: string) => {
+      if (d && !d.includes('@')) {
+        set.add(d.trim());
+      }
+    });
+    users.forEach((u) => {
+      if (u.department && !u.department.includes('@')) {
+        set.add(u.department.trim());
+      }
+    });
+    return Array.from(set).sort((a, b) => a.localeCompare(b));
+  }, [dbDepartments, users]);
 
   // Invite dialog
   const [inviteOpen, setInviteOpen] = useState(false);
@@ -57,7 +82,7 @@ export default function UsersPage() {
   const stats = useMemo(() => {
     const total = users.length;
     const active = users.filter(u => u.status === "active").length;
-    const admins = users.filter(u => u.role === "admin" || u.role === "super_admin").length;
+    const admins = users.filter(u => u.role === "admin").length;
     const inactive = users.filter(u => u.status === "inactive").length;
     return [
       { title: "Total Users", value: total, icon: Users, color: "text-primary" },
@@ -107,8 +132,8 @@ export default function UsersPage() {
         phone: addUserForm.phone 
       },
       {
-        onSuccess: (data) => {
-          setCreatedUserResult({ email: addUserForm.email, tempPassword: data.temp_password });
+        onSuccess: (data: any) => {
+          setCreatedUserResult({ email: addUserForm.email, tempPassword: data?.temp_password || "" });
           setAddUserForm({ email: "", fullName: "", role: "", department: "", phone: "" });
           setAddUserOpen(false);
         },
@@ -158,8 +183,8 @@ export default function UsersPage() {
 
   const handleResetPassword = (user: AdminUser) => {
     resetPassword.mutate(user.id, {
-      onSuccess: (data) => {
-        setResetResult({ email: user.email, fullName: user.full_name, tempPassword: data.temp_password });
+      onSuccess: (data: any) => {
+        setResetResult({ email: user.email, fullName: user.full_name, tempPassword: data?.temp_password || "" });
       },
     });
   };
@@ -227,7 +252,7 @@ export default function UsersPage() {
                     <Select value={addUserForm.department} onValueChange={v => setAddUserForm({ ...addUserForm, department: v })}>
                       <SelectTrigger><SelectValue placeholder="Select dept" /></SelectTrigger>
                       <SelectContent>
-                        {DEPARTMENTS.map(d => <SelectItem key={d} value={d}>{d}</SelectItem>)}
+                        {ADMIN_DEPARTMENTS.map(d => <SelectItem key={d} value={d}>{d}</SelectItem>)}
                       </SelectContent>
                     </Select>
                   </div>
@@ -285,7 +310,7 @@ export default function UsersPage() {
                     <Select value={inviteForm.department} onValueChange={v => setInviteForm({ ...inviteForm, department: v })}>
                       <SelectTrigger><SelectValue placeholder="Select dept" /></SelectTrigger>
                       <SelectContent>
-                        {DEPARTMENTS.map(d => <SelectItem key={d} value={d}>{d}</SelectItem>)}
+                        {ADMIN_DEPARTMENTS.map(d => <SelectItem key={d} value={d}>{d}</SelectItem>)}
                       </SelectContent>
                     </Select>
                   </div>
@@ -382,7 +407,7 @@ export default function UsersPage() {
                 <SelectTrigger className="w-36"><SelectValue placeholder="Department" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Depts</SelectItem>
-                  {DEPARTMENTS.map(d => <SelectItem key={d} value={d}>{d}</SelectItem>)}
+                  {dynamicDepartments.map(d => <SelectItem key={d} value={d}>{d}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
@@ -534,7 +559,7 @@ export default function UsersPage() {
                   <Select value={editForm.department} onValueChange={v => setEditForm({ ...editForm, department: v })}>
                     <SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger>
                     <SelectContent>
-                      {DEPARTMENTS.map(d => <SelectItem key={d} value={d}>{d}</SelectItem>)}
+                      {ADMIN_DEPARTMENTS.map(d => <SelectItem key={d} value={d}>{d}</SelectItem>)}
                     </SelectContent>
                   </Select>
                 </div>

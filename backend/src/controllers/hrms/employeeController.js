@@ -154,20 +154,10 @@ const getAll = async (req, res, next) => {
       WHERE e.org_id = $1
     `;
     
-    if (includeAdmins !== 'true') {
-      query += ` AND NOT EXISTS (
-        SELECT 1 FROM public.users u
-        WHERE LOWER(u.email) = LOWER(e.email)
-          AND u.role IN ('super_admin', 'admin')
-      )`;
-    } else {
-      // Exclude super_admins even when includeAdmins is true
-      query += ` AND NOT EXISTS (
-        SELECT 1 FROM public.users u
-        WHERE LOWER(u.email) = LOWER(e.email)
-          AND u.role = 'super_admin'
-      )`;
-    }
+    query += ` AND NOT (
+      LOWER(COALESCE(u.role::text, 'employee')) = 'super_admin'
+      OR LOWER(COALESCE(NULLIF(TRIM(u.department), ''), NULLIF(TRIM(e.department), ''), '')) = 'executive'
+    )`;
 
     const params = [req.user.orgId];
     let paramIndex = 2;
@@ -206,25 +196,33 @@ const getAll = async (req, res, next) => {
     const result = await db.query(query, params);
 
     // Get total count
-    let countQuery = `SELECT COUNT(*) FROM public.employees e WHERE e.org_id = $1`;
-    if (includeAdmins !== 'true') {
-      countQuery += ` AND NOT EXISTS (SELECT 1 FROM public.users u WHERE LOWER(u.email) = LOWER(e.email) AND u.role IN ('super_admin', 'admin'))`;
-    } else {
-      countQuery += ` AND NOT EXISTS (SELECT 1 FROM public.users u WHERE LOWER(u.email) = LOWER(e.email) AND u.role = 'super_admin')`;
-    }
+    let countQuery = `
+      SELECT COUNT(*) 
+      FROM public.employees e 
+      LEFT JOIN public.users u ON (e.user_id = u.id OR LOWER(u.email) = LOWER(e.email))
+      WHERE e.org_id = $1
+        AND NOT (
+          LOWER(COALESCE(u.role::text, 'employee')) = 'super_admin'
+          OR LOWER(COALESCE(NULLIF(TRIM(u.department), ''), NULLIF(TRIM(e.department), ''), '')) = 'executive'
+        )
+    `;
     const countParams = [req.user.orgId];
     let countParamIndex = 2;
 
     if (search) {
-      countQuery += ` AND (CONCAT(first_name, ' ', last_name) ILIKE $${countParamIndex} OR email ILIKE $${countParamIndex} OR department ILIKE $${countParamIndex})`;
+      countQuery += ` AND (CONCAT(e.first_name, ' ', e.last_name) ILIKE $${countParamIndex} OR e.email ILIKE $${countParamIndex} OR COALESCE(u.department, e.department) ILIKE $${countParamIndex})`;
       countParams.push(`%${search}%`);
       countParamIndex++;
     }
 
     if (department && department !== 'all') {
-      countQuery += ` AND LOWER(department) = LOWER($${countParamIndex})`;
-      countParams.push(department);
-      countParamIndex++;
+      if (department.toLowerCase() === 'none') {
+        countQuery += ` AND (COALESCE(u.department, e.department) IS NULL OR TRIM(COALESCE(u.department, e.department)) = '')`;
+      } else {
+        countQuery += ` AND LOWER(COALESCE(u.department, e.department)) = LOWER($${countParamIndex})`;
+        countParams.push(department);
+        countParamIndex++;
+      }
     }
 
     if (status === 'all') {
@@ -486,10 +484,15 @@ const update = async (req, res, next) => {
         // match by old email (before potential email change)
         const matchEmail = value.email ? req.body._old_email || updated.email : updated.email;
         syncValues.push(matchEmail, req.user.orgId);
-        await db.query(
-          `UPDATE public.users SET ${syncFields.join(', ')} WHERE LOWER(email) = LOWER($${si++}) AND org_id = $${si}`,
+        const userSyncResult = await db.query(
+          `UPDATE public.users SET ${syncFields.join(', ')} WHERE LOWER(email) = LOWER($${si++}) AND org_id = $${si} RETURNING id, is_active, full_name, email, department, role`,
           syncValues
         ).catch(() => {});
+        if (userSyncResult && userSyncResult.rows && userSyncResult.rows.length > 0) {
+          const syncedUser = userSyncResult.rows[0];
+          const realtimeService = require('../../services/realtimeService');
+          realtimeService.emitUserUpdated(syncedUser.id, syncedUser, req.user.orgId);
+        }
       }
     }
 
@@ -560,6 +563,12 @@ const remove = async (req, res, next) => {
     }
 
     await client.query('COMMIT');
+
+    if (userId) {
+      const realtimeService = require('../../services/realtimeService');
+      realtimeService.emitUserDeleted(userId, req.user.orgId);
+    }
+
     res.json({ message: 'Employee permanently deleted successfully' });
   } catch (err) {
     await client.query('ROLLBACK').catch(() => {});

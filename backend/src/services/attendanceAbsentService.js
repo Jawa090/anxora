@@ -34,6 +34,10 @@ async function markAbsentForPassedShifts(targetOrgId = null) {
       LEFT JOIN public.users u ON e.user_id = u.id OR LOWER(u.email) = LOWER(e.email)
       WHERE (e.status = 'active' OR e.status IS NULL)
         AND st.is_active = true
+        AND NOT (
+          LOWER(COALESCE(u.role::text, 'employee')) = 'super_admin'
+          OR LOWER(COALESCE(NULLIF(TRIM(u.department), ''), NULLIF(TRIM(e.department), ''), '')) = 'executive'
+        )
     `;
 
     const params = [];

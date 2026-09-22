@@ -23,6 +23,7 @@ import {
   useBulkDeleteDeals,
   useBulkAssignDeals,
 } from "@/hooks/useCrmData";
+import { useUniboxFolderRealtime } from "@/hooks/useRealtime";
 import { useOrganizationProfiles } from "@/hooks/useTenantQuery";
 import { useUpdateDeal } from "@/hooks/useCrmMutations";
 import { useCreateActivity } from "@/hooks/useCrmInteractions";
@@ -126,6 +127,7 @@ type DealRow = {
 };
 
 export default function DealsPage() {
+  useUniboxFolderRealtime();
   const navigate = useNavigate();
   const location = useLocation();
   const { user } = useAuth();

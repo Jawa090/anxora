@@ -4,11 +4,12 @@ import { AppSidebar } from "./AppSidebar";
 import { TopBar } from "./Header";
 import { TelephonyOverlay } from "@/components/telephony/TelephonyProvider";
 import { SoftphoneProvider } from "@/contexts/SoftphoneContext";
-import { useRealtime } from "@/hooks/useRealtime";
+import { useRealtime, useUniboxFolderRealtime } from "@/hooks/useRealtime";
 
 export function MainLayout() {
   // Keep app-level socket alive on all protected pages.
   useRealtime();
+  useUniboxFolderRealtime();
 
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 1024);

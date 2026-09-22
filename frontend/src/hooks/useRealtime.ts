@@ -51,7 +51,7 @@ function showOsNotification(
 ) {
   if (Notification.permission !== "granted") return;
 
-  const opts: NotificationOptions = { body, icon, tag, renotify: true };
+  const opts: NotificationOptions = { body, icon, tag, renotify: true } as any;
   const data = clickUrl ? { url: clickUrl } : undefined;
 
   if ("serviceWorker" in navigator && navigator.serviceWorker.controller) {
@@ -307,9 +307,16 @@ export function useRealtime() {
     const onConnect = () => setIsConnected(true);
     const onDisconnect = () => setIsConnected(false);
 
-    // Global listeners to keep workgroups/broadcasts in sync app-wide
+    // Global listeners to keep workgroups/broadcasts and user statuses in sync app-wide
     const handleGlobalWorkgroupSync = () => {
       queryClient.invalidateQueries({ queryKey: ["workgroups"] });
+    };
+
+    const handleGlobalUserSync = () => {
+      queryClient.invalidateQueries({ queryKey: ["workgroups"] });
+      queryClient.invalidateQueries({ queryKey: ["admin-users"] });
+      queryClient.invalidateQueries({ queryKey: ["members"] });
+      queryClient.invalidateQueries({ queryKey: ["employees"] });
     };
 
     socket.on("connect", onConnect);
@@ -318,6 +325,8 @@ export function useRealtime() {
     socket.on("workgroup:member_added", handleGlobalWorkgroupSync);
     socket.on("workgroup:member_removed", handleGlobalWorkgroupSync);
     socket.on("workgroup:notification", handleGlobalWorkgroupSync);
+    socket.on("user:updated", handleGlobalUserSync);
+    socket.on("user:deleted", handleGlobalUserSync);
 
     return () => {
       socket.off("connect", onConnect);
@@ -326,6 +335,8 @@ export function useRealtime() {
       socket.off("workgroup:member_added", handleGlobalWorkgroupSync);
       socket.off("workgroup:member_removed", handleGlobalWorkgroupSync);
       socket.off("workgroup:notification", handleGlobalWorkgroupSync);
+      socket.off("user:updated", handleGlobalUserSync);
+      socket.off("user:deleted", handleGlobalUserSync);
       connectionCount--;
       if (connectionCount === 0) closeSocket();
     };
@@ -527,6 +538,42 @@ export function useUniboxRealtime(onNewEmail: (email: any) => void) {
       off("unibox:email_created", onNewEmail);
     };
   }, [onNewEmail]);
+}
+
+// Hook for Unibox folder & lead assignment real-time synchronization
+export function useUniboxFolderRealtime() {
+  const queryClient = useQueryClient();
+
+  useEffect(() => {
+    const socket = getSocket();
+    if (!socket) return;
+
+    const handleRefresh = (data?: any) => {
+      console.log('🔄 [UniboxFolderRealtime] Real-time event received:', data);
+      queryClient.invalidateQueries({ queryKey: ["unibox-campaign-folders"] });
+      queryClient.invalidateQueries({ queryKey: ["unibox-permission"] });
+      queryClient.invalidateQueries({ queryKey: ["unibox-emails"] });
+      queryClient.invalidateQueries({ queryKey: ["unibox-stats"] });
+      queryClient.invalidateQueries({ queryKey: ["unibox-campaigns"] });
+      queryClient.invalidateQueries({ queryKey: ["leads"] });
+      queryClient.invalidateQueries({ queryKey: ["lead-stats"] });
+      queryClient.invalidateQueries({ queryKey: ["deals"] });
+      queryClient.invalidateQueries({ queryKey: ["deal-stats"] });
+      queryClient.invalidateQueries({ queryKey: ["organization-users-campaigns"] });
+    };
+
+    socket.on("unibox:folder_updated", handleRefresh);
+    socket.on("unibox:permission_changed", handleRefresh);
+    socket.on("leads:updated", handleRefresh);
+    socket.on("deals:updated", handleRefresh);
+
+    return () => {
+      socket.off("unibox:folder_updated", handleRefresh);
+      socket.off("unibox:permission_changed", handleRefresh);
+      socket.off("leads:updated", handleRefresh);
+      socket.off("deals:updated", handleRefresh);
+    };
+  }, [queryClient]);
 }
 
 // Hook for mentions and broadcasts

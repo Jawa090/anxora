@@ -39,7 +39,7 @@ class RealtimeService {
       try {
         const decoded = jwt.verify(token, process.env.JWT_SECRET);
         socket.userId = decoded.userId;
-        socket.orgId = decoded.orgId;
+        socket.orgId = decoded.orgId || decoded.org_id || decoded.organization_id;
         next();
       } catch (error) {
         next(new Error('Authentication error'));
@@ -638,11 +638,33 @@ class RealtimeService {
 
   // Unibox events
   emitUniboxEmailCreated(orgId, email) {
-    this.io.to(`org:${orgId}`).emit('unibox:email_created', email);
+    if (this.io) {
+      this.io.to(`org:${orgId}`).emit('unibox:email_created', email);
+    }
   }
 
   emitUniboxPermissionChanged(userId) {
-    this.io.to(`user:${userId}`).emit('unibox:permission_changed');
+    if (this.io) {
+      this.io.to(`user:${userId}`).emit('unibox:permission_changed');
+    }
+  }
+
+  emitUniboxFolderUpdated(orgId, data = {}) {
+    if (this.io) {
+      this.io.to(`org:${orgId}`).emit('unibox:folder_updated', data);
+    }
+  }
+
+  emitLeadsUpdated(orgId, data = {}) {
+    if (this.io) {
+      this.io.to(`org:${orgId}`).emit('leads:updated', data);
+    }
+  }
+
+  emitDealsUpdated(orgId, data = {}) {
+    if (this.io) {
+      this.io.to(`org:${orgId}`).emit('deals:updated', data);
+    }
   }
 
   // --- Collaboration Addons ---
@@ -695,6 +717,20 @@ class RealtimeService {
       if (orgId) {
         this.io.to(`org:${orgId}`).emit('user:updated', payload);
       }
+      this.io.emit('user:updated', payload);
+    }
+  }
+
+  emitUserDeleted(userId, orgId) {
+    if (this.io) {
+      const payload = { id: userId, is_active: false, is_deleted: true };
+      this.io.to(`user:${userId}`).emit('user:deleted', payload);
+      if (orgId) {
+        this.io.to(`org:${orgId}`).emit('user:deleted', payload);
+        this.io.to(`org:${orgId}`).emit('user:updated', payload);
+      }
+      this.io.emit('user:deleted', payload);
+      this.io.emit('user:updated', payload);
     }
   }
 

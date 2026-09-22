@@ -31,6 +31,7 @@ import { EmailComposer } from "@/components/mail/EmailComposer";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
+import { useUniboxFolderRealtime } from "@/hooks/useRealtime";
 
 const statusTone = (status?: string) => {
   const s = (status || "").toLowerCase();
@@ -87,6 +88,7 @@ type LeadRow = {
 };
 
 export default function LeadsPage() {
+  useUniboxFolderRealtime();
   const navigate = useNavigate();
   const location = useLocation();
   const { user } = useAuth();

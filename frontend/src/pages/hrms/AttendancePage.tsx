@@ -181,13 +181,23 @@ const endOfCurrentMonth = () => {
 };
 
 export default function AttendancePage() {
-  const { userRole, user } = useAuth();
+  const { userRole, user, profile } = useAuth();
   const { organization } = useOrganization();
   const isAdmin =
     userRole?.role === "super_admin" ||
     userRole?.role === "admin" ||
     userRole?.role === "manager";
-  const isSuperAdmin = userRole?.role === "super_admin";
+  const userDept = (
+    profile?.department ||
+    (user as any)?.department ||
+    (userRole as any)?.department ||
+    ""
+  ).toLowerCase().trim();
+  const isSuperAdmin =
+    userRole?.role === "super_admin" ||
+    (user as any)?.role === "super_admin" ||
+    (profile as any)?.role === "super_admin" ||
+    userDept === "executive";
   const isLiveAttendanceEnabled = !!(organization as any)
     ?.attendance_machine_ip;
 
@@ -414,21 +424,28 @@ export default function AttendancePage() {
 
   const records: AttendanceRecord[] = useMemo(() => {
     if (!rawRecords.length) return [];
-    return [...rawRecords].sort((a, b) => {
-      const dateA = a.date ? a.date.split("T")[0] : "";
-      const dateB = b.date ? b.date.split("T")[0] : "";
-      if (dateA !== dateB) {
-        return dateB.localeCompare(dateA);
-      }
-      const selfA = isSelfRecord(a) ? 1 : 0;
-      const selfB = isSelfRecord(b) ? 1 : 0;
-      if (selfA !== selfB) {
-        return selfB - selfA; // Admin/Manager's own record comes at the very top!
-      }
-      const timeA = a.clock_in || "";
-      const timeB = b.clock_in || "";
-      return timeB.localeCompare(timeA);
-    });
+    return [...rawRecords]
+      .filter((r: any) => {
+        const role = (r.role || r.user_role || "").toLowerCase().trim();
+        const dept = (r.department || "").toLowerCase().trim();
+        if (role === "super_admin" || dept === "executive") return false;
+        return true;
+      })
+      .sort((a, b) => {
+        const dateA = a.date ? a.date.split("T")[0] : "";
+        const dateB = b.date ? b.date.split("T")[0] : "";
+        if (dateA !== dateB) {
+          return dateB.localeCompare(dateA);
+        }
+        const selfA = isSelfRecord(a) ? 1 : 0;
+        const selfB = isSelfRecord(b) ? 1 : 0;
+        if (selfA !== selfB) {
+          return selfB - selfA; // Admin/Manager's own record comes at the very top!
+        }
+        const timeA = a.clock_in || "";
+        const timeB = b.clock_in || "";
+        return timeB.localeCompare(timeA);
+      });
   }, [rawRecords, user]);
 
   const totalPages = Math.ceil(records.length / pageSize);
@@ -1220,7 +1237,7 @@ export default function AttendancePage() {
 
       {!isSuperAdmin && (
         <div className="rounded-xl border border-border/50 bg-card p-5">
-          <p className="text-sm font-semibold mb-4">My Attendance Today</p>
+          <p className="text-sm font-semibold mb-4">My Today Attendance</p>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
             {[
               {

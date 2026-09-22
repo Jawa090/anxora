@@ -148,6 +148,12 @@ export default function EmployeesPage() {
       .map((u: any) => [u.email.toLowerCase(), u])
   );
 
+  const isExcludedRoleOrDept = (role?: string | null, dept?: string | null) => {
+    const r = (role || "").toLowerCase().trim();
+    const d = (dept || "").toLowerCase().trim();
+    return r === "super_admin" || d === "executive";
+  };
+
   const hrmsEmployees: Employee[] = ((resp as any)?.data || [])
     .map((e: any) => {
       const sysUser = memberByEmail.get(e.email?.toLowerCase());
@@ -158,10 +164,12 @@ export default function EmployeesPage() {
         profile_picture: e.profile_picture || sysUser?.avatar_url || memberAvatarByEmail.get(e.email?.toLowerCase()) || undefined,
         _source: 'hrms' as const,
       };
-    });
+    })
+    .filter((e: any) => !isExcludedRoleOrDept(e.role, e.department));
 
   const hrmsEmails = new Set(hrmsEmployees.map((e) => e.email?.toLowerCase()));
   const systemUsers: Employee[] = ((membersResp as any) || [])
+    .filter((u: any) => !isExcludedRoleOrDept(u.role, u.department))
     .filter((u: any) => u.email && !hrmsEmails.has(u.email.toLowerCase()))
     .filter((u: any) => {
       if (statusFilter === "active") return u.is_active !== false;
@@ -208,10 +216,10 @@ export default function EmployeesPage() {
   const departments = (() => {
     const seen = new Map<string, string>();
     employees.forEach((e) => {
-      if (!e.department || !e.department.trim()) return;
+      if (!e.department || !e.department.trim() || e.department.includes('@') || e.department.trim().toLowerCase() === 'executive') return;
       const key = e.department.trim().toLowerCase();
       if (!seen.has(key)) {
-        seen.set(key, e.department.trim().replace(/\b\w/g, (c) => c.toUpperCase()));
+        seen.set(key, e.department.trim());
       }
     });
     return [...seen.values()].sort((a, b) => a.localeCompare(b));

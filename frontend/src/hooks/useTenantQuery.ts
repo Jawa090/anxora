@@ -2,10 +2,20 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { usersApi, rolesApi } from '@/lib/api';
 import { toast } from 'sonner';
 
-export function useOrganizationProfiles(params?: { includeSelf?: boolean | string; includeSuperAdmin?: boolean | string; department?: string }) {
+export function useOrganizationProfiles(params?: { includeSelf?: boolean | string; includeSuperAdmin?: boolean | string; department?: string; includeAdminsAndExecutive?: boolean }) {
   return useQuery({
     queryKey: ['profiles', params],
-    queryFn: () => usersApi.getAll(params),
+    queryFn: async () => {
+      const data = await usersApi.getAll(params);
+      if (params?.includeAdminsAndExecutive) {
+        return data;
+      }
+      return (data || []).filter((u: any) => {
+        const r = (u.role || '').toLowerCase().trim();
+        const d = (u.department || '').toLowerCase().trim();
+        return r !== 'super_admin' && d !== 'executive';
+      });
+    },
   });
 }
 

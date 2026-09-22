@@ -20,6 +20,7 @@ interface UserRole {
   role: 'super_admin' | 'admin' | 'manager' | 'sales_rep' | 'hr_manager' | 'inventory_manager' | 'employee';
   org_id: string;
   role_id: string | null;
+  department?: string;
 }
 
 interface AuthContextType {
@@ -61,19 +62,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         full_name: profileData.full_name ?? profileData.fullName ?? '',
       };
       setProfile(normalized);
-      setUser({ id: normalized.id, email: normalized.email });
+      setUser({ ...normalized, id: normalized.id, email: normalized.email, role: normalized.role, department: normalized.department });
       setSession({ user: { id: normalized.id } });
       if (profileData.role) {
         setUserRole({
           role: profileData.role,
           org_id: normalized.org_id,
           role_id: null,
+          department: normalized.department,
         });
       } else if (profileData.user_roles?.[0]) {
         setUserRole({
           role: profileData.user_roles[0].role,
           org_id: normalized.org_id,
           role_id: profileData.user_roles[0].id,
+          department: normalized.department,
         });
       }
       return normalized;

@@ -38,7 +38,7 @@ export function useAdminUsers() {
     queryKey: ['admin-users', orgId],
     queryFn: async () => {
       if (!orgId) return [];
-      const users = await usersApi.getAll({ includeSelf: true });
+      const users = await usersApi.getAll({ includeSelf: true, includeSuperAdmin: true });
       return users as AdminUser[];
     },
     enabled: !!orgId,
@@ -79,8 +79,8 @@ export function useAdminUsers() {
   });
 
   const adminCreateUser = useMutation({
-    mutationFn: async ({ email, fullName, roleSlug, department, phone }: { email: string; fullName: string; roleSlug: string; department?: string; phone?: string }) => {
-      return usersApi.create({ email, fullName, role: roleSlug, department, phone });
+    mutationFn: async ({ email, fullName, roleSlug, roleId, department, phone }: { email: string; fullName: string; roleSlug: string; roleId?: string; department?: string; phone?: string }) => {
+      return usersApi.create({ email, fullName, role: roleSlug, role_id: roleId, department, phone });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-users'] });
@@ -98,6 +98,19 @@ export function useAdminUsers() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-users'] });
       toast.success('User updated successfully');
+    },
+    onError: (err: Error) => {
+      toast.error(err.message);
+    },
+  });
+
+  const updateUserRole = useMutation({
+    mutationFn: async ({ userId, roleSlug, roleId }: { userId: string; roleSlug?: string; roleId?: string }) => {
+      return usersApi.update(userId, { role: roleSlug, role_id: roleId });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-users'] });
+      toast.success('User role updated successfully');
     },
     onError: (err: Error) => {
       toast.error(err.message);
@@ -135,6 +148,7 @@ export function useAdminUsers() {
     sendInvite,
     adminCreateUser,
     updateUser,
+    updateUserRole,
     deleteInvite,
     resetPassword,
   };

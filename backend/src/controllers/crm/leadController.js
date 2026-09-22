@@ -2,6 +2,7 @@ const db = require('../../config/database');
 const Joi = require('joi');
 const { fireWorkflows } = require('../../services/advancedWorkflowEngine');
 const notificationService = require('../../services/notificationService');
+const realtimeService = require('../../services/realtimeService');
 
 // Map database status/stage values to frontend expected values
 const mapStatusToFrontend = (status) => {
@@ -846,6 +847,10 @@ const create = async (req, res, next) => {
       );
     }
 
+    realtimeService.emitLeadsUpdated(req.user.orgId, { action: 'create', leadId: lead.id });
+    if (lead.assigned_to) realtimeService.emitUniboxPermissionChanged(lead.assigned_to);
+    if (lead.responsible_person) realtimeService.emitUniboxPermissionChanged(lead.responsible_person);
+
     res.status(201).json({
       ...lead,
       company: lead.linked_company_name || lead.company_name || lead.company,
@@ -1055,6 +1060,16 @@ const update = async (req, res, next) => {
       fireWorkflows(req.user.orgId, 'lead_stage_changed', lead, req.user.id);
     }
 
+    realtimeService.emitLeadsUpdated(req.user.orgId, { action: 'update', leadId: lead.id });
+    if (lead.assigned_to) realtimeService.emitUniboxPermissionChanged(lead.assigned_to);
+    if (oldLead && oldLead.assigned_to && oldLead.assigned_to !== lead.assigned_to) {
+      realtimeService.emitUniboxPermissionChanged(oldLead.assigned_to);
+    }
+    if (lead.responsible_person) realtimeService.emitUniboxPermissionChanged(lead.responsible_person);
+    if (oldLead && oldLead.responsible_person && oldLead.responsible_person !== lead.responsible_person) {
+      realtimeService.emitUniboxPermissionChanged(oldLead.responsible_person);
+    }
+
     res.json({
       ...lead,
       company: lead.linked_company_name || lead.company_name || lead.company,
@@ -1139,6 +1154,7 @@ const remove = async (req, res, next) => {
     }
 
     await client.query('COMMIT');
+    realtimeService.emitLeadsUpdated(req.user.orgId, { action: 'delete', leadId: id });
     res.json({ message: 'Lead deleted successfully' });
   } catch (err) {
     await client.query('ROLLBACK');
@@ -1530,6 +1546,7 @@ const updateStage = async (req, res, next) => {
 
     const lead = result.rows[0];
     fireWorkflows(req.user.orgId, 'lead_stage_changed', lead, req.user.id);
+    realtimeService.emitLeadsUpdated(req.user.orgId, { action: 'update_stage', leadId: lead.id });
 
     res.json({
       ...lead,
@@ -1783,6 +1800,9 @@ const bulkAssign = async (req, res, next) => {
        RETURNING id`,
       [assigned_to, cleanIds, orgId]
     );
+
+    realtimeService.emitLeadsUpdated(orgId, { action: 'bulk_assign', assignedTo: assigned_to });
+    realtimeService.emitUniboxPermissionChanged(assigned_to);
 
     res.json({
       message: `${result.rows.length} leads assigned to ${userCheck.rows[0].full_name}`,

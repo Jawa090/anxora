@@ -2,7 +2,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useCallback } from "react";
 import { api } from "@/lib/api";
 import { toast } from "sonner";
-import { useUniboxRealtime } from "./useRealtime";
+import { useUniboxRealtime, useUniboxFolderRealtime } from "./useRealtime";
 
 export interface UniboxEmail {
   id: string;
@@ -499,6 +499,8 @@ export interface UniboxCampaignFolder {
 
 export function useUniboxCampaignFolders() {
   const queryClient = useQueryClient();
+
+  useUniboxFolderRealtime();
 
   const foldersQuery = useQuery({
     queryKey: ["unibox-campaign-folders"],

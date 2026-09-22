@@ -96,9 +96,14 @@ export function UniboxPermissionsManager() {
     },
   });
 
-  // Users not yet granted access
+  // Users not yet granted access (exclude super_admin and executive who already have full access)
   const availableUsers = useMemo(() =>
-    allUsers.filter((user) => !permissions.some((perm) => perm.id === user.id)),
+    allUsers.filter(
+      (user: any) =>
+        user.role !== "super_admin" &&
+        (user.department || "").toLowerCase() !== "executive" &&
+        !permissions.some((perm) => perm.id === user.id)
+    ),
     [allUsers, permissions]
   );
 
@@ -347,10 +352,9 @@ export function UniboxPermissionsManager() {
       )}
 
       <div className="mt-4 p-3 bg-muted/50 rounded-lg">
-        <p className="text-xs text-muted-foreground">
-          <strong>Note:</strong> Users granted access here see the complete Unibox and can manage campaign folders.
-          For folder-only access, assign users to folders from the Unibox sidebar.
-          Only the super admin can manage Unibox access.
+        <p className="text-xs text-muted-foreground/80 leading-relaxed">
+          <span className="font-semibold text-foreground">Note:</span> Users granted access here see the complete Unibox and can manage campaign folders.
+          For folder-only access, assign users to folders from the Unibox sidebar. Only administrators and executives can manage Unibox access.
         </p>
       </div>
     </Card>

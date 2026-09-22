@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
@@ -20,6 +20,8 @@ import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
 import { useOrganization } from "@/contexts/OrganizationContext";
 import WorkforceAttendanceTrendChart from "@/components/hrms/WorkforceAttendanceTrendChart";
+import PersonalAttendanceTrendChart from "@/components/hrms/PersonalAttendanceTrendChart";
+import CrmStageDistributionCharts from "@/components/dashboard/CrmStageDistributionCharts";
 
 function fmtActivityTime(iso: string | null | undefined): string {
   if (!iso) return "";
@@ -138,9 +140,15 @@ function fmtDate(iso: string | null) {
 export default function HRMSDashboard() {
   const [period, setPeriod] = useState("today");
   const navigate = useNavigate();
-  const { userRole } = useAuth();
+  const { user, profile, userRole } = useAuth();
   const isAdmin = userRole?.role === "super_admin" || userRole?.role === "admin" || userRole?.role === "manager";
-  const isSuperAdmin = userRole?.role === "super_admin";
+  const userDept = (
+    profile?.department ||
+    (user as any)?.department ||
+    (userRole as any)?.department ||
+    ""
+  ).toLowerCase().trim();
+  const isSuperAdmin = userRole?.role === "super_admin" || (userRole?.role === "admin" && userDept === "executive");
 
   // Admin queries — org-wide data
   const { data: stats } = useQuery({
@@ -157,12 +165,20 @@ export default function HRMSDashboard() {
     enabled: isAdmin,
   });
 
-  const { data: todayAttendance = [] } = useQuery({
+  const { data: rawTodayAttendance = [] } = useQuery({
     queryKey: ["hrms-today-attendance"],
     queryFn: () => api.get<AttendanceRecord[]>("/hrms/attendance/today"),
     refetchInterval: 30000,
     enabled: isAdmin,
   });
+
+  const todayAttendance = useMemo(() => {
+    return (rawTodayAttendance as any[]).filter((r: any) => {
+      const role = (r.role || r.user_role || "").toLowerCase().trim();
+      const dept = (r.department || "").toLowerCase().trim();
+      return !(role === "super_admin" || dept === "executive");
+    });
+  }, [rawTodayAttendance]);
 
   const { data: leaveAnalytics } = useQuery({
     queryKey: ["leave-analytics-dashboard"],
@@ -329,56 +345,35 @@ export default function HRMSDashboard() {
           </div>
         </div>
 
+        {/* Personal Attendance & Punctuality Timeline */}
+        <PersonalAttendanceTrendChart />
+
         {/* Quick Actions for employee */}
         <Card>
           <CardHeader><CardTitle>Quick Actions</CardTitle></CardHeader>
           <CardContent>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               {[
-                { label: "Attendance", sub: "Clock in/out", icon: Clock, href: "/hrms/attendance", color: "bg-emerald-500" },
-                { label: "Leave Management", sub: "Apply for leave", icon: Calendar, href: "/hrms/leave", color: "bg-orange-500" },
-                { label: "Public Holidays", sub: "View holidays", icon: Palmtree, href: "/hrms/leave?tab=holidays", color: "bg-teal-500" },
-                { label: "Notifications", sub: "Alerts & updates", icon: Bell, href: "/hrms/notifications", color: "bg-violet-500" },
+                { label: "Attendance", sub: "Clock in/out records", icon: Clock, href: "/hrms/attendance", color: "bg-emerald-500" },
+                { label: "Leave Management", sub: "Requests & approvals", icon: Calendar, href: "/hrms/leave", color: "bg-orange-500" },
+                { label: "Public Holidays", sub: "Official holidays", icon: Palmtree, href: "/hrms/leave?tab=holidays", color: "bg-teal-500" },
               ].map((item) => (
                 <button key={item.label} onClick={() => navigate(item.href)}
-                  className="flex flex-col items-center gap-3 p-6 rounded-xl border border-border hover:shadow-lg hover:border-primary/30 transition-all group">
-                  <div className={cn("p-4 rounded-full", item.color)}>
-                    <item.icon className="h-6 w-6 text-white" />
+                  className="flex flex-col items-center gap-3 p-2 rounded-xl border border-border hover:shadow-lg hover:border-primary/30 transition-all group relative">
+                  <div className={cn("p-2 rounded-full", item.color)}>
+                    <item.icon className="h-5 w-5 text-white" />
                   </div>
+                  <ArrowUpRight className="h-4 w-4 text-muted-foreground/30 group-hover:text-muted-foreground transition-colors justify-end absolute right-10 top-5" />
                   <div className="text-center">
                     <p className="text-sm font-semibold">{item.label}</p>
                     <p className="text-xs text-muted-foreground mt-1">{item.sub}</p>
                   </div>
-                  <ArrowUpRight className="h-4 w-4 text-muted-foreground/30 group-hover:text-muted-foreground transition-colors" />
                 </button>
               ))}
             </div>
           </CardContent>
         </Card>
 
-        {/* Leave Overview Cards (4 in one row at the bottom) */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-4 gap-3">
-          {[
-            { label: "Pending Leaves", value: stats?.pendingLeaves ?? 0, color: "bg-amber-500", icon: Calendar },
-            { label: "On Leave", value: stats?.onLeaveToday ?? stats?.approvedLeaves ?? 0, color: "bg-blue-500", icon: Palmtree },
-            { label: "Approved", value: leaveStats.approved ?? 0, color: "bg-emerald-500", icon: CheckCircle },
-            { label: "Leave Requests", value: leaveStats.total_requests ?? 0, color: "bg-violet-500", icon: Briefcase },
-          ].map((stat) => (
-            <Card key={stat.label} className="hover:shadow-md transition-shadow">
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-muted-foreground">{stat.label}</p>
-                    <p className="text-3xl font-bold">{stat.value}</p>
-                  </div>
-                  <div className={`h-10 w-10 rounded-full ${stat.color} flex items-center justify-center`}>
-                    <stat.icon className="h-5 w-5 text-white" />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
       </div>
     );
   }
@@ -689,8 +684,13 @@ export default function HRMSDashboard() {
         </Card>
       </div>
 
-      {/* Workforce Attendance & Punctuality Trend Chart */}
-      <WorkforceAttendanceTrendChart />
+      {/* Attendance & Punctuality Trends Grid (Left: Workforce, Right: Personal) */}
+      <div className={!isSuperAdmin ? "grid grid-cols-1 xl:grid-cols-2 gap-5 items-stretch" : ""}>
+        <WorkforceAttendanceTrendChart />
+        {!isSuperAdmin && (
+          <PersonalAttendanceTrendChart />
+        )}
+      </div>
 
       {/* Pending Leave Requests */}
       <Card>
@@ -783,13 +783,12 @@ export default function HRMSDashboard() {
       <Card>
         <CardHeader><CardTitle>Quick Actions</CardTitle></CardHeader>
         <CardContent>
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4">
+          <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-4 gap-4">
             {[
               { label: "Manage Employees", sub: "View & edit staff", icon: Users, href: "/hrms/employees", color: "bg-blue-500" },
               { label: "Attendance", sub: "Clock in/out records", icon: Clock, href: "/hrms/attendance", color: "bg-emerald-500" },
               { label: "Leave Management", sub: "Requests & approvals", icon: Calendar, href: "/hrms/leave", color: "bg-orange-500" },
               { label: "Public Holidays", sub: "Official holidays", icon: Palmtree, href: "/hrms/leave?tab=holidays", color: "bg-teal-500" },
-              { label: "Notifications", sub: "Alerts & updates", icon: Bell, href: "/hrms/notifications", color: "bg-violet-500" },
             ].map((item) => (
               <button key={item.label} onClick={() => navigate(item.href)}
                 className="flex flex-col items-center gap-3 p-2 rounded-xl border border-border hover:shadow-lg hover:border-primary/30 transition-all group relative">

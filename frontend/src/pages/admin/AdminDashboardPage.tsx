@@ -64,7 +64,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { PermissionGuard } from "@/components/auth/PermissionGuard";
 import { ModulePermissionEditor } from "@/components/admin/ModulePermissionEditor";
 import { getAvatarUrl } from "@/lib/utils";
-import { DEPARTMENTS } from "@/lib/constants";
+import { ADMIN_DEPARTMENTS } from "@/lib/constants";
 
 const ROLE_OPTIONS = [
   { value: "admin", label: "Admin" },
@@ -162,7 +162,7 @@ export default function AdminDashboardPage() {
   // Dynamically fetched departments from DB users
   const { data: dbDepartments = [] } = useQuery({
     queryKey: ["admin-users-departments"],
-    queryFn: () => usersApi.getDepartments(),
+    queryFn: () => usersApi.getDepartments({ includeExecutive: true }),
     refetchInterval: 10000,
     refetchOnWindowFocus: true,
   });
@@ -321,7 +321,7 @@ export default function AdminDashboardPage() {
     // Case-insensitive match with DEPARTMENTS or fallback to original value
     let matchedDept = user.department || "";
     if (matchedDept) {
-      const found = DEPARTMENTS.find(
+      const found = ADMIN_DEPARTMENTS.find(
         (d) => d.toLowerCase() === matchedDept.toLowerCase()
       );
       if (found) {
@@ -947,7 +947,7 @@ export default function AdminDashboardPage() {
                       </SelectTrigger>
                       <SelectContent>
                         {(() => {
-                          const options = [...DEPARTMENTS];
+                          const options = [...ADMIN_DEPARTMENTS];
                           if (
                             formData.department &&
                             !options.some(

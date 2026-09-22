@@ -508,7 +508,7 @@ export const independentTasksApi = {
 export const usersApi = {
   getAll: (params?: { search?: string; role?: string; status?: string; department?: string; includeSelf?: boolean | string; includeSuperAdmin?: boolean | string }) => api.get<any[]>('/members', params),
   getStats: () => api.get<{ total: string; active: string; inactive: string; admins: string }>('/members/stats'),
-  getDepartments: () => api.get<string[]>('/members/departments'),
+  getDepartments: (params?: { includeExecutive?: boolean | string }) => api.get<string[]>('/members/departments', params),
   getById: (id: string) => api.get<any>(`/members/${id}`),
   create: (data: any) => api.post<any>('/members', data),
   update: (id: string, data: any) => api.put<any>(`/members/${id}`, data),
@@ -984,6 +984,7 @@ export const recruitmentApi = {
 
 export const shiftsApi = {
   getAll: () => api.get<{ data: any[] }>('/hrms/shifts'),
+  getMyShift: () => api.get<{ data: any }>('/hrms/shifts/my-shift'),
   create: (data: any) => api.post<any>('/hrms/shifts', data),
   update: (id: string, data: any) => api.put<any>(`/hrms/shifts/${id}`, data),
   delete: (id: string) => api.delete<any>(`/hrms/shifts/${id}`),

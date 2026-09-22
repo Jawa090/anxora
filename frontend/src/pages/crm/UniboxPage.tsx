@@ -316,7 +316,7 @@ export default function UniboxPage() {
         <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-4 mb-4">
           <Card className="p-3">
             <div className="flex items-center gap-2">
-              <Mail className="h-4 w-4 text-blue-600" />
+              <Mail className="h-4 w-4 text-secondary-foreground dark:text-primary" />
               <div>
                 <p className="text-xs text-muted-foreground">Total</p>
                 <p className="text-lg font-semibold">{stats.total}</p>
@@ -515,11 +515,11 @@ export default function UniboxPage() {
                                 }
                               }}
                               className={cn(
-                                "w-full text-left p-3 hover:bg-accent/50 transition-colors relative border-l-2 border-transparent",
+                                "w-full text-left p-3 hover:bg-accent/30 dark:hover:bg-accent/30 transition-colors relative border-l-2 border-transparent",
                                 selectedEmail?.id === email.id &&
-                                "bg-accent border-l-primary",
+                                "bg-accent/40 dark:bg-accent/40 border-l-primary",
                                 !email.is_read &&
-                                "bg-blue-50/50 dark:bg-blue-950/20",
+                                "bg-primary/20 dark:bg-primary/20",
                               )}
                             >
                               <div className="flex items-start justify-between gap-2">
@@ -539,7 +539,7 @@ export default function UniboxPage() {
                                       <Star className="h-3 w-3 text-yellow-500 fill-current" />
                                     )}
                                     {!email.is_read && (
-                                      <div className="w-2 h-2 bg-blue-600 rounded-full animate-pulse" />
+                                      <div className="w-2 h-2 bg-primary rounded-full animate-pulse" />
                                     )}
                                   </div>
                                   <p
@@ -776,7 +776,7 @@ export default function UniboxPage() {
                     <Button
                       size="sm"
                       onClick={() => setConvertDialogOpen(true)}
-                      className="gap-1 bg-blue-600 hover:bg-blue-700 text-white font-medium"
+                      className="gap-1 font-medium"
                     >
                       <UserPlus className="h-4 w-4" />
                       Convert to Lead
@@ -920,7 +920,7 @@ export default function UniboxPage() {
                           setShowLeadInfo(false);
                           setConvertDialogOpen(true);
                         }}
-                        className="w-full text-xs h-9 gap-1.5 bg-blue-600 hover:bg-blue-700 text-white"
+                        className="w-full text-xs h-9 gap-1.5"
                       >
                         <UserPlus className="h-3.5 w-3.5" />
                         Convert to Lead
@@ -1015,7 +1015,7 @@ export default function UniboxPage() {
                           href={instantlyData.profile}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="text-xs text-blue-500 hover:underline flex items-center gap-1 font-medium truncate"
+                          className="text-xs text-primary hover:underline flex items-center gap-1 font-medium truncate"
                         >
                           {instantlyData.profile}
                           <ExternalLink className="h-3 w-3 shrink-0" />
@@ -1037,7 +1037,7 @@ export default function UniboxPage() {
                           }
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="text-xs text-blue-500 hover:underline flex items-center gap-1 font-medium truncate"
+                          className="text-xs text-primary hover:underline flex items-center gap-1 font-medium truncate"
                         >
                           {matchedLead?.website || instantlyData?.website}
                           <ExternalLink className="h-3 w-3 shrink-0" />
@@ -1168,7 +1168,7 @@ export default function UniboxPage() {
                                         href={String(val)}
                                         target="_blank"
                                         rel="noopener noreferrer"
-                                        className="text-xs text-blue-500 hover:underline flex items-center gap-1 font-medium truncate"
+                                        className="text-xs text-primary hover:underline flex items-center gap-1 font-medium truncate"
                                       >
                                         {String(val)}
                                         <ExternalLink className="h-3 w-3 shrink-0" />
@@ -1229,7 +1229,7 @@ export default function UniboxPage() {
                 variant="outline"
                 onClick={() => syncInstantly.mutate()}
                 disabled={syncInstantly.isPending}
-                className="gap-2"
+                className="gap-2 hover:bg-secondary-foreground dark:hover:bg-primary hover:text-white"
               >
                 <TrendingUp
                   className={cn(

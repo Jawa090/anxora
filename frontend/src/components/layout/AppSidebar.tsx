@@ -904,7 +904,7 @@ export function AppSidebar({
             className={cn(
               "flex items-center gap-2 rounded-lg py-1.5 pl-8 pr-3 text-[12px] transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary group",
               isActive(child.href)
-                ? "bg-transparent text-white font-medium"
+                ? "bg-sidebar-accent/60 text-white font-medium"
                 : "text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent/50",
             )}
           >
@@ -1330,6 +1330,7 @@ export function AppSidebar({
     // ── Unibox campaigns in sidebar ──
     if (child.title === "Unibox" && parentTitle === "CRM") {
       const isUniboxExpanded = expandedSubItems.includes("Unibox");
+      const isUniboxActive = location.pathname.startsWith("/crm/unibox");
 
       return (
         <div key={child.href} className="group/submenu">
@@ -1349,35 +1350,35 @@ export function AppSidebar({
               }
             }}
             className={cn(
-              "flex w-full items-center justify-between rounded-xl py-2 pl-9 pr-3 text-[13px] transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary",
-              location.pathname.startsWith("/crm/unibox")
-                ? "bg-primary/10 text-primary font-medium"
-                : "text-slate-600 dark:text-slate-400 hover:text-primary dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/[0.03]",
+              "flex w-full items-center gap-2 rounded-lg py-1.5 pl-8 pr-3 text-[12px] transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary group",
+              isUniboxActive
+                ? "bg-sidebar-accent/60 text-white font-medium"
+                : "text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent/50",
             )}
           >
-            <div className="flex items-center gap-3">
-              {child.icon && (
-                <child.icon
-                  className={cn(
-                    "h-4 w-4",
-                    location.pathname.startsWith("/crm/unibox")
-                      ? "text-primary"
-                      : "text-slate-500",
-                  )}
-                />
-              )}
-              <span>Unibox</span>
-            </div>
+            {child.icon && (
+              <div
+                className={cn(
+                  "grid size-6 place-items-center rounded-md transition-all duration-200 shrink-0",
+                  isUniboxActive
+                    ? "bg-sidebar-primary text-sidebar-primary-foreground"
+                    : "bg-sidebar-accent/40 text-sidebar-primary group-hover:bg-sidebar-primary/30",
+                )}
+              >
+                <child.icon className="h-3.5 w-3.5" />
+              </div>
+            )}
+            <span className="truncate">Unibox</span>
             <ChevronRight
               className={cn(
-                "h-3 w-3 transition-transform duration-300 text-slate-600",
+                "ml-auto h-3.5 w-3.5 text-sidebar-primary flex-shrink-0 transition-transform duration-300",
                 isUniboxExpanded && "rotate-90 text-white",
               )}
             />
           </button>
 
           {isUniboxExpanded && (
-            <div className="ml-6 mt-1.5 space-y-1.5 border-l border-white/5 pl-4 animate-in slide-in-from-left-2 duration-300">
+            <div className="ml-8 mt-1.5 space-y-1.5 border-l border-white/5 pl-4 animate-in slide-in-from-left-2 duration-300">
               {hasFullUniboxAccess && (
                 <NavLink
                   to="/crm/unibox"
@@ -1386,8 +1387,8 @@ export function AppSidebar({
                     "flex items-center rounded-lg py-1.5 pl-3 pr-2 text-[12px] transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-primary",
                     location.pathname === "/crm/unibox" &&
                       !location.search.includes("campaign_id")
-                      ? "text-primary font-bold bg-primary/5"
-                      : "text-slate-600 dark:text-slate-500 hover:text-primary dark:hover:text-slate-300 hover:bg-slate-100/50 dark:hover:bg-white/[0.02]",
+                      ? "bg-sidebar-accent/60 text-white font-medium"
+                      : "text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent/50",
                   )}
                 >
                   All Emails
@@ -1406,6 +1407,9 @@ export function AppSidebar({
     }
 
     if (hasNestedChildren) {
+      const isNestedActive =
+        isActive(child.href) || location.pathname.startsWith(child.href);
+
       return (
         <div key={child.href} className="group/submenu">
           <NavLink
@@ -1417,36 +1421,35 @@ export function AppSidebar({
               }
             }}
             className={cn(
-              "flex w-full items-center justify-between gap-3 rounded-xl py-2 pl-9 pr-3 text-[13px] transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary",
-              isActive(child.href) || location.pathname.startsWith(child.href)
-                ? "bg-primary/10 text-primary font-medium"
-                : "text-slate-600 dark:text-slate-400 hover:text-primary dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/[0.03]",
+              "flex w-full items-center gap-2 rounded-lg py-1.5 pl-8 pr-3 text-[12px] transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary group",
+              isNestedActive
+                ? "bg-sidebar-accent/60 text-white font-medium"
+                : "text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent/50",
             )}
           >
-            <div className="flex items-center gap-3">
-              {child.icon && (
-                <child.icon
-                  className={cn(
-                    "h-4 w-4",
-                    isActive(child.href) ||
-                      location.pathname.startsWith(child.href)
-                      ? "text-primary"
-                      : "text-slate-500",
-                  )}
-                />
-              )}
-              <span>{child.title}</span>
-            </div>
+            {child.icon && (
+              <div
+                className={cn(
+                  "grid size-6 place-items-center rounded-md transition-all duration-200 shrink-0",
+                  isNestedActive
+                    ? "bg-sidebar-primary text-sidebar-primary-foreground"
+                    : "bg-sidebar-accent/40 text-sidebar-primary group-hover:bg-sidebar-primary/30",
+                )}
+              >
+                <child.icon className="h-3.5 w-3.5" />
+              </div>
+            )}
+            <span className="truncate">{child.title}</span>
             <ChevronRight
               className={cn(
-                "h-3 w-3 transition-transform duration-300 text-slate-600",
+                "ml-auto h-3.5 w-3.5 text-sidebar-primary flex-shrink-0 transition-transform duration-300",
                 isExpanded && "rotate-90 text-white",
               )}
             />
           </NavLink>
 
           {isExpanded && (
-            <div className="ml-6 mt-1.5 space-y-1.5 border-l border-white/5 pl-4 animate-in slide-in-from-left-2 duration-300">
+            <div className="ml-8 mt-1.5 space-y-1.5 border-l border-white/5 pl-4 animate-in slide-in-from-left-2 duration-300">
               {child.nestedChildren!.map((nested) => {
                 const deepNested = nested.hasNested
                   ? getDeepNestedItems(nested.title)
@@ -1464,21 +1467,21 @@ export function AppSidebar({
                         className={cn(
                           "flex w-full items-center justify-between rounded-lg py-1.5 pl-3 pr-2 text-[12px] font-medium transition-all",
                           isActive(nested.href)
-                            ? "text-primary bg-primary/10"
-                            : "text-slate-600 dark:text-slate-500 hover:text-slate-950 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/5",
+                            ? "bg-sidebar-accent/60 text-white font-medium"
+                            : "text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent/50",
                         )}
                       >
                         <span>{nested.title}</span>
                         <ChevronRight
                           className={cn(
-                            "h-3 w-3 transition-transform duration-300",
-                            isNestedExpanded && "rotate-90",
+                            "h-3 w-3 transition-transform duration-300 text-sidebar-primary",
+                            isNestedExpanded && "rotate-90 text-white",
                           )}
                         />
                       </button>
 
                       {isNestedExpanded && (
-                        <div className="ml-3 mt-1.5 space-y-1 border-l border-slate-200 dark:border-white/5 pl-3 animate-in fade-in duration-300">
+                        <div className="ml-3 mt-1.5 space-y-1 border-l border-white/5 pl-3 animate-in fade-in duration-300">
                           {deepNested.map((deep) => (
                             <NavLink
                               key={deep.href}
@@ -1486,8 +1489,8 @@ export function AppSidebar({
                               className={cn(
                                 "flex items-center rounded-lg py-1.5 pl-3 pr-2 text-[11px] transition-all",
                                 isActive(deep.href)
-                                  ? "text-primary dark:text-white font-bold"
-                                  : "text-slate-600 dark:text-slate-500 hover:text-slate-950 dark:hover:text-slate-300",
+                                  ? "text-white font-bold bg-sidebar-accent/50"
+                                  : "text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent/40",
                               )}
                             >
                               {deep.title}
@@ -1506,8 +1509,8 @@ export function AppSidebar({
                     className={cn(
                       "flex items-center rounded-lg py-1.5 pr-2 text-[12px] transition-all",
                       isActive(nested.href)
-                        ? "text-primary font-bold bg-primary/5 border-l-2 border-primary pl-2.5"
-                        : "pl-3 text-slate-600 dark:text-slate-500 hover:text-slate-950 dark:hover:text-slate-300 hover:bg-slate-100/50 dark:hover:bg-white/[0.02]",
+                        ? "bg-sidebar-accent/60 text-white font-bold border-l-2 border-sidebar-primary pl-2.5"
+                        : "pl-3 text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent/50",
                     )}
                   >
                     {nested.title}
@@ -1528,7 +1531,7 @@ export function AppSidebar({
         className={cn(
           "flex items-center gap-2 rounded-lg py-1.5 pl-8 pr-3 text-[12px] transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary group",
           isActive(child.href)
-            ? "bg-transparent text-white font-medium"
+            ? "bg-sidebar-accent/60 text-white font-medium"
             : "text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent/50",
         )}
       >
@@ -1852,8 +1855,8 @@ export function AppSidebar({
                   className={cn(
                     "flex w-full items-center justify-between rounded-xl px-4 py-2.5 text-[13px] font-medium transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary group",
                     sectionActive
-                      ? "bg-primary/10 text-primary"
-                      : "text-slate-600 dark:text-slate-400 hover:text-primary dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/[0.03]",
+                      ? "bg-sidebar-accent/60 text-white"
+                      : "text-sidebar-foreground/70 hover:text-white hover:bg-sidebar-accent/40",
                   )}
                 >
                   <div className="flex items-center gap-3">
@@ -1861,8 +1864,8 @@ export function AppSidebar({
                       className={cn(
                         "h-4 w-4 transition-colors duration-200",
                         sectionActive
-                          ? "text-primary"
-                          : "text-slate-500 group-hover:text-primary dark:group-hover:text-slate-300",
+                          ? "text-sidebar-primary"
+                          : "text-sidebar-foreground/60 group-hover:text-sidebar-primary",
                       )}
                     />
                     <span>{item.title}</span>
@@ -1879,8 +1882,8 @@ export function AppSidebar({
                 className={cn(
                   "flex items-center justify-between rounded-xl px-4 py-2.5 text-[13px] font-medium transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary group",
                   isActive(item.href!)
-                    ? "bg-primary/10 text-primary"
-                    : "text-slate-600 dark:text-slate-400 hover:text-primary dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/[0.03]",
+                    ? "bg-sidebar-accent/60 text-white"
+                    : "text-sidebar-foreground/70 hover:text-white hover:bg-sidebar-accent/40",
                 )}
               >
                 <div className="flex items-center gap-3">
@@ -1888,8 +1891,8 @@ export function AppSidebar({
                     className={cn(
                       "h-4 w-4 transition-colors duration-200",
                       isActive(item.href!)
-                        ? "text-primary"
-                        : "text-slate-500 group-hover:text-primary dark:group-hover:text-slate-300",
+                        ? "text-sidebar-primary"
+                        : "text-sidebar-foreground/60 group-hover:text-sidebar-primary",
                     )}
                   />
                   <span>{item.title}</span>
@@ -2113,8 +2116,8 @@ function SortableNavItem({
           className={cn(
             "flex flex-1 items-center justify-between rounded-xl px-4 py-2.5 text-[13px] font-medium transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary group",
             isActive(item.href!)
-              ? "bg-primary/10 text-primary"
-              : "text-slate-600 dark:text-slate-400 hover:text-primary dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/[0.03]",
+              ? "bg-sidebar-accent/60 text-white"
+              : "text-sidebar-foreground/70 hover:text-white hover:bg-sidebar-accent/40",
           )}
         >
           <div className="flex items-center gap-3">
@@ -2122,8 +2125,8 @@ function SortableNavItem({
               className={cn(
                 "h-4 w-4 transition-colors duration-200",
                 isActive(item.href!)
-                  ? "text-primary"
-                  : "text-slate-500 group-hover:text-primary dark:group-hover:text-slate-300",
+                  ? "text-sidebar-primary"
+                  : "text-sidebar-foreground/60 group-hover:text-sidebar-primary",
               )}
             />
             <span>{item.title}</span>

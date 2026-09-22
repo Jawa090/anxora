@@ -105,6 +105,9 @@ export default function GenerateSalarySlipPage() {
   const [employeeSearch, setEmployeeSearch] = useState("");
 
   const filteredEmployees = employees.filter((emp: any) => {
+    const r = (emp.role || "").toLowerCase().trim();
+    const d = (emp.department || "").toLowerCase().trim();
+    if (r === "super_admin" || d === "executive") return false;
     if (!employeeSearch.trim()) return true;
     const q = employeeSearch.toLowerCase().trim();
     const fullName = `${emp.first_name || ""} ${emp.last_name || ""}`.toLowerCase();

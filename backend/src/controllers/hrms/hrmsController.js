@@ -22,14 +22,17 @@ const getStats = async (req, res, next) => {
         break;
     }
 
-    // 1. Total active employees in the organization (excluding super_admin)
+    // 1. Total active employees in the organization (excluding admin & executive)
     const empCountRes = await db.query(`
       SELECT COUNT(DISTINCT e.id) as total
       FROM employees e
       LEFT JOIN users u ON e.user_id = u.id OR LOWER(u.email) = LOWER(e.email)
       WHERE e.org_id = $1 
         AND e.status = 'active'
-        AND (u.role IS NULL OR u.role != 'super_admin')
+        AND NOT (
+          LOWER(COALESCE(u.role::text, 'employee')) = 'super_admin'
+          OR LOWER(COALESCE(NULLIF(TRIM(u.department), ''), NULLIF(TRIM(e.department), ''), '')) = 'executive'
+        )
     `, [req.user.orgId]);
 
     const totalEmployees = parseInt(empCountRes.rows[0]?.total, 10) || 0;
@@ -50,7 +53,10 @@ const getStats = async (req, res, next) => {
       LEFT JOIN users u ON e.user_id = u.id OR LOWER(u.email) = LOWER(e.email)
       WHERE e.org_id = $1
         AND e.status = 'active'
-        AND (u.role IS NULL OR u.role != 'super_admin')
+        AND NOT (
+          LOWER(COALESCE(u.role::text, 'employee')) = 'super_admin'
+          OR LOWER(COALESCE(NULLIF(TRIM(u.department), ''), NULLIF(TRIM(e.department), ''), '')) = 'executive'
+        )
     `, [req.user.orgId]);
 
     // 3. Approved leaves today
@@ -60,7 +66,10 @@ const getStats = async (req, res, next) => {
       JOIN employees e ON lr.employee_id = e.id
       LEFT JOIN users u ON e.user_id = u.id OR LOWER(u.email) = LOWER(e.email)
       WHERE lr.org_id = $1 AND lr.status = 'approved'
-        AND (u.role IS NULL OR u.role != 'super_admin')
+        AND NOT (
+          LOWER(COALESCE(u.role::text, 'employee')) = 'super_admin'
+          OR LOWER(COALESCE(NULLIF(TRIM(u.department), ''), NULLIF(TRIM(e.department), ''), '')) = 'executive'
+        )
         AND CURRENT_DATE BETWEEN DATE(lr.start_date) AND DATE(lr.end_date)
     `, [req.user.orgId]);
 
@@ -136,8 +145,13 @@ const getActivities = async (req, res, next) => {
         a.status
       FROM attendance a
       JOIN employees e ON a.employee_id = e.id
+      LEFT JOIN users u ON (e.user_id = u.id OR a.user_id = u.id OR LOWER(u.email) = LOWER(e.email))
       WHERE a.org_id = $1 AND a.clock_in IS NOT NULL
       AND a.date >= CURRENT_DATE - INTERVAL '7 days'
+      AND NOT (
+        LOWER(COALESCE(u.role::text, 'employee')) = 'super_admin'
+        OR LOWER(COALESCE(NULLIF(TRIM(u.department), ''), NULLIF(TRIM(e.department), ''), '')) = 'executive'
+      )
       
       UNION ALL
       
@@ -149,8 +163,13 @@ const getActivities = async (req, res, next) => {
         a.status
       FROM attendance a
       JOIN employees e ON a.employee_id = e.id
+      LEFT JOIN users u ON (e.user_id = u.id OR a.user_id = u.id OR LOWER(u.email) = LOWER(e.email))
       WHERE a.org_id = $1 AND a.clock_out IS NOT NULL
       AND a.date >= CURRENT_DATE - INTERVAL '7 days'
+      AND NOT (
+        LOWER(COALESCE(u.role::text, 'employee')) = 'super_admin'
+        OR LOWER(COALESCE(NULLIF(TRIM(u.department), ''), NULLIF(TRIM(e.department), ''), '')) = 'executive'
+      )
       
       UNION ALL
       
@@ -166,9 +185,14 @@ const getActivities = async (req, res, next) => {
       FROM leave_requests lr
       JOIN employees e ON lr.employee_id = e.id
       JOIN leave_types lt ON lr.leave_type_id = lt.id
+      LEFT JOIN users u ON (e.user_id = u.id OR LOWER(u.email) = LOWER(e.email))
       WHERE lr.org_id = $1
       AND lr.status != 'cancelled'
       AND lr.created_at >= CURRENT_DATE - INTERVAL '7 days'
+      AND NOT (
+        LOWER(COALESCE(u.role::text, 'employee')) = 'super_admin'
+        OR LOWER(COALESCE(NULLIF(TRIM(u.department), ''), NULLIF(TRIM(e.department), ''), '')) = 'executive'
+      )
       
       ORDER BY timestamp DESC
       LIMIT $2
@@ -240,13 +264,18 @@ const getAttendance = async (req, res, next) => {
         a.*,
         COALESCE(e.name, e.first_name || ' ' || e.last_name, e.first_name, 'Unknown Employee') as employee_name,
         e.employee_id as emp_id,
-        e.department,
+        COALESCE(NULLIF(TRIM(u.department), ''), NULLIF(TRIM(e.department), '')) as department,
+        u.role::text as user_role,
         e.position,
-        u.avatar_url
+        COALESCE(e.profile_picture, u.avatar_url) as avatar_url
       FROM attendance a
       JOIN employees e ON a.employee_id = e.id
-      LEFT JOIN users u ON e.user_id = u.id
+      LEFT JOIN users u ON (e.user_id = u.id OR a.user_id = u.id OR LOWER(u.email) = LOWER(e.email))
       ${whereClause}
+        AND NOT (
+          LOWER(COALESCE(u.role::text, 'employee')) = 'super_admin'
+          OR LOWER(COALESCE(NULLIF(TRIM(u.department), ''), NULLIF(TRIM(e.department), ''), '')) = 'executive'
+        )
       ORDER BY a.date DESC, a.clock_in DESC
       ${limitClause}
     `;
@@ -269,13 +298,18 @@ const getTodayAttendance = async (req, res, next) => {
         a.*,
         COALESCE(e.name, e.first_name || ' ' || e.last_name, e.first_name, 'Unknown Employee') as employee_name,
         e.employee_id as emp_id,
-        e.department,
+        COALESCE(NULLIF(TRIM(u.department), ''), NULLIF(TRIM(e.department), '')) as department,
+        u.role::text as user_role,
         e.position,
-        u.avatar_url
+        COALESCE(e.profile_picture, u.avatar_url) as avatar_url
       FROM attendance a
       JOIN employees e ON a.employee_id = e.id
-      LEFT JOIN users u ON e.user_id = u.id
+      LEFT JOIN users u ON (e.user_id = u.id OR a.user_id = u.id OR LOWER(u.email) = LOWER(e.email))
       WHERE a.org_id = $1 AND DATE(a.date) = CURRENT_DATE
+        AND NOT (
+          LOWER(COALESCE(u.role::text, 'employee')) = 'super_admin'
+          OR LOWER(COALESCE(NULLIF(TRIM(u.department), ''), NULLIF(TRIM(e.department), ''), '')) = 'executive'
+        )
       ORDER BY COALESCE(a.updated_at, a.clock_out, a.clock_in, a.created_at) DESC
       LIMIT 10
     `;
@@ -753,14 +787,17 @@ const getAttendanceTrend = async (req, res, next) => {
     const days = Math.min(30, Math.max(5, parseInt(req.query.days, 10) || 7));
     const orgId = req.user.orgId;
 
-    // 1. Total active employees in org (excluding super_admin)
+    // 1. Total active employees in org (excluding admin & executive)
     const empRes = await db.query(`
       SELECT COUNT(DISTINCT e.id) as total
       FROM employees e
       LEFT JOIN users u ON e.user_id = u.id OR LOWER(u.email) = LOWER(e.email)
       WHERE e.org_id = $1 
         AND e.status = 'active'
-        AND (u.role IS NULL OR u.role != 'super_admin')
+        AND NOT (
+          LOWER(COALESCE(u.role::text, 'employee')) = 'super_admin'
+          OR LOWER(COALESCE(NULLIF(TRIM(u.department), ''), NULLIF(TRIM(e.department), ''), '')) = 'executive'
+        )
     `, [orgId]);
     const totalEmployees = parseInt(empRes.rows[0]?.total, 10) || 0;
 
@@ -777,7 +814,10 @@ const getAttendanceTrend = async (req, res, next) => {
       LEFT JOIN users u ON e.user_id = u.id OR LOWER(u.email) = LOWER(e.email)
       WHERE a.org_id = $1
         AND a.date >= CURRENT_DATE - ($2 || ' days')::INTERVAL
-        AND (u.role IS NULL OR u.role != 'super_admin')
+        AND NOT (
+          LOWER(COALESCE(u.role::text, 'employee')) = 'super_admin'
+          OR LOWER(COALESCE(NULLIF(TRIM(u.department), ''), NULLIF(TRIM(e.department), ''), '')) = 'executive'
+        )
       GROUP BY a.date
       ORDER BY a.date ASC
     `, [orgId, days]);
@@ -792,6 +832,12 @@ const getAttendanceTrend = async (req, res, next) => {
         ON lr.org_id = $1 
         AND lr.status = 'approved'
         AND d::date BETWEEN lr.start_date AND lr.end_date
+      LEFT JOIN employees e ON lr.employee_id = e.id
+      LEFT JOIN users u ON (e.user_id = u.id OR LOWER(u.email) = LOWER(e.email))
+      WHERE NOT (
+        LOWER(COALESCE(u.role::text, 'employee')) = 'super_admin'
+        OR LOWER(COALESCE(NULLIF(TRIM(u.department), ''), NULLIF(TRIM(e.department), ''), '')) = 'executive'
+      )
       GROUP BY d::date
     `, [orgId, days]);
 

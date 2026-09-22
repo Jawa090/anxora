@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -8,7 +9,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { AlertCircle } from 'lucide-react';
 import { toast } from 'sonner';
-import { recruitmentApi } from '@/lib/api';
+import { recruitmentApi, usersApi } from '@/lib/api';
 import { DEPARTMENTS } from '@/lib/constants';
 import {
   validateRequisitionForm,
@@ -20,6 +21,12 @@ export default function RequisitionRequestPage() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [formErrors, setFormErrors] = useState<RequisitionFormErrors>({});
+
+  const { data: dbDepartments = [] } = useQuery({
+    queryKey: ["admin-users-departments"],
+    queryFn: () => usersApi.getDepartments(),
+  });
+  const departmentOptions = dbDepartments.length > 0 ? dbDepartments : DEPARTMENTS;
   const [formData, setFormData] = useState({
     department: '',
     position: '',
@@ -114,7 +121,7 @@ export default function RequisitionRequestPage() {
                   <SelectValue placeholder="Please select a department" />
                 </SelectTrigger>
                 <SelectContent>
-                  {DEPARTMENTS.map((dept) => (
+                  {departmentOptions.map((dept) => (
                     <SelectItem key={dept} value={dept}>{dept}</SelectItem>
                   ))}
                 </SelectContent>

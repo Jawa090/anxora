@@ -11,13 +11,14 @@ import {
 } from "recharts";
 import { leadsApi, dealsApi } from "@/lib/api";
 import { Skeleton } from "@/components/ui/skeleton";
+import { cn } from "@/lib/utils";
 
 const monthsBack = 6;
 
 const monthLabel = (date: Date) =>
   date.toLocaleDateString("en-US", { month: "short" });
 
-export function SalesChart() {
+export function SalesChart({ className }: { className?: string } = {}) {
   const { data: leadsResp, isLoading: leadsLoading } = useQuery({
     queryKey: ["dashboard", "leads", "chart"],
     queryFn: () => leadsApi.getAll({ limit: 500 }),
@@ -80,8 +81,8 @@ export function SalesChart() {
       }
     };
 
-    leads.forEach((lead: any) => addToBucket(lead, "leads"));
-    deals.forEach((deal: any) => addToBucket(deal, "deals", true));
+    leads.forEach((l: any) => addToBucket(l, "leads"));
+    deals.forEach((d: any) => addToBucket(d, "deals", true));
 
     return buckets;
   }, [leadsResp, dealsResp]);
@@ -89,7 +90,12 @@ export function SalesChart() {
   const isLoading = leadsLoading || dealsLoading;
 
   return (
-    <div className="rounded-[22px] border border-border/40 bg-card shadow-sm animate-fade-in overflow-hidden h-[300px] flex flex-col">
+    <div
+      className={cn(
+        "rounded-[22px] border border-border/40 bg-card shadow-sm animate-fade-in overflow-hidden h-full flex flex-col justify-between",
+        className,
+      )}
+    >
       <div className="border-b border-border/40 px-6 py-3 shrink-0">
         <div className="flex items-center justify-between">
           <div>

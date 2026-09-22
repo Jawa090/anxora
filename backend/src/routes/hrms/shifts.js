@@ -10,6 +10,7 @@ router.post('/', shiftController.createShift);
 router.put('/:id', shiftController.updateShift);
 router.delete('/:id', shiftController.deleteShift);
 
+router.get('/my-shift', shiftController.getMyShift);
 router.get('/assignments', shiftController.getAssignments);
 router.post('/assign', shiftController.assignShift);
 

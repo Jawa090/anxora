@@ -24,8 +24,10 @@ const roleColors: Record<string, string> = {
 
 export function ProjectResourceView({ projectId }: { projectId: string }) {
   const { profile } = useAuth();
-  const { data: members = [] } = useProjectMembers(projectId);
-  const { data: tasks = [] } = useProjectTasks(projectId);
+  const { data: rawMembers = [] } = useProjectMembers(projectId);
+  const members: any[] = Array.isArray(rawMembers) ? rawMembers : [];
+  const { data: rawTasks = [] } = useProjectTasks(projectId);
+  const tasks: any[] = Array.isArray(rawTasks) ? rawTasks : [];
   const addMember = useAddProjectMember();
   const removeMember = useRemoveProjectMember();
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -45,7 +47,12 @@ export function ProjectResourceView({ projectId }: { projectId: string }) {
   });
 
   const memberIds = new Set(members.map((m) => m.user_id));
-  const availableUsers = orgUsers.filter((u) => !memberIds.has(u.id));
+  const availableUsers = orgUsers.filter((u: any) => {
+    const r = (u.role || "").toLowerCase().trim();
+    const d = (u.department || "").toLowerCase().trim();
+    if (r === "super_admin" || d === "executive") return false;
+    return !memberIds.has(u.id);
+  });
 
   const handleAdd = () => {
     if (!selectedUser) return;

@@ -201,6 +201,61 @@ export default function DirectChatPage() {
   }, [onRealtime, offRealtime, queryClient]);
 
   useEffect(() => {
+    const handleUserUpdated = (payload: any) => {
+      if (!payload?.id) return;
+      const targetId = String(payload.id).toLowerCase();
+      const isInactive = payload.is_active === false || payload.is_deleted === true;
+
+      queryClient.setQueriesData(
+        { queryKey: ["workgroups"] },
+        (prev: any[] | undefined) => {
+          if (!Array.isArray(prev)) return prev;
+          return prev.map((wg) => {
+            const isPeer =
+              String(wg?.direct_peer_user_id || "").toLowerCase() === targetId ||
+              (Array.isArray(wg?.members) &&
+                wg.members.some(
+                  (m: any) =>
+                    String(m.user_id || m.id || "").toLowerCase() === targetId &&
+                    String(m.user_id || m.id || "") !== String(user?.id || ""),
+                ));
+
+            if (isPeer) {
+              return {
+                ...wg,
+                is_peer_deleted: isInactive,
+                direct_peer_status: isInactive
+                  ? (payload.is_deleted ? "deleted" : "inactive")
+                  : "active",
+                is_online: isInactive ? false : wg.is_online,
+              };
+            }
+            return wg;
+          });
+        },
+      );
+      queryClient.invalidateQueries({ queryKey: ["workgroups"] });
+      queryClient.invalidateQueries({ queryKey: ["admin-users"] });
+      if (selectedId) {
+        queryClient.invalidateQueries({ queryKey: ["workgroup", selectedId] });
+        queryClient.invalidateQueries({ queryKey: ["workgroup-members", selectedId] });
+      }
+    };
+
+    const handleUserDeleted = (payload: any) => {
+      if (!payload?.id) return;
+      handleUserUpdated({ id: payload.id, is_active: false, is_deleted: true });
+    };
+
+    onRealtime("user:updated", handleUserUpdated);
+    onRealtime("user:deleted", handleUserDeleted);
+    return () => {
+      offRealtime("user:updated", handleUserUpdated);
+      offRealtime("user:deleted", handleUserDeleted);
+    };
+  }, [onRealtime, offRealtime, queryClient, selectedId]);
+
+  useEffect(() => {
     if (!selectedId) return;
     queryClient.setQueriesData(
       { queryKey: ["workgroups"] },

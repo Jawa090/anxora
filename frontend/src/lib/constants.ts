@@ -3,15 +3,20 @@
  * Keep department names in sync with the Admin Dashboard.
  */
 
-export const DEPARTMENTS = [
+export const ADMIN_DEPARTMENTS = [
+  "Executive",
   "Management",
   "Sales",
-  "Marketing",
+  "SEO Marketing",
+  "Email Marketing",
   "Operations",
   "Human Resources",
-  "Engineering",
+  "Software Engineering",
+  "Estimation Department",
+  "Growth Engine Department",
   "Customer Support",
   "Finance",
-  "Quality Assurance",
-  "Legal",
 ];
+
+// General departments list for all other pages (excludes Executive)
+export const DEPARTMENTS = ADMIN_DEPARTMENTS.filter((d) => d !== "Executive");

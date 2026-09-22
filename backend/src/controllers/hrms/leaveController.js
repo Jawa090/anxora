@@ -829,7 +829,11 @@ const resetMonthlyLeaves = async (req, res, next) => {
     const empResult = await db.query(
       `SELECT e.id FROM employees e
        WHERE e.org_id = $1 AND e.status = 'active'
-         AND NOT EXISTS (SELECT 1 FROM public.users u WHERE LOWER(u.email) = LOWER(e.email) AND u.role IN ('super_admin', 'admin'))`,
+         AND NOT EXISTS (
+           SELECT 1 FROM public.users u 
+           WHERE LOWER(u.email) = LOWER(e.email) 
+             AND (u.role = 'super_admin' OR LOWER(COALESCE(NULLIF(TRIM(u.department), ''), NULLIF(TRIM(e.department), ''), '')) = 'executive')
+         )`,
       [orgId]
     );
 

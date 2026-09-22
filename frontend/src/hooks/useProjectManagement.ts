@@ -172,9 +172,9 @@ export function useMyAssignedMilestones() {
 // ─── MEMBERS ────────────────────────────────────────────────────────────────
 
 export function useProjectMembers(projectId: string) {
-  return useQuery({
+  return useQuery<any[]>({
     queryKey: ['project_members', projectId],
-    queryFn: () => api.get(`/projects/${projectId}/members`),
+    queryFn: () => api.get<any[]>(`/projects/${projectId}/members`),
     enabled: !!projectId,
   });
 }
@@ -182,7 +182,7 @@ export function useProjectMembers(projectId: string) {
 export function useAddProjectMember() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (m: { project_id: string; user_id: string; role?: string }) =>
+    mutationFn: async (m: { project_id: string; user_id: string; role?: string; allocated_hours?: number }) =>
       api.post(`/projects/${m.project_id}/members`, m),
     onSuccess: (_, v) => {
       qc.invalidateQueries({ queryKey: ['project_members', v.project_id] });

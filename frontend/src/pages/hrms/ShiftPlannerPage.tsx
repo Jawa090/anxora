@@ -70,6 +70,7 @@ interface EmployeeAssignment {
   email: string;
   department?: string | null;
   position?: string | null;
+  role?: string | null;
   profile_picture?: string | null;
   assignment_id?: string | null;
   shift_id?: string | null;
@@ -368,25 +369,22 @@ export default function ShiftPlannerPage() {
     });
   };
 
-  // Dynamically derive departments strictly from DB users and assignments (Title Case normalized)
+  // Dynamically derive departments strictly from DB users and assignments
   const departments = (() => {
     const seen = new Map<string, string>();
     (dbDepartments || []).forEach((d: string) => {
-      if (d && d.trim()) {
-        seen.set(
-          d.trim().toLowerCase(),
-          d.trim().replace(/\b\w/g, (c) => c.toUpperCase())
-        );
+      if (d && d.trim() && !d.includes('@') && d.trim().toLowerCase() !== 'executive') {
+        const key = d.trim().toLowerCase();
+        if (!seen.has(key)) {
+          seen.set(key, d.trim());
+        }
       }
     });
     assignments.forEach((a) => {
-      if (a.department && a.department.trim()) {
+      if (a.department && a.department.trim() && !a.department.includes('@') && a.department.trim().toLowerCase() !== 'executive') {
         const key = a.department.trim().toLowerCase();
         if (!seen.has(key)) {
-          seen.set(
-            key,
-            a.department.trim().replace(/\b\w/g, (c) => c.toUpperCase())
-          );
+          seen.set(key, a.department.trim());
         }
       }
     });
@@ -394,18 +392,22 @@ export default function ShiftPlannerPage() {
   })();
 
   const filteredAssignments = assignments.filter((a) => {
+    const role = ((a as any).role || "").toLowerCase().trim();
+    const dept = (a.department || "").toLowerCase().trim();
+    if (role === "super_admin" || dept === "executive") {
+      return false;
+    }
     const q = searchEmployee.toLowerCase();
-    const dept = (a.department || "").trim();
     const matchesSearch =
       !q ||
       a.employee_name.toLowerCase().includes(q) ||
       (a.email && a.email.toLowerCase().includes(q)) ||
-      dept.toLowerCase().includes(q);
+      dept.includes(q);
     const matchesDept =
       deptFilter === "all" ||
       (deptFilter === "none"
         ? !a.department || a.department.trim() === ""
-        : dept.toLowerCase() === deptFilter.toLowerCase());
+        : dept === deptFilter.toLowerCase());
     return matchesSearch && matchesDept;
   });
 

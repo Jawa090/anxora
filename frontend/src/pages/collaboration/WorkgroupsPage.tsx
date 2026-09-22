@@ -71,6 +71,7 @@ import {
   Clock,
   Phone,
   Video,
+  UserX,
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { useVideoCall } from "@/contexts/VideoCallContext";
@@ -178,6 +179,51 @@ export default function WorkgroupsPage() {
   ).length;
 
   const [search, setSearch] = useState("");
+  const [directChatSearch, setDirectChatSearch] = useState("");
+
+  const filteredDirectChats = useMemo(() => {
+    const q = directChatSearch.trim().toLowerCase();
+    if (!q) return directChatWorkgroups;
+    return directChatWorkgroups.filter((chat) => {
+      const name = (chat.display_name || chat.name || "").toLowerCase();
+      return name.includes(q);
+    });
+  }, [directChatWorkgroups, directChatSearch]);
+
+  const searchableNewUsers = useMemo(() => {
+    const q = directChatSearch.trim().toLowerCase();
+    if (!q) return [];
+    const existingPeerIds = new Set(
+      directChatWorkgroups
+        .map((chat) => chat.direct_peer_user_id)
+        .filter(Boolean),
+    );
+    return orgMembers
+      .filter((m: any) => m.id !== user?.id && !existingPeerIds.has(m.id))
+      .filter((m: any) => {
+        const name = (m.full_name || "").toLowerCase();
+        const email = (m.email || "").toLowerCase();
+        return name.includes(q) || email.includes(q);
+      })
+      .slice(0, 6);
+  }, [directChatSearch, directChatWorkgroups, orgMembers, user?.id]);
+
+  const handleStartDirectChatWithUser = async (targetUserId: string) => {
+    try {
+      const direct = await workgroupsApi.openDirectChat(targetUserId);
+      if (direct?.id) {
+        queryClient.invalidateQueries({ queryKey: ["workgroups"] });
+        openWorkgroup(direct.id);
+        setDirectChatSearch("");
+      } else {
+        toast.error("Failed to start direct chat");
+      }
+    } catch (err: any) {
+      toast.error(
+        err?.response?.data?.error || err?.message || "Failed to start direct chat",
+      );
+    }
+  };
   const [filterPinned, setFilterPinned] = useState("all");
   const [sortBy, setSortBy] = useState("recent");
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
@@ -521,6 +567,89 @@ export default function WorkgroupsPage() {
     return () => {
       offRealtime("workgroup:updated", handleWorkgroupUpdated);
       offRealtime("connect", handleWorkgroupUpdated);
+    };
+  }, [onRealtime, offRealtime, queryClient, selectedId]);
+
+  useEffect(() => {
+    const handleUserUpdated = (payload: any) => {
+      if (!payload?.id) return;
+      const targetId = String(payload.id).toLowerCase();
+      const isInactive = payload.is_active === false || payload.is_deleted === true;
+
+      queryClient.setQueriesData(
+        { queryKey: ["workgroups"] },
+        (prev: Workgroup[] | undefined) => {
+          if (!Array.isArray(prev)) return prev;
+          return prev.map((wg) => {
+            const isPeer =
+              String(wg.direct_peer_user_id || "").toLowerCase() === targetId ||
+              (Array.isArray((wg as any).members) &&
+                (wg as any).members.some(
+                  (m: any) =>
+                    String(m.user_id || m.id || "").toLowerCase() === targetId &&
+                    String(m.user_id || m.id || "") !== String(user?.id || ""),
+                ));
+
+            if (isPeer) {
+              return {
+                ...wg,
+                is_peer_deleted: isInactive,
+                direct_peer_status: isInactive
+                  ? (payload.is_deleted ? "deleted" : "inactive")
+                  : "active",
+                is_online: isInactive ? false : wg.is_online,
+              };
+            }
+            return wg;
+          });
+        },
+      );
+      queryClient.invalidateQueries({ queryKey: ["workgroups"] });
+      queryClient.invalidateQueries({ queryKey: ["admin-users"] });
+      if (selectedId) {
+        queryClient.invalidateQueries({ queryKey: ["workgroup", selectedId] });
+        queryClient.invalidateQueries({ queryKey: ["workgroup-members", selectedId] });
+      }
+    };
+
+    const handleUserDeleted = (payload: any) => {
+      if (!payload?.id) return;
+      handleUserUpdated({ id: payload.id, is_active: false, is_deleted: true });
+    };
+
+    const handlePresenceUpdate = (payload: {
+      userId?: string;
+      is_online?: boolean;
+      last_seen_at?: string | null;
+    }) => {
+      if (!payload?.userId) return;
+      queryClient.setQueriesData(
+        { queryKey: ["workgroups"] },
+        (prev: Workgroup[] | undefined) => {
+          if (!Array.isArray(prev)) return prev;
+          return prev.map((wg) =>
+            wg?.direct_peer_user_id === payload.userId
+              ? {
+                  ...wg,
+                  is_online: payload.is_online ?? wg.is_online,
+                  last_seen_at:
+                    payload.last_seen_at !== undefined
+                      ? payload.last_seen_at
+                      : wg.last_seen_at,
+                }
+              : wg,
+          );
+        },
+      );
+    };
+
+    onRealtime("user:updated", handleUserUpdated);
+    onRealtime("user:deleted", handleUserDeleted);
+    onRealtime("presence:update", handlePresenceUpdate);
+    return () => {
+      offRealtime("user:updated", handleUserUpdated);
+      offRealtime("user:deleted", handleUserDeleted);
+      offRealtime("presence:update", handlePresenceUpdate);
     };
   }, [onRealtime, offRealtime, queryClient, selectedId]);
 
@@ -924,9 +1053,9 @@ export default function WorkgroupsPage() {
       <div className="space-y-6 mb-6">
         {/* 1. Direct Chats Section */}
         <div className="space-y-3.5 bg-card border border-border/60 rounded-2xl p-4 lg:p-5 shadow-sm">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between gap-3 flex-wrap">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-2xl  bg-primary/10 text-primary  flex items-center justify-center shrink-0">
+              <div className="w-10 h-10 rounded-2xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
                 <MessageSquare className="w-5 h-5" />
               </div>
               <div>
@@ -938,23 +1067,49 @@ export default function WorkgroupsPage() {
                 </p>
               </div>
             </div>
-            {directChatWorkgroups.length > 0 && (
-              <Button
-                variant="outline"
-                size="sm"
-                className="rounded-xl gap-1 text-xs hover:bg-secondary-foreground dark:hover:bg-primary hover:text-white font-medium "
-                onClick={() => navigate("/collaboration/direct-chats")}
-              >
-                View all
-                <ChevronRight className="w-3.5 h-3.5" />
-              </Button>
-            )}
+
+            <div className="flex items-center gap-2 flex-1 max-w-md justify-end">
+              <div className="relative w-full max-w-[240px]">
+                <Search className="h-3.5 w-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  value={directChatSearch}
+                  onChange={(e) => setDirectChatSearch(e.target.value)}
+                  placeholder="Search chats or members..."
+                  className="h-8 pl-8 pr-7 text-xs rounded-xl bg-muted/40 border-border/60 focus-visible:bg-background"
+                />
+                {directChatSearch && (
+                  <button
+                    onClick={() => setDirectChatSearch("")}
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground text-xs"
+                  >
+                    ✕
+                  </button>
+                )}
+              </div>
+
+              {directChatWorkgroups.length > 0 && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="rounded-xl gap-1 text-xs hover:bg-secondary-foreground dark:hover:bg-primary hover:text-white font-medium shrink-0"
+                  onClick={() => navigate("/collaboration/direct-chats")}
+                >
+                  View all
+                  <ChevronRight className="w-3.5 h-3.5" />
+                </Button>
+              )}
+            </div>
           </div>
 
-          {directChatWorkgroups.length > 0 ? (
+          {filteredDirectChats.length > 0 || searchableNewUsers.length > 0 ? (
             <div className="grid gap-3 grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3">
-              {directChatWorkgroups.slice(0, 6).map((chat) => {
-                const isOnline = Boolean(chat.is_online);
+              {filteredDirectChats.slice(0, directChatSearch ? 12 : 6).map((chat) => {
+                const isPeerDeleted =
+                  Boolean((chat as any).is_peer_deleted) ||
+                  (chat as any).direct_peer_status === "deleted" ||
+                  (chat as any).direct_peer_status === "inactive" ||
+                  (chat as any).is_active === false;
+                const isOnline = !isPeerDeleted && Boolean(chat.is_online);
                 const chatDisplayName = chat.display_name || chat.name;
 
                 return (
@@ -965,7 +1120,11 @@ export default function WorkgroupsPage() {
                   >
                     <div className="flex items-center gap-3 min-w-0">
                       <div className="relative shrink-0">
-                        <Avatar className="h-11 w-11 border border-border/40">
+                        <Avatar
+                          className={`h-11 w-11 border ${
+                            isPeerDeleted ? "border-destructive/40" : "border-border/40"
+                          }`}
+                        >
                           <AvatarImage
                             src={
                               getAvatarUrl(
@@ -975,14 +1134,34 @@ export default function WorkgroupsPage() {
                               ) || undefined
                             }
                           />
-                          <AvatarFallback className="bg-secondary-foreground text-secondary dark:bg-primary dark:text-primary-foreground font-bold text-sm">
-                            {chatDisplayName.slice(0, 2).toUpperCase()}
+                          <AvatarFallback
+                            className={`${
+                              isPeerDeleted
+                                ? "bg-destructive/15 text-destructive"
+                                : "bg-secondary-foreground text-secondary dark:bg-primary dark:text-primary-foreground"
+                            } font-bold text-sm`}
+                          >
+                            {isPeerDeleted ? (
+                              <UserX className="h-5 w-5 text-destructive" />
+                            ) : (
+                              chatDisplayName.slice(0, 2).toUpperCase()
+                            )}
                           </AvatarFallback>
                         </Avatar>
-                        <span
-                          className={`absolute -right-0.5 -bottom-0.5 h-3.5 w-3.5 rounded-full border-2 border-background ${isOnline ? "bg-emerald-500" : "bg-slate-400"
+                        {isPeerDeleted ? (
+                          <span
+                            className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-destructive text-white flex items-center justify-center shadow-xs ring-2 ring-background z-10"
+                            title="Deactivated user"
+                          >
+                            <UserX className="h-2.5 w-2.5 stroke-[2.5]" />
+                          </span>
+                        ) : (
+                          <span
+                            className={`absolute -right-0.5 -bottom-0.5 h-3.5 w-3.5 rounded-full border-2 border-background ${
+                              isOnline ? "bg-emerald-500" : "bg-slate-400"
                             }`}
-                        />
+                          />
+                        )}
                       </div>
 
                       <div className="min-w-0 flex-1">
@@ -990,21 +1169,36 @@ export default function WorkgroupsPage() {
                           {chatDisplayName}
                         </h3>
                         <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
-                          <span
-                            className={`text-xs font-semibold ${isOnline ? "text-emerald-500" : "text-red-500"
-                              }`}
-                          >
-                            {isOnline ? "Online" : "Offline"}
-                          </span>
-                          {!isOnline && (
-                            <span className="text-[11px] text-muted-foreground truncate">
-                              {chat.last_seen_at
-                                ? `• Last seen ${formatDistanceToNow(
-                                  new Date(chat.last_seen_at),
-                                  { addSuffix: true },
-                                )}`
-                                : "• Offline"}
-                            </span>
+                          {isPeerDeleted ? (
+                            <>
+                              <span className="text-xs font-semibold text-destructive flex items-center gap-1">
+                                <UserX className="w-3.5 h-3.5" />
+                                Deactivated
+                              </span>
+                              <span className="text-[11px] text-muted-foreground truncate">
+                                • This user no longer exists
+                              </span>
+                            </>
+                          ) : (
+                            <>
+                              <span
+                                className={`text-xs font-semibold ${
+                                  isOnline ? "text-emerald-500" : "text-red-500"
+                                }`}
+                              >
+                                {isOnline ? "Online" : "Offline"}
+                              </span>
+                              {!isOnline && (
+                                <span className="text-[11px] text-muted-foreground truncate">
+                                  {chat.last_seen_at
+                                    ? `• Last seen ${formatDistanceToNow(
+                                        new Date(chat.last_seen_at),
+                                        { addSuffix: true },
+                                      )}`
+                                    : "• Offline"}
+                                </span>
+                              )}
+                            </>
                           )}
                         </div>
                       </div>
@@ -1014,7 +1208,7 @@ export default function WorkgroupsPage() {
                       className="flex items-center gap-1.5 shrink-0"
                       onClick={(e) => e.stopPropagation()}
                     >
-                      {isOnline && (
+                      {!isPeerDeleted && isOnline && (
                         <>
                           <Button
                             variant="outline"
@@ -1087,11 +1281,89 @@ export default function WorkgroupsPage() {
                   </Card>
                 );
               })}
+
+              {/* Discoverable New Members when searching */}
+              {searchableNewUsers.map((member: any) => {
+                const isUserInactive = member.is_active === false;
+                return (
+                  <Card
+                    key={`new-user-${member.id}`}
+                    onClick={() => handleStartDirectChatWithUser(member.id)}
+                    className="p-3.5 rounded-2xl border border-dashed border-primary/50 hover:border-primary hover:shadow-md transition-all cursor-pointer bg-card/60 flex items-center justify-between gap-3 relative group"
+                  >
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="relative shrink-0">
+                        <Avatar
+                          className={`h-11 w-11 border ${
+                            isUserInactive ? "border-destructive/40" : "border-border/40"
+                          }`}
+                        >
+                          <AvatarImage src={getAvatarUrl(member.avatar_url)} />
+                          <AvatarFallback
+                            className={`${
+                              isUserInactive
+                                ? "bg-destructive/15 text-destructive"
+                                : "bg-primary/10 text-primary"
+                            } font-bold text-sm`}
+                          >
+                            {isUserInactive ? (
+                              <UserX className="h-5 w-5 text-destructive" />
+                            ) : (
+                              (member.full_name || "?").slice(0, 2).toUpperCase()
+                            )}
+                          </AvatarFallback>
+                        </Avatar>
+                        {isUserInactive && (
+                          <span
+                            className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-destructive text-white flex items-center justify-center shadow-xs ring-2 ring-background z-10"
+                            title="Deactivated user"
+                          >
+                            <UserX className="h-2.5 w-2.5 stroke-[2.5]" />
+                          </span>
+                        )}
+                      </div>
+
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-1.5">
+                          <h3 className="font-bold text-sm text-foreground truncate">
+                            {member.full_name || "Unknown"}
+                          </h3>
+                          {isUserInactive && (
+                            <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-destructive/15 text-destructive font-semibold shrink-0">
+                              Deactivated
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-[11px] text-muted-foreground truncate">
+                          {member.email || member.department || "Organization Member"}
+                        </p>
+                      </div>
+                    </div>
+
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="h-8 rounded-xl text-xs gap-1.5 border-primary/40 text-primary hover:bg-primary hover:text-white shrink-0"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleStartDirectChatWithUser(member.id);
+                      }}
+                    >
+                      <MessageSquare className="h-3.5 w-3.5" />
+                      Start Chat
+                    </Button>
+                  </Card>
+                );
+              })}
+            </div>
+          ) : directChatSearch ? (
+            <div className="p-5 rounded-xl border border-dashed border-border/70 text-center text-xs text-muted-foreground bg-muted/20">
+              <UserX className="w-6 h-6 mx-auto mb-1.5 text-muted-foreground/50" />
+              No conversations or teammates found matching "{directChatSearch}"
             </div>
           ) : (
             <div className="p-4 rounded-xl border border-dashed border-border/70 text-center text-xs text-muted-foreground bg-muted/20">
-              No direct chats yet. Select a team member to start a direct
-              message.
+              No direct chats yet. Search for a team member above to start a conversation!
             </div>
           )}
         </div>

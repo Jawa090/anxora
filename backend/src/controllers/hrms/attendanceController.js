@@ -99,8 +99,12 @@ const getAll = async (req, res, next) => {
         COALESCE(e.profile_picture, u.avatar_url) as avatar_url
       FROM public.attendance a
       LEFT JOIN public.employees e ON a.employee_id = e.id
-      LEFT JOIN public.users u ON a.user_id = u.id
+      LEFT JOIN public.users u ON (a.user_id = u.id OR e.user_id = u.id OR LOWER(u.email) = LOWER(e.email))
       WHERE a.org_id = $1
+        AND NOT (
+          LOWER(COALESCE(u.role::text, 'employee')) = 'super_admin'
+          OR LOWER(COALESCE(NULLIF(TRIM(u.department), ''), NULLIF(TRIM(e.department), ''), '')) = 'executive'
+        )
     `;
     const params = [req.user.orgId];
     let paramIndex = 2;
@@ -489,9 +493,18 @@ const myHistory = async (req, res, next) => {
     if (empResult.rows.length === 0) return res.json([]);
 
     let query = `
-      SELECT a.*, CONCAT(e.first_name,' ',e.last_name) as employee_name
+      SELECT 
+        a.*, 
+        CONCAT(e.first_name,' ',e.last_name) as employee_name,
+        COALESCE(st.name, emp_st.name, 'Standard Shift') as shift_name,
+        COALESCE(st.start_time::text, emp_st.start_time::text, '09:00:00') as shift_start_time,
+        COALESCE(st.end_time::text, emp_st.end_time::text, '18:00:00') as shift_end_time,
+        COALESCE(st.grace_period_mins, emp_st.grace_period_mins, 15) as grace_period_mins
       FROM public.attendance a
       LEFT JOIN public.employees e ON e.id = a.employee_id
+      LEFT JOIN public.shift_templates st ON st.id = a.shift_id
+      LEFT JOIN public.employee_shifts es ON es.employee_id = a.employee_id AND es.org_id = a.org_id
+      LEFT JOIN public.shift_templates emp_st ON emp_st.id = es.shift_id
       WHERE a.employee_id = $1 AND a.org_id = $2
     `;
     const params = [empResult.rows[0].id, req.user.orgId];
@@ -883,12 +896,18 @@ const getStats = async (req, res, next) => {
     const result = await db.query(
       `SELECT 
         COUNT(*) as total,
-        COUNT(*) FILTER (WHERE status = 'present') as present,
-        COUNT(*) FILTER (WHERE status = 'half_day') as half_day,
-        COUNT(*) FILTER (WHERE status = 'absent') as absent,
-        COUNT(*) FILTER (WHERE status = 'leave') as on_leave
-      FROM public.attendance 
-      WHERE org_id = $1 AND DATE(date) = $2`,
+        COUNT(*) FILTER (WHERE a.status = 'present') as present,
+        COUNT(*) FILTER (WHERE a.status = 'half_day') as half_day,
+        COUNT(*) FILTER (WHERE a.status = 'absent') as absent,
+        COUNT(*) FILTER (WHERE a.status = 'leave') as on_leave
+      FROM public.attendance a
+      LEFT JOIN public.employees e ON a.employee_id = e.id
+      LEFT JOIN public.users u ON (a.user_id = u.id OR e.user_id = u.id OR LOWER(u.email) = LOWER(e.email))
+      WHERE a.org_id = $1 AND DATE(a.date) = $2
+        AND NOT (
+          LOWER(COALESCE(u.role::text, 'employee')) = 'super_admin'
+          OR LOWER(COALESCE(NULLIF(TRIM(u.department), ''), NULLIF(TRIM(e.department), ''), '')) = 'executive'
+        )`,
       [req.user.orgId, date]
     );
 

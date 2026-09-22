@@ -17,12 +17,12 @@ const CAMPAIGN_ID_SQL = `COALESCE(metadata->'item'->>'campaign_id', metadata->>'
 
 const getUniboxAccessLevel = async (userId, orgId) => {
   const result = await db.query(
-    'SELECT role, has_unibox_access FROM users WHERE id = $1 AND org_id = $2',
+    'SELECT role, department, has_unibox_access FROM users WHERE id = $1 AND org_id = $2',
     [userId, orgId]
   );
   const user = result.rows[0];
   if (!user) return { isOwner: false, hasFullAccess: false };
-  const isOwner = user.role === 'super_admin';
+  const isOwner = user.role === 'super_admin' || (user.department && user.department.toLowerCase() === 'executive');
   const hasFullAccess = isOwner || user.has_unibox_access === true;
   return { isOwner, hasFullAccess };
 };
@@ -698,9 +698,9 @@ const checkPermission = async (req, res, next) => {
   try {
     console.log('Unibox permission check for user:', req.user.id, req.user.email, req.user.role);
 
-    // Check if user is super admin
+    // Check if user is super admin or admin/executive
     const userResult = await db.query(
-      'SELECT role, has_unibox_access FROM users WHERE id = $1 AND org_id = $2',
+      'SELECT role, department, has_unibox_access FROM users WHERE id = $1 AND org_id = $2',
       [req.user.id, req.user.orgId]
     );
 
@@ -712,7 +712,7 @@ const checkPermission = async (req, res, next) => {
     }
 
     const user = userResult.rows[0];
-    const isSuperAdmin = user.role === 'super_admin';
+    const isSuperAdmin = user.role === 'super_admin' || (user.department && user.department.toLowerCase() === 'executive');
     const hasFullAccess = isSuperAdmin || user.has_unibox_access === true;
 
     const assignedFoldersResult = await db.query(
@@ -749,14 +749,19 @@ const checkPermission = async (req, res, next) => {
 // Get all users with unibox permission (super admin only)
 const getPermissions = async (req, res, next) => {
   try {
-    // Check if user is super admin
+    // Check if user is super admin, or executive
     const adminCheck = await db.query(
-      'SELECT role FROM users WHERE id = $1 AND org_id = $2',
+      'SELECT role, department FROM users WHERE id = $1 AND org_id = $2',
       [req.user.id, req.user.orgId]
     );
 
-    if (adminCheck.rows.length === 0 || adminCheck.rows[0].role !== 'super_admin') {
-      return res.status(403).json({ error: 'Only super admins can view permissions' });
+    const isPrivileged = adminCheck.rows.length > 0 && (
+      adminCheck.rows[0].role === 'super_admin' ||
+      (adminCheck.rows[0].department && adminCheck.rows[0].department.toLowerCase() === 'executive')
+    );
+
+    if (!isPrivileged) {
+      return res.status(403).json({ error: 'Only super admins and executives can view permissions' });
     }
 
     const result = await db.query(
@@ -784,14 +789,19 @@ const grantPermission = async (req, res, next) => {
   try {
     const { user_id } = req.body;
 
-    // Check if user is super admin
+    // Check if user is super admin or executive
     const adminCheck = await db.query(
-      'SELECT role FROM users WHERE id = $1 AND org_id = $2',
+      'SELECT role, department FROM users WHERE id = $1 AND org_id = $2',
       [req.user.id, req.user.orgId]
     );
 
-    if (adminCheck.rows.length === 0 || adminCheck.rows[0].role !== 'super_admin') {
-      return res.status(403).json({ error: 'Only super admins can grant permissions' });
+    const isPrivileged = adminCheck.rows.length > 0 && (
+      adminCheck.rows[0].role === 'super_admin' ||
+      (adminCheck.rows[0].department && adminCheck.rows[0].department.toLowerCase() === 'executive')
+    );
+
+    if (!isPrivileged) {
+      return res.status(403).json({ error: 'Only super admins and executives can grant permissions' });
     }
 
     if (!user_id) {
@@ -829,14 +839,19 @@ const revokePermission = async (req, res, next) => {
   try {
     const { user_id } = req.params;
 
-    // Check if user is super admin
+    // Check if user is super admin or executive
     const adminCheck = await db.query(
-      'SELECT role FROM users WHERE id = $1 AND org_id = $2',
+      'SELECT role, department FROM users WHERE id = $1 AND org_id = $2',
       [req.user.id, req.user.orgId]
     );
 
-    if (adminCheck.rows.length === 0 || adminCheck.rows[0].role !== 'super_admin') {
-      return res.status(403).json({ error: 'Only super admins can revoke permissions' });
+    const isPrivileged = adminCheck.rows.length > 0 && (
+      adminCheck.rows[0].role === 'super_admin' ||
+      (adminCheck.rows[0].department && adminCheck.rows[0].department.toLowerCase() === 'executive')
+    );
+
+    if (!isPrivileged) {
+      return res.status(403).json({ error: 'Only super admins and executives can revoke permissions' });
     }
 
     const result = await db.query(
@@ -1381,7 +1396,9 @@ const createCampaignFolder = async (req, res, next) => {
       [orgId, String(name).trim(), maxOrder.rows[0].next_order]
     );
 
-    res.status(201).json({ folder: { ...result.rows[0], campaigns: [] } });
+    const folderData = { ...result.rows[0], campaigns: [] };
+    realtimeService.emitUniboxFolderUpdated(orgId, { action: 'created', folder: folderData });
+    res.status(201).json({ folder: folderData });
   } catch (err) {
     next(err);
   }
@@ -1417,6 +1434,7 @@ const updateCampaignFolder = async (req, res, next) => {
       [String(name).trim(), id, orgId]
     );
 
+    realtimeService.emitUniboxFolderUpdated(orgId, { action: 'renamed', folder: result.rows[0] });
     res.json({ folder: result.rows[0] });
   } catch (err) {
     next(err);
@@ -1441,11 +1459,39 @@ const deleteCampaignFolder = async (req, res, next) => {
       return res.status(400).json({ error: 'Cannot delete the default folder' });
     }
 
+    // Find all campaign IDs inside this folder before deleting
+    const folderItems = await db.query(
+      'SELECT campaign_id FROM unibox_campaign_folder_items WHERE folder_id = $1 AND org_id = $2',
+      [id, orgId]
+    );
+    const campaignIds = folderItems.rows.map((r) => String(r.campaign_id));
+
+    // Find assigned users for this folder
+    const folderAssignments = await db.query(
+      'SELECT user_id FROM unibox_campaign_folder_assignments WHERE folder_id = $1 AND org_id = $2',
+      [id, orgId]
+    );
+    const assignedUserIds = folderAssignments.rows.map((r) => r.user_id);
+
     await db.query(
       'DELETE FROM unibox_campaign_folders WHERE id = $1 AND org_id = $2',
       [id, orgId]
     );
 
+    if (campaignIds.length > 0) {
+      await db.query(
+        `UPDATE leads SET responsible_person = NULL, updated_at = NOW()
+         WHERE org_id = $1 AND campaign_id::text = ANY($2::text[])`,
+        [orgId, campaignIds]
+      );
+    }
+
+    for (const uid of assignedUserIds) {
+      realtimeService.emitUniboxPermissionChanged(uid);
+    }
+
+    realtimeService.emitUniboxFolderUpdated(orgId, { action: 'deleted', folderId: id });
+    realtimeService.emitLeadsUpdated(orgId, { action: 'folder_deleted' });
     res.json({ success: true });
   } catch (err) {
     next(err);
@@ -1464,26 +1510,79 @@ const assignCampaignToFolder = async (req, res, next) => {
     }
 
     const folder = await db.query(
-      'SELECT id FROM unibox_campaign_folders WHERE id = $1 AND org_id = $2',
+      'SELECT id, is_default FROM unibox_campaign_folders WHERE id = $1 AND org_id = $2',
       [folder_id, orgId]
     );
     if (folder.rows.length === 0) {
       return res.status(404).json({ error: 'Folder not found' });
     }
+    const isDefaultFolder = Boolean(folder.rows[0].is_default);
 
-    const maxOrder = await db.query(
-      'SELECT COALESCE(MAX(sort_order), 0) + 1 AS next_order FROM unibox_campaign_folder_items WHERE folder_id = $1',
-      [folder_id]
+    // Find assigned user for target folder
+    const targetAssignments = await db.query(
+      'SELECT user_id FROM unibox_campaign_folder_assignments WHERE folder_id = $1 AND org_id = $2',
+      [folder_id, orgId]
     );
+    const targetUserId = !isDefaultFolder && targetAssignments.rows.length > 0 ? targetAssignments.rows[0].user_id : null;
 
-    await db.query(
-      `INSERT INTO unibox_campaign_folder_items (org_id, folder_id, campaign_id, sort_order)
-       VALUES ($1, $2, $3, $4)
-       ON CONFLICT (org_id, campaign_id)
-       DO UPDATE SET folder_id = EXCLUDED.folder_id, sort_order = EXCLUDED.sort_order`,
-      [orgId, folder_id, campaign_id, maxOrder.rows[0].next_order]
+    // Find previous assigned user for this campaign to trigger realtime permission update
+    const previousLeads = await db.query(
+      'SELECT DISTINCT responsible_person FROM leads WHERE org_id = $1 AND campaign_id::text = $2::text AND responsible_person IS NOT NULL',
+      [orgId, String(campaign_id)]
     );
+    const previousUserIds = previousLeads.rows.map((r) => r.responsible_person);
 
+    if (isDefaultFolder) {
+      // If dropped into "Others" (default folder), delete custom folder item so campaign belongs to Others
+      await db.query(
+        'DELETE FROM unibox_campaign_folder_items WHERE org_id = $1 AND campaign_id = $2',
+        [orgId, String(campaign_id)]
+      );
+    } else {
+      const maxOrder = await db.query(
+        'SELECT COALESCE(MAX(sort_order), 0) + 1 AS next_order FROM unibox_campaign_folder_items WHERE folder_id = $1',
+        [folder_id]
+      );
+
+      await db.query(
+        `INSERT INTO unibox_campaign_folder_items (org_id, folder_id, campaign_id, sort_order)
+         VALUES ($1, $2, $3, $4)
+         ON CONFLICT (org_id, campaign_id)
+         DO UPDATE SET folder_id = EXCLUDED.folder_id, sort_order = EXCLUDED.sort_order`,
+        [orgId, folder_id, String(campaign_id), maxOrder.rows[0].next_order]
+      );
+    }
+
+    if (targetUserId) {
+      // Move to folder with an assigned user: update responsible_person to new assigned user
+      await db.query(
+        `UPDATE leads
+         SET responsible_person = $1::uuid,
+             updated_at = NOW()
+         WHERE org_id = $2
+           AND campaign_id::text = $3::text`,
+        [targetUserId, orgId, String(campaign_id)]
+      );
+    } else {
+      // Move to "Others" or unassigned folder: clear responsible_person so leads hide from assigned users
+      await db.query(
+        `UPDATE leads
+         SET responsible_person = NULL,
+             updated_at = NOW()
+         WHERE org_id = $1
+           AND campaign_id::text = $2::text`,
+        [orgId, String(campaign_id)]
+      );
+    }
+
+    // Emit real-time permission change to affected users
+    const affectedUserIds = [...new Set([...previousUserIds, ...(targetUserId ? [targetUserId] : [])])];
+    for (const uid of affectedUserIds) {
+      realtimeService.emitUniboxPermissionChanged(uid);
+    }
+
+    realtimeService.emitUniboxFolderUpdated(orgId, { action: 'campaign_assigned', campaignId: campaign_id, folderId: folder_id });
+    realtimeService.emitLeadsUpdated(orgId, { action: 'campaign_folder_assigned', campaignId: campaign_id, folderId: folder_id });
     res.json({ success: true });
   } catch (err) {
     next(err);
@@ -1617,11 +1716,14 @@ const assignUserToFolder = async (req, res, next) => {
       throw txErr;
     }
 
-    // Emit real-time permission change to all affected users
+    // Emit real-time updates for folder structure, lead visibility, and permissions
     const allAffectedIds = [...new Set([...removedUserIds, ...uniqueUserIds])];
     for (const uid of allAffectedIds) {
       realtimeService.emitUniboxPermissionChanged(uid);
     }
+
+    realtimeService.emitUniboxFolderUpdated(orgId, { action: 'user_assigned', folderId: id, assignedUserIds: uniqueUserIds });
+    realtimeService.emitLeadsUpdated(orgId, { action: 'folder_user_assigned', folderId: id, assignedUserIds: uniqueUserIds });
 
     // Notify newly assigned users (skip users who were already assigned)
     const newlyAssignedIds = uniqueUserIds.filter((uid) => !previousUserIds.has(uid));

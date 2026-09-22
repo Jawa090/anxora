@@ -26,7 +26,13 @@ export function ChangeResponsibleDialog({ open, onOpenChange, onSelect, currentU
     queryFn: async () => {
       if (!profile?.org_id) return [];
       const response = await usersApi.getAll({ department });
-      return response.filter(u => u.status === 'active' || !u.status) || [];
+      return (response || [])
+        .filter((u: any) => u.status === 'active' || !u.status)
+        .filter((u: any) => {
+          const r = (u.role || "").toLowerCase().trim();
+          const d = (u.department || "").toLowerCase().trim();
+          return r !== "super_admin" && d !== "executive";
+        });
     },
     enabled: !!profile?.org_id && open,
   });

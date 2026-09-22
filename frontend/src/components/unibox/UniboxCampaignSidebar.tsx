@@ -61,6 +61,48 @@ interface OrgUser {
   id: string;
   full_name: string;
   email: string;
+  avatar_url?: string | null;
+  role?: string;
+}
+
+function MemberAvatar({
+  member,
+  size = "md",
+}: {
+  member: { full_name: string; avatar_url?: string | null };
+  size?: "sm" | "md";
+}) {
+  const initials = (member.full_name || "")
+    .split(/\s+/)
+    .map((w) => w[0])
+    .filter(Boolean)
+    .join("")
+    .toUpperCase()
+    .slice(0, 2) || "?";
+
+  const sizeClass = size === "sm" ? "h-5 w-5 text-[9px]" : "h-6 w-6 text-[10px]";
+
+  if (member.avatar_url) {
+    return (
+      <Avatar className={cn(sizeClass, "shrink-0 ring-1 ring-border/50")}>
+        <AvatarImage src={member.avatar_url} alt={member.full_name} className="object-cover" />
+        <AvatarFallback className="bg-primary/20 text-primary font-bold">
+          {initials}
+        </AvatarFallback>
+      </Avatar>
+    );
+  }
+
+  return (
+    <div
+      className={cn(
+        sizeClass,
+        "shrink-0 rounded-full bg-primary/20 text-primary font-bold flex items-center justify-center ring-1 ring-primary/30"
+      )}
+    >
+      {initials}
+    </div>
+  );
 }
 
 function campaignDragId(campaignId: string) {
@@ -114,52 +156,74 @@ function FolderUserAssigner({
             <span className="truncate">{label}</span>
           </button>
         </PopoverTrigger>
-        <PopoverContent className="w-56 p-0" align="start" side="right">
-          <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider px-3 pt-2 pb-1">
-            Assign to user
-          </p>
-          {/* Search */}
-          <div className="flex items-center gap-2 px-3 py-1.5 border-b border-border">
-            <Search className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-            <input
-              type="text"
-              placeholder="Search by name..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="flex-1 text-xs bg-transparent outline-none placeholder:text-muted-foreground/60"
-              autoFocus
-            />
+        <PopoverContent className="w-60 p-0" align="start" side="right">
+          {/* Search Input styled like MemberSearchSelect */}
+          <div className="p-2 border-b border-border">
+            <div className="flex items-center gap-2 rounded-lg border border-border bg-background/50 px-2.5 py-1 focus-within:ring-1 focus-within:ring-primary">
+              <Search className="h-4 w-4 text-muted-foreground shrink-0" />
+              <Input
+                placeholder="Search by name..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="h-6 border-0 p-0 focus-visible:ring-0 bg-transparent text-xs placeholder:text-muted-foreground"
+                autoFocus
+              />
+            </div>
           </div>
+
+          {/* List */}
           <div className="max-h-52 overflow-y-auto py-1">
             {/* None option */}
             <button
               type="button"
               onClick={() => selectUser(null)}
-              className={`flex w-full items-center gap-2 px-3 py-1.5 hover:bg-accent text-left border-b border-border/50 ${!assignedUser ? "bg-accent/50" : ""}`}
+              className={cn(
+                "w-full flex items-center gap-2 px-3 py-2 text-sm transition-colors text-left",
+                !assignedUser
+                  ? "bg-secondary-foreground/15 text-secondary-foreground dark:bg-primary/20 dark:text-primary font-semibold"
+                  : "text-foreground hover:bg-secondary-foreground/15 hover:text-secondary-foreground dark:hover:bg-primary/20 dark:hover:text-primary"
+              )}
             >
-              <span className="text-xs text-muted-foreground italic">None</span>
-              {!assignedUser && <span className="ml-auto text-[10px] text-primary">✓</span>}
+              <Check
+                className={cn(
+                  "h-4 w-4 shrink-0",
+                  !assignedUser ? "opacity-100" : "opacity-0"
+                )}
+              />
+              <User className="h-4 w-4 shrink-0 text-muted-foreground" />
+              <span>None</span>
             </button>
+
             {filtered.length === 0 ? (
-              <p className="text-xs text-muted-foreground px-3 py-2">No members found</p>
+              <div className="px-3 py-4 text-center text-sm text-muted-foreground">
+                No members found
+              </div>
             ) : (
-              filtered.map((user) => (
-                <button
-                  key={user.id}
-                  type="button"
-                  onClick={() => selectUser(user.id)}
-                  className={`flex w-full items-center gap-2 px-3 py-1.5 hover:bg-accent text-left ${assignedUser?.id === user.id ? "bg-accent/50" : ""}`}
-                >
-                  <Avatar className="h-5 w-5 shrink-0">
-                    <AvatarImage src={(user as any).avatar_url || undefined} alt={user.full_name} />
-                    <AvatarFallback className="text-[9px] bg-primary/20 text-primary font-bold">
-                      {user.full_name.split(/\s+/).map((w) => w[0]).join("").toUpperCase().slice(0, 2)}
-                    </AvatarFallback>
-                  </Avatar>
-                  <span className="text-xs truncate">{user.full_name}</span>
-                  {assignedUser?.id === user.id && <span className="ml-auto text-[10px] text-primary">✓</span>}
-                </button>
-              ))
+              filtered.map((user) => {
+                const isSelected = assignedUser?.id === user.id;
+                return (
+                  <button
+                    key={user.id}
+                    type="button"
+                    onClick={() => selectUser(user.id)}
+                    className={cn(
+                      "w-full flex items-center gap-2 px-3 py-2 text-sm transition-colors text-left",
+                      isSelected
+                        ? "bg-secondary-foreground/15 text-secondary-foreground dark:bg-primary/20 dark:text-primary font-semibold"
+                        : "text-foreground hover:bg-secondary-foreground/15 hover:text-secondary-foreground dark:hover:bg-primary/20 dark:hover:text-primary"
+                    )}
+                  >
+                    <Check
+                      className={cn(
+                        "h-4 w-4 shrink-0",
+                        isSelected ? "opacity-100" : "opacity-0"
+                      )}
+                    />
+                    <MemberAvatar member={user} size="md" />
+                    <span className="truncate">{user.full_name}</span>
+                  </button>
+                );
+              })
             )}
           </div>
         </PopoverContent>
@@ -406,12 +470,9 @@ export function UniboxCampaignSidebar({
   const { data: orgUsers = [] } = useQuery<OrgUser[]>({
     queryKey: ["organization-users-campaigns"],
     queryFn: async () => {
-      const allUsers: OrgUser[] = await api.get("/members?limit=1000");
-      // Only show Sales and Marketing department users for campaign assignment
-      return allUsers.filter((u: any) => {
-        const dept = (u.department || "").toLowerCase();
-        return dept.includes("sales") || dept.includes("marketing");
-      });
+      const allUsers: any[] = await api.get("/members?limit=1000&includeSelf=true");
+      // All users except super_admin can be assigned
+      return (allUsers || []).filter((u: any) => u.role !== "super_admin");
     },
     enabled: isOwner,
     staleTime: 60000,

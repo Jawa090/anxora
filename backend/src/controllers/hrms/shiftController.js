@@ -145,6 +145,7 @@ const getAssignments = async (req, res, next) => {
         e.email,
         COALESCE(NULLIF(TRIM(u.department), ''), NULLIF(TRIM(e.department), '')) as department,
         COALESCE(e.position, u.position) as position,
+        COALESCE(u.role, 'employee') as role,
         COALESCE(e.profile_picture, u.avatar_url) as profile_picture,
         es.id as assignment_id,
         es.shift_id,
@@ -158,6 +159,10 @@ const getAssignments = async (req, res, next) => {
        LEFT JOIN public.employee_shifts es ON e.id = es.employee_id AND es.org_id = $1
        LEFT JOIN public.shift_templates st ON es.shift_id = st.id
        WHERE e.org_id = $1 AND (e.status = 'active' OR e.status IS NULL)
+         AND NOT (
+           LOWER(COALESCE(u.role::text, 'employee')) = 'super_admin'
+           OR LOWER(COALESCE(NULLIF(TRIM(u.department), ''), NULLIF(TRIM(e.department), ''), '')) = 'executive'
+         )
        ORDER BY e.first_name ASC`,
       [req.user.orgId]
     );
@@ -218,6 +223,56 @@ const assignShift = async (req, res, next) => {
   }
 };
 
+const getMyShift = async (req, res, next) => {
+  try {
+    let empId = null;
+    const empUserRes = await db.query(
+      'SELECT id FROM public.employees WHERE user_id = $1 AND org_id = $2',
+      [req.user.id, req.user.orgId]
+    );
+    if (empUserRes.rows.length > 0) {
+      empId = empUserRes.rows[0].id;
+    } else {
+      const userRes = await db.query('SELECT email FROM public.users WHERE id = $1', [req.user.id]);
+      if (userRes.rows.length > 0) {
+        const empEmailRes = await db.query(
+          'SELECT id FROM public.employees WHERE LOWER(email) = LOWER($1) AND org_id = $2',
+          [userRes.rows[0].email, req.user.orgId]
+        );
+        if (empEmailRes.rows.length > 0) {
+          empId = empEmailRes.rows[0].id;
+          await db.query('UPDATE public.employees SET user_id = $1 WHERE id = $2', [req.user.id, empId]);
+        }
+      }
+    }
+
+    if (empId) {
+      const shiftRes = await db.query(
+        `SELECT st.*, es.effective_from
+         FROM public.employee_shifts es
+         JOIN public.shift_templates st ON es.shift_id = st.id
+         WHERE es.employee_id = $1 AND es.org_id = $2
+         LIMIT 1`,
+        [empId, req.user.orgId]
+      );
+      if (shiftRes.rows.length > 0) {
+        return res.json({ data: shiftRes.rows[0] });
+      }
+    }
+
+    // Fallback to first active shift template in organization
+    const defaultShift = await db.query(
+      `SELECT * FROM public.shift_templates 
+       WHERE org_id = $1 AND is_active = true 
+       ORDER BY created_at ASC LIMIT 1`,
+      [req.user.orgId]
+    );
+    res.json({ data: defaultShift.rows[0] || null });
+  } catch (err) {
+    next(err);
+  }
+};
+
 module.exports = {
   getShifts,
   createShift,
@@ -225,4 +280,5 @@ module.exports = {
   deleteShift,
   getAssignments,
   assignShift,
+  getMyShift,
 };
