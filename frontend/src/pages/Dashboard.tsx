@@ -115,20 +115,22 @@ export default function Dashboard() {
   const currentRole = (userRole?.role || (user as any)?.role || '').toLowerCase();
   const userDept = (profile?.department || (user as any)?.department || (userRole as any)?.department || '').toLowerCase().trim();
 
-  const isManager = currentRole === 'hr_manager';
+  const isManager = currentRole === 'manager';
+  const isHr = currentRole === 'hr_manager' || userDept === 'hr' || userDept.includes('hr');
+  const shouldHideCrm = isManager || isHr;
+
   const isExecutiveOrSuperAdmin = currentRole === 'super_admin' || (currentRole === 'admin' && userDept === 'executive');
-  const canViewWorkforceTrend = currentRole === 'super_admin' || currentRole === 'admin' || currentRole === 'hr_manager' || isManager;
+  const canViewWorkforceTrend = currentRole === 'super_admin' || currentRole === 'admin' || isHr || isManager;
   const canViewPersonalTrend = !isExecutiveOrSuperAdmin;
   const isSalesUser = currentRole === 'sales_rep' || userDept === 'sales' || userDept.includes('sales');
   const canViewSalesChart =
-    !isManager && (
+    !shouldHideCrm && (
       currentRole === 'super_admin' ||
       currentRole === 'admin' ||
-      currentRole === 'manager' ||
       isSalesUser
     );
-  const canViewCrmCharts = !isManager && canViewSalesChart;
-  const canViewRecentActivity = canViewSalesChart || isManager;
+  const canViewCrmCharts = !shouldHideCrm && canViewSalesChart;
+  const canViewRecentActivity = canViewSalesChart || shouldHideCrm;
 
   // CRM
   const { data: leadStats } = useLeadStats();
@@ -345,7 +347,7 @@ export default function Dashboard() {
         <div className="flex items-center gap-2">
           <CheckCircle2 className="h-4 w-4 text-[#2DD4BF]" />
           <span className="text-sm font-bold tracking-tight text-foreground">
-            {currentRole === 'super_admin' || currentRole === 'admin' || isManager ? "Project Tasks" : "My Project Tasks"}
+            {currentRole === 'super_admin' || currentRole === 'admin' || shouldHideCrm ? "Project Tasks" : "My Project Tasks"}
           </span>
         </div>
         <button
@@ -448,8 +450,8 @@ export default function Dashboard() {
 
       {/* ── Top stat tiles ── */}
       <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-4">
-        {/* If manager: do NOT show leads or deals; show project tasks and overdue tasks instead */}
-        {isManager ? (
+        {/* If manager or HR: do NOT show leads or deals; show project tasks and overdue tasks instead */}
+        {shouldHideCrm ? (
           <>
             <div className="col-span-2 sm:col-span-2 lg:col-span-2">
               <StatTile
@@ -591,7 +593,7 @@ export default function Dashboard() {
           <div className="p-3">
             {(() => {
               const displayActivities = (activities as any[]).filter((a: any) => {
-                if (isManager) {
+                if (shouldHideCrm) {
                   const badge = (a.entity_type || a.activity_type || "").toLowerCase();
                   return badge !== "lead" && badge !== "deal";
                 }

@@ -266,7 +266,7 @@ export default function ProjectDetailPage() {
   const navigate = useNavigate();
   const { profile, userRole } = useAuth();
   const isAdmin =
-    userRole?.role === "admin" || userRole?.role === "super_admin";
+    userRole?.role === "admin" || userRole?.role === "super_admin" || userRole?.role === "manager";
 
   // ─── Refs for debouncing ────────────────────────────────────────────────────
   const sliderTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -3757,7 +3757,7 @@ export default function ProjectDetailPage() {
             ? (projectTasks as any[])?.find((t: any) => t.id === editingTask.id)
             : null;
           const isSuperAdmin =
-            userRole?.role === "admin" || userRole?.role === "super_admin";
+            userRole?.role === "admin" || userRole?.role === "super_admin" || userRole?.role === "manager";
           const isProjectManager =
             project &&
             (project.manager_id === profile?.id ||

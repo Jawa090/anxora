@@ -66,7 +66,7 @@ import { useAuth } from "@/contexts/AuthContext";
 export default function IndependentTasksPage() {
   const { profile, userRole } = useAuth();
   const isAdmin =
-    userRole?.role === "super_admin" || userRole?.role === "admin";
+    userRole?.role === "super_admin" || userRole?.role === "admin" || userRole?.role === "manager";
   const queryClient = useQueryClient();
   const [searchParams, setSearchParams] = useSearchParams();
   const activeTab = searchParams.get("tab") || "all";

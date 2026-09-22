@@ -141,7 +141,7 @@ export function TaskDialog({
     onSubmit(payload);
   };
 
-  const isAdmin = userRole?.role === 'admin' || userRole?.role === 'super_admin';
+  const isAdmin = userRole?.role === 'admin' || userRole?.role === 'super_admin' || userRole?.role === 'manager';
   const isManager = userRole?.role === 'manager' || userRole?.role === 'hr_manager' || userRole?.role === 'inventory_manager';
 
   // Agar task ka project_id projects list mein nahi (user member nahi), to separately fetch karo
@@ -160,7 +160,7 @@ export function TaskDialog({
 
   // Task creator check (for editing core fields)
   const isTaskCreator = !task || task.created_by === profile?.id;
-  const canEditCoreFields = isTaskCreator;
+  const canEditCoreFields = isTaskCreator || isAdmin;
   
 
 
@@ -171,7 +171,7 @@ export function TaskDialog({
     (task as any).delegated_by === profile?.id &&
     !isTaskCreator;
 
-  const canEditDates = isTaskCreator;
+  const canEditDates = isTaskCreator || isAdmin;
 
   // Delegation check — task level (existing task) ya project level (new task)
   const delegationAllowed = Boolean(
@@ -180,7 +180,7 @@ export function TaskDialog({
       : false  // new task pe delegation default OFF
   );
 
-  const isSuperAdmin = userRole?.role === 'admin' || userRole?.role === 'super_admin';
+  const isSuperAdmin = userRole?.role === 'admin' || userRole?.role === 'super_admin' || userRole?.role === 'manager';
 
   // ─── UNIFORM ASSIGNMENT RULE ───
   // Assign kar sakta hai agar:

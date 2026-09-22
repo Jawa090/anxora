@@ -67,7 +67,7 @@ export default function ProjectsDashboardPage() {
   const allMilestones = useMemo(() => Array.isArray(rawMilestones) ? (rawMilestones as any[]) : [], [rawMilestones]);
   const { data: orgMembers = [] } = useOrganizationProfiles();
   const { profile, userRole } = useAuth();
-  const isAdmin = userRole?.role === 'admin' || userRole?.role === 'super_admin';
+  const isAdmin = userRole?.role === 'admin' || userRole?.role === 'super_admin' || userRole?.role === 'manager';
   const createProject = useCreateProject();
   const updateProject = useUpdateProject();
   const deleteProject = useDeleteProject();
