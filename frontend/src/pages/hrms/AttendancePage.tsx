@@ -808,6 +808,13 @@ export default function AttendancePage() {
                   const showMonthHeader = currentMonthStr !== lastMonthStr;
                   lastMonthStr = currentMonthStr;
 
+                  const isCompanyPaidLeave = Boolean(
+                    (r.notes && r.notes.toLowerCase().includes("company paid leave")) ||
+                    (r as any).is_company_paid_leave
+                  );
+                  const isApprovedLeave = r.status === "leave" || Boolean(r.notes && r.notes.toLowerCase().includes("approved leave"));
+                  const isAbsent = r.status === "absent";
+
                   return (
                     <React.Fragment key={r.id}>
                       {showMonthHeader && (
@@ -831,16 +838,18 @@ export default function AttendancePage() {
                           )}
                         </td>
                         <td className="py-2.5 px-3 text-center text-muted-foreground whitespace-nowrap">
-                          {formatTimeDisplay(r.clock_in)}
+                          {isCompanyPaidLeave && !r.clock_in ? "—" : formatTimeDisplay(r.clock_in)}
                         </td>
                         <td className="py-2.5 px-3 text-center text-muted-foreground whitespace-nowrap hidden sm:table-cell">
-                          {formatTimeDisplay(r.break_start)}
+                          {isCompanyPaidLeave && !r.clock_in ? "—" : formatTimeDisplay(r.break_start)}
                         </td>
                         <td className="py-2.5 px-3 text-center text-muted-foreground whitespace-nowrap hidden sm:table-cell">
-                          {formatTimeDisplay(r.break_end)}
+                          {isCompanyPaidLeave && !r.clock_in ? "—" : formatTimeDisplay(r.break_end)}
                         </td>
                         <td className="py-2.5 px-3 text-center whitespace-nowrap">
-                          {r.clock_out ? (
+                          {isCompanyPaidLeave && !r.clock_in ? (
+                            "—"
+                          ) : r.clock_out ? (
                             formatTimeDisplay(r.clock_out)
                           ) : r.clock_in && r.status !== "absent" ? (
                             <span className="text-emerald-500 text-[10px]">Active</span>
@@ -849,25 +858,25 @@ export default function AttendancePage() {
                           )}
                         </td>
                         <td className="py-2.5 px-3 text-center font-medium whitespace-nowrap hidden md:table-cell">
-                          {r.status === "absent" && !r.clock_in ? "0m" : formatHours(r.total_hours_worked)}
+                          {isCompanyPaidLeave && !r.clock_in ? "—" : r.status === "absent" && !r.clock_in ? "0m" : formatHours(r.total_hours_worked)}
                         </td>
                         <td className="py-2.5 px-3 text-center font-medium text-emerald-600 whitespace-nowrap hidden md:table-cell">
-                          {r.status === "absent" && !r.clock_in ? "—" : r.extra_time ? `+${formatHours(r.extra_time)}` : "—"}
+                          {isCompanyPaidLeave && !r.clock_in ? "—" : r.status === "absent" && !r.clock_in ? "—" : r.extra_time ? `+${formatHours(r.extra_time)}` : "—"}
                         </td>
                         <td className="py-2.5 px-3 text-center font-medium text-red-600 whitespace-nowrap hidden md:table-cell">
-                          {r.status === "absent" && !r.clock_in ? "—" : r.less_time ? `-${formatHours(r.less_time)}` : "—"}
+                          {isCompanyPaidLeave && !r.clock_in ? "—" : r.status === "absent" && !r.clock_in ? "—" : r.less_time ? `-${formatHours(r.less_time)}` : "—"}
                         </td>
                         <td className="py-2.5 px-3 text-center whitespace-nowrap">
                           <Badge
                             variant="outline"
                             className={cn(
                               "text-[10px] font-medium capitalize",
-                              r.punctuality === "late" || r.status === "absent"
+                              !isCompanyPaidLeave && (r.punctuality === "late" || r.status === "absent")
                                 ? "bg-red-50 text-red-700 border-red-200"
                                 : "bg-emerald-50 text-emerald-700 border-emerald-200",
                             )}
                           >
-                            {r.punctuality === "late" || r.status === "absent" ? "Late" : "On Time"}
+                            {!isCompanyPaidLeave && (r.punctuality === "late" || r.status === "absent") ? "Late" : "On Time"}
                           </Badge>
                         </td>
                         <td className="py-2.5 px-3 text-center whitespace-nowrap">
@@ -1083,6 +1092,13 @@ export default function AttendancePage() {
                     lastDateStr = recordDateStr;
                     const isSelf = isSelfRecord(r);
 
+                    const isCompanyPaidLeave = Boolean(
+                      (r.notes && r.notes.toLowerCase().includes("company paid leave")) ||
+                      (r as any).is_company_paid_leave
+                    );
+                    const isApprovedLeave = r.status === "leave" || Boolean(r.notes && r.notes.toLowerCase().includes("approved leave"));
+                    const isAbsent = r.status === "absent";
+
                     return (
                       <React.Fragment key={r.id}>
                         {showDateHeader && (() => {
@@ -1153,10 +1169,12 @@ export default function AttendancePage() {
                             </div>
                           </td>
                           <td className="py-2.5 px-3 text-center whitespace-nowrap">
-                            {formatTimeDisplay(r.clock_in)}
+                            {isCompanyPaidLeave && !r.clock_in ? "—" : formatTimeDisplay(r.clock_in)}
                           </td>
                           <td className="py-2.5 px-3 text-center whitespace-nowrap">
-                            {r.clock_out ? (
+                            {isCompanyPaidLeave && !r.clock_in ? (
+                              "—"
+                            ) : r.clock_out ? (
                               formatTimeDisplay(r.clock_out)
                             ) : r.clock_in && r.status !== "absent" ? (
                               <span className="text-emerald-500 text-[10px]">Active</span>
@@ -1165,31 +1183,31 @@ export default function AttendancePage() {
                             )}
                           </td>
                           <td className="py-2.5 px-3 text-center  whitespace-nowrap">
-                            {formatTimeDisplay(r.break_start)}
+                            {isCompanyPaidLeave && !r.clock_in ? "—" : formatTimeDisplay(r.break_start)}
                           </td>
                           <td className="py-2.5 px-3 text-center  whitespace-nowrap">
-                            {formatTimeDisplay(r.break_end)}
+                            {isCompanyPaidLeave && !r.clock_in ? "—" : formatTimeDisplay(r.break_end)}
                           </td>
                           <td className="py-2.5 px-3 text-center font-medium whitespace-nowrap">
-                            {r.status === "absent" && !r.clock_in ? "0m" : r.total_hours_worked ? `${formatHours(r.total_hours_worked)}` : "0m"}
+                            {isCompanyPaidLeave && !r.clock_in ? "—" : r.status === "absent" && !r.clock_in ? "0m" : r.total_hours_worked ? `${formatHours(r.total_hours_worked)}` : "0m"}
                           </td>
                           <td className="py-2.5 px-3 text-center font-medium text-emerald-600 whitespace-nowrap">
-                            {r.status === "absent" && !r.clock_in ? "—" : r.extra_time ? `+${formatHours(r.extra_time)}` : "+0m"}
+                            {isCompanyPaidLeave && !r.clock_in ? "—" : r.status === "absent" && !r.clock_in ? "—" : r.extra_time ? `+${formatHours(r.extra_time)}` : "+0m"}
                           </td>
                           <td className="py-2.5 px-3 text-center font-medium text-red-600 whitespace-nowrap">
-                            {r.status === "absent" && !r.clock_in ? "—" : r.less_time ? `-${formatHours(r.less_time)}` : "-0m"}
+                            {isCompanyPaidLeave && !r.clock_in ? "—" : r.status === "absent" && !r.clock_in ? "—" : r.less_time ? `-${formatHours(r.less_time)}` : "-0m"}
                           </td>
                           <td className="py-2.5 px-3 text-center whitespace-nowrap">
                             <Badge
                               variant="outline"
                               className={cn(
                                 "text-[10px] font-medium capitalize",
-                                r.punctuality === "late" || r.status === "absent"
+                                !isCompanyPaidLeave && (r.punctuality === "late" || r.status === "absent")
                                   ? "bg-red-50 text-red-700 border-red-200"
                                   : "bg-emerald-50 text-emerald-700 border-emerald-200",
                               )}
                             >
-                              {r.punctuality === "late" || r.status === "absent" ? "Late" : "On Time"}
+                              {!isCompanyPaidLeave && (r.punctuality === "late" || r.status === "absent") ? "Late" : "On Time"}
                             </Badge>
                           </td>
                           <td className="py-2.5 px-3 text-center whitespace-nowrap">

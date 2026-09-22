@@ -46,9 +46,20 @@ function StageDonutCard({
   emptyMessage: string;
   showAmount?: boolean;
 }) {
+  const isDeal = title.toLowerCase().includes("deal");
+  const itemLabel = isDeal ? "Deals" : title.toLowerCase().includes("lead") ? "Leads" : "Items";
+  const defaultStages = isDeal
+    ? ["NEW", "QUALIFIED", "PROPOSAL", "NEGOTIATION", "WON"]
+    : ["NEW LEAD", "CONTACTED", "QUALIFIED", "CONVERTED", "LOST"];
+
   const totalCount = useMemo(() => {
     return data.reduce((acc, item) => acc + item.value, 0);
   }, [data]);
+
+  const isEmpty = data.length === 0 || totalCount === 0;
+  const emptyChartData = useMemo(() => {
+    return defaultStages.map((name) => ({ name, value: 1 }));
+  }, [defaultStages]);
 
   return (
     <div className="rounded-2xl border border-border/50 bg-gradient-to-b from-card to-card/90 shadow-sm overflow-hidden p-3.5 sm:p-4 flex flex-col justify-between transition-all">
@@ -74,43 +85,84 @@ function StageDonutCard({
         </div>
       </div>
 
-      {/* Donut Chart Content (Flat / Chpta side-by-side layout) */}
+      {/* Donut Chart Content (Always shows circle) */}
       <div className="pt-2 flex flex-col sm:flex-row items-center gap-4 justify-between min-h-[135px]">
         {isLoading ? (
           <Skeleton className="h-[130px] w-full rounded-xl" />
-        ) : data.length === 0 ? (
-          <div className="h-[130px] w-full flex items-center justify-center text-xs text-muted-foreground">
-            {emptyMessage}
-          </div>
         ) : (
           <>
-            {/* Chart with center total */}
+            {/* Chart with center total - Always visible */}
             <div className="relative w-[140px] h-[130px] shrink-0 flex items-center justify-center">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
-                  <Pie
-                    data={data}
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={36}
-                    outerRadius={56}
-                    paddingAngle={3}
-                    dataKey="value"
-                    animationDuration={600}
-                  >
-                    {data.map((_, index) => (
-                      <Cell
-                        key={`cell-${index}`}
-                        fill={PIE_COLORS[index % PIE_COLORS.length]}
-                        stroke="hsl(var(--background))"
-                        strokeWidth={1.5}
-                      />
-                    ))}
-                  </Pie>
+                  {isEmpty ? (
+                    <Pie
+                      data={emptyChartData}
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={36}
+                      outerRadius={56}
+                      paddingAngle={4}
+                      dataKey="value"
+                      isAnimationActive={false}
+                    >
+                      {emptyChartData.map((_, index) => (
+                        <Cell
+                          key={`empty-cell-${index}`}
+                          fill={PIE_COLORS[index % PIE_COLORS.length]}
+                          opacity={0.35}
+                          stroke="hsl(var(--background))"
+                          strokeWidth={2}
+                        />
+                      ))}
+                    </Pie>
+                  ) : (
+                    <Pie
+                      data={data}
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={36}
+                      outerRadius={56}
+                      paddingAngle={3}
+                      dataKey="value"
+                      animationDuration={600}
+                    >
+                      {data.map((_, index) => (
+                        <Cell
+                          key={`cell-${index}`}
+                          fill={PIE_COLORS[index % PIE_COLORS.length]}
+                          stroke="hsl(var(--background))"
+                          strokeWidth={1.5}
+                        />
+                      ))}
+                    </Pie>
+                  )}
                   <Tooltip
                     content={({ active, payload }) => {
                       if (active && payload && payload.length) {
                         const item = payload[0]?.payload as StageItem;
+                        if (isEmpty) {
+                          return (
+                            <div className="rounded-xl border border-border/70 bg-card/95 backdrop-blur-xl p-2.5 shadow-2xl text-xs space-y-1 min-w-[130px]">
+                              <p className="font-bold text-foreground flex items-center gap-1.5 text-[11px]">
+                                <span
+                                  className="h-2 w-2 rounded-full shadow-sm"
+                                  style={{
+                                    backgroundColor:
+                                      payload[0]?.fill || PIE_COLORS[0],
+                                  }}
+                                />
+                                {item.name}
+                              </p>
+                              <div className="flex items-center justify-between text-[11px] pt-0.5">
+                                <span className="text-muted-foreground">Count:</span>
+                                <span className="font-bold text-foreground tabular-nums">
+                                  0 (0%)
+                                </span>
+                              </div>
+                            </div>
+                          );
+                        }
                         const pct =
                           totalCount > 0
                             ? Math.round((item.value / totalCount) * 100)
@@ -155,32 +207,58 @@ function StageDonutCard({
                   {totalCount}
                 </span>
                 <span className="text-[8px] font-semibold text-muted-foreground uppercase tracking-widest mt-0.5">
-                  Items
+                  {itemLabel}
                 </span>
               </div>
             </div>
 
-            {/* Legend list on the right */}
-            <div className="flex-1 flex flex-wrap items-center content-center gap-x-3 gap-y-1.5 max-h-[130px] overflow-y-auto pr-1 py-1 w-full border-t sm:border-t-0 sm:border-l border-border/30 sm:pl-3">
-              {data.map((item, i) => (
-                <div
-                  key={item.name}
-                  className="flex items-center gap-1 text-[10.5px] font-medium text-foreground/90 whitespace-nowrap"
-                >
-                  <span
-                    className="h-1.5 w-1.5 rounded-full shrink-0"
-                    style={{
-                      backgroundColor: PIE_COLORS[i % PIE_COLORS.length],
-                      boxShadow: `0 0 5px ${PIE_COLORS[i % PIE_COLORS.length]}80`,
-                    }}
-                  />
-                  <span className="text-muted-foreground text-[10px]">{item.name}:</span>
-                  <span className="font-mono font-bold text-foreground text-[10.5px]">
-                    {item.value}
-                  </span>
+            {/* Legend list or Fallback list */}
+            {isEmpty ? (
+              <div className="flex-1 flex flex-col justify-center gap-2 max-h-[130px] pr-1 py-1 w-full border-t sm:border-t-0 sm:border-l border-border/30 sm:pl-3">
+                <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 max-h-[90px] overflow-y-auto">
+                  {defaultStages.map((stageName, i) => (
+                    <div
+                      key={stageName}
+                      className="flex items-center gap-1 text-[10.5px] font-medium text-foreground/85 whitespace-nowrap"
+                    >
+                      <span
+                        className="h-1.5 w-1.5 rounded-full shrink-0"
+                        style={{
+                          backgroundColor: PIE_COLORS[i % PIE_COLORS.length],
+                          boxShadow: `0 0 5px ${PIE_COLORS[i % PIE_COLORS.length]}60`,
+                        }}
+                      />
+                      <span className="text-muted-foreground text-[10px]">{stageName}:</span>
+                      <span className="font-mono font-bold text-muted-foreground text-[10.5px]">0</span>
+                    </div>
+                  ))}
                 </div>
-              ))}
-            </div>
+                <p className="text-[10px] text-muted-foreground italic border-t border-border/20 pt-1">
+                  {emptyMessage}
+                </p>
+              </div>
+            ) : (
+              <div className="flex-1 flex flex-wrap items-center content-center gap-x-3 gap-y-1.5 max-h-[130px] overflow-y-auto pr-1 py-1 w-full border-t sm:border-t-0 sm:border-l border-border/30 sm:pl-3">
+                {data.map((item, i) => (
+                  <div
+                    key={item.name}
+                    className="flex items-center gap-1 text-[10.5px] font-medium text-foreground/90 whitespace-nowrap"
+                  >
+                    <span
+                      className="h-1.5 w-1.5 rounded-full shrink-0"
+                      style={{
+                        backgroundColor: PIE_COLORS[i % PIE_COLORS.length],
+                        boxShadow: `0 0 5px ${PIE_COLORS[i % PIE_COLORS.length]}80`,
+                      }}
+                    />
+                    <span className="text-muted-foreground text-[10px]">{item.name}:</span>
+                    <span className="font-mono font-bold text-foreground text-[10.5px]">
+                      {item.value}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
           </>
         )}
       </div>

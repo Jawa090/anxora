@@ -165,6 +165,7 @@ router.use('/api/finance/payroll', payrollAccountingRoutes);
 router.use('/api/finance/budgets', budgetRoutes);
 router.use('/api/finance/reports', financeReportsRoutes);
 router.use('/api/hrms/holidays', require('./routes/hrms/holidays'));
+router.use('/api/hrms/company-paid-leaves', require('./routes/hrms/companyPaidLeaves'));
 router.use('/api/hrms/notifications', hrmsNotificationsRoutes);
 router.use('/api/telephony', telephonyRoutes);
 router.use('/api/ringcentral', ringcentralRoutes);

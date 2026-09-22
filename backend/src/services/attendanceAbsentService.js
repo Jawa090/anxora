@@ -129,6 +129,33 @@ async function markAbsentForPassedShifts(targetOrgId = null) {
         continue;
       }
 
+      // Check if today is a Company Paid Leave
+      const companyLeaveCheck = await db.query(
+        `SELECT name FROM public.company_paid_leaves
+         WHERE org_id = $1 AND date = $2::date
+         LIMIT 1`,
+        [emp.org_id, localDateStr]
+      );
+
+      if (companyLeaveCheck.rows.length > 0) {
+        const leaveName = companyLeaveCheck.rows[0].name;
+        // Mark as Present with Company Paid Leave note (No Deduction)
+        await db.query(
+          `INSERT INTO public.attendance (
+            org_id, employee_id, user_id, date, status, punctuality, shift_id, notes
+          ) VALUES ($1, $2, $3, $4, 'present', 'on_time', $5, $6)`,
+          [
+            emp.org_id,
+            emp.employee_id,
+            emp.user_id,
+            localDateStr,
+            emp.shift_id,
+            `Company Paid Leave: ${leaveName}`,
+          ]
+        );
+        continue;
+      }
+
       // Mark as absent!
       const insertResult = await db.query(
         `INSERT INTO public.attendance (

@@ -115,17 +115,20 @@ export default function Dashboard() {
   const currentRole = (userRole?.role || (user as any)?.role || '').toLowerCase();
   const userDept = (profile?.department || (user as any)?.department || (userRole as any)?.department || '').toLowerCase().trim();
 
+  const isManager = currentRole === 'hr_manager';
   const isExecutiveOrSuperAdmin = currentRole === 'super_admin' || (currentRole === 'admin' && userDept === 'executive');
-  const canViewWorkforceTrend = currentRole === 'super_admin' || currentRole === 'admin' || currentRole === 'hr_manager' || currentRole === 'manager';
+  const canViewWorkforceTrend = currentRole === 'super_admin' || currentRole === 'admin' || currentRole === 'hr_manager' || isManager;
   const canViewPersonalTrend = !isExecutiveOrSuperAdmin;
   const isSalesUser = currentRole === 'sales_rep' || userDept === 'sales' || userDept.includes('sales');
   const canViewSalesChart =
-    currentRole === 'super_admin' ||
-    currentRole === 'admin' ||
-    currentRole === 'hr_manager' ||
-    isSalesUser;
-  const canViewCrmCharts = canViewSalesChart;
-  const canViewRecentActivity = canViewSalesChart;
+    !isManager && (
+      currentRole === 'super_admin' ||
+      currentRole === 'admin' ||
+      currentRole === 'manager' ||
+      isSalesUser
+    );
+  const canViewCrmCharts = !isManager && canViewSalesChart;
+  const canViewRecentActivity = canViewSalesChart || isManager;
 
   // CRM
   const { data: leadStats } = useLeadStats();
@@ -342,7 +345,7 @@ export default function Dashboard() {
         <div className="flex items-center gap-2">
           <CheckCircle2 className="h-4 w-4 text-[#2DD4BF]" />
           <span className="text-sm font-bold tracking-tight text-foreground">
-            My Project Tasks
+            {currentRole === 'super_admin' || currentRole === 'admin' || isManager ? "Project Tasks" : "My Project Tasks"}
           </span>
         </div>
         <button
@@ -445,27 +448,59 @@ export default function Dashboard() {
 
       {/* ── Top stat tiles ── */}
       <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-4">
-        {/* CRM */}
-        <div className="col-span-2 sm:col-span-2 lg:col-span-2">
-          <StatTile
-            label="Total Leads"
-            value={leadOverview?.total_leads ?? "—"}
-            sub="all time"
-            icon={UserPlus}
-            gradient="bg-gradient-to-tr from-[#003136] to-[#0D646B]"
-            onClick={() => navigate("/crm/leads")}
-          />
-        </div>
-        <div className="col-span-2 sm:col-span-2 lg:col-span-2">
-          <StatTile
-            label="Open Deals"
-            value={dealOverview?.open_deals ?? "—"}
-            sub={`$${Number(dealOverview?.pipeline_value || 0).toLocaleString()} pipeline`}
-            icon={Handshake}
-            gradient="bg-gradient-to-tr from-[#0D646B] to-[#14858E]"
-            onClick={() => navigate("/crm/deals")}
-          />
-        </div>
+        {/* If manager: do NOT show leads or deals; show project tasks and overdue tasks instead */}
+        {isManager ? (
+          <>
+            <div className="col-span-2 sm:col-span-2 lg:col-span-2">
+              <StatTile
+                label="Project Tasks"
+                value={`${taskStats.inProgress} / ${taskStats.total}`}
+                sub={`${taskStats.done} completed · ${taskStats.overdue} overdue`}
+                icon={CheckCircle2}
+                gradient="bg-gradient-to-tr from-[#003136] to-[#0D646B]"
+                onClick={() => navigate("/tasks")}
+              />
+            </div>
+            <div className="col-span-2 sm:col-span-2 lg:col-span-2">
+              <StatTile
+                label="Overdue Tasks"
+                value={taskStats.overdue}
+                sub={taskStats.overdue > 0 ? "needs attention" : "all tasks on track"}
+                icon={AlertTriangle}
+                gradient={
+                  taskStats.overdue > 0
+                    ? "bg-gradient-to-tr from-[#991B1B] to-[#EF4444]"
+                    : "bg-gradient-to-tr from-[#0D646B] to-[#14858E]"
+                }
+                onClick={() => navigate("/tasks")}
+              />
+            </div>
+          </>
+        ) : (
+          <>
+            {/* CRM */}
+            <div className="col-span-2 sm:col-span-2 lg:col-span-2">
+              <StatTile
+                label="Total Leads"
+                value={leadOverview?.total_leads ?? "—"}
+                sub="all time"
+                icon={UserPlus}
+                gradient="bg-gradient-to-tr from-[#003136] to-[#0D646B]"
+                onClick={() => navigate("/crm/leads")}
+              />
+            </div>
+            <div className="col-span-2 sm:col-span-2 lg:col-span-2">
+              <StatTile
+                label="Open Deals"
+                value={dealOverview?.open_deals ?? "—"}
+                sub={`$${Number(dealOverview?.pipeline_value || 0).toLocaleString()} pipeline`}
+                icon={Handshake}
+                gradient="bg-gradient-to-tr from-[#0D646B] to-[#14858E]"
+                onClick={() => navigate("/crm/deals")}
+              />
+            </div>
+          </>
+        )}
         {/* Projects */}
         <div className="col-span-2 sm:col-span-2 lg:col-span-2">
           <StatTile
@@ -553,80 +588,82 @@ export default function Dashboard() {
               Recent Activity
             </span>
           </div>
-          <div className="divide-y divide-border/40">
-            {(activities as any[]).length === 0 ? (
-              <div className="flex items-center justify-center h-16 text-xs text-muted-foreground">
-                No activity yet
-              </div>
-            ) : (
-              (activities as any[]).slice(0, 8).map((a: any) => {
-                const initials =
-                  a.user_name
-                    ?.split(" ")
-                    .map((n: string) => n[0])
-                    .join("")
-                    .slice(0, 2) ?? "?";
-                const badge = a.entity_type || a.activity_type || "activity";
-                const BADGE_COLORS: Record<string, string> = {
-                  lead: "bg-blue-50 text-blue-600 border-blue-100 dark:bg-blue-950/20 dark:text-blue-400 dark:border-blue-900/30",
-                  deal: "bg-emerald-50 text-emerald-600 border-emerald-100 dark:bg-emerald-950/20 dark:text-emerald-400 dark:border-emerald-900/30",
-                  contact:
-                    "bg-violet-50 text-violet-600 border-violet-100 dark:bg-violet-950/20 dark:text-violet-400 dark:border-violet-900/30",
-                  task: "bg-slate-50 text-slate-600 border-slate-100 dark:bg-slate-900 dark:text-slate-400 dark:border-slate-800",
-                  employee:
-                    "bg-orange-50 text-orange-600 border-orange-100 dark:bg-orange-950/20 dark:text-orange-400 dark:border-orange-900/30",
-                };
-                return (
-                  <div
-                    key={a.id}
-                    className="flex items-center gap-3 px-5 py-3 hover:bg-muted/40 transition-colors duration-200"
-                  >
-                    <Avatar className="h-7 w-7 shrink-0 ring-1 ring-primary/5">
-                      <AvatarFallback className="text-[10px] bg-primary/10 text-primary font-bold">
-                        {initials}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm truncate text-foreground/90">
-                        <span className="font-semibold text-foreground">
-                          {a.user_name || "Someone"}
-                        </span>
-                        <span className="text-muted-foreground font-medium">
-                          {" "}
-                          {a.activity_type?.replace(/_/g, " ") ||
-                            "performed an action"}
-                        </span>
-                        {a.title && (
-                          <span className="font-semibold text-foreground/95">
-                            {" "}
-                            — {a.title}
-                          </span>
-                        )}
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-3 shrink-0">
-                      <Badge
-                        variant="outline"
-                        className={cn(
-                          "text-[9px] uppercase font-bold tracking-wider rounded-md",
-                          BADGE_COLORS[badge] ||
-                          "bg-muted text-muted-foreground border-border",
-                        )}
+          <div className="p-3">
+            {(() => {
+              const displayActivities = (activities as any[]).filter((a: any) => {
+                if (isManager) {
+                  const badge = (a.entity_type || a.activity_type || "").toLowerCase();
+                  return badge !== "lead" && badge !== "deal";
+                }
+                return true;
+              });
+
+              return displayActivities.length === 0 ? (
+                <div className="flex items-center justify-center h-16 text-xs text-muted-foreground">
+                  No activity yet
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
+                  {displayActivities.slice(0, 8).map((a: any) => {
+                    const initials =
+                      a.user_name
+                        ?.split(" ")
+                        .map((n: string) => n[0])
+                        .join("")
+                        .slice(0, 2) ?? "?";
+                    const badge = a.entity_type || a.activity_type || "activity";
+                    const BADGE_COLORS: Record<string, string> = {
+                      lead: "bg-blue-50 text-blue-600 border-blue-100 dark:bg-blue-950/20 dark:text-blue-400 dark:border-blue-900/30",
+                      deal: "bg-emerald-50 text-emerald-600 border-emerald-100 dark:bg-emerald-950/20 dark:text-emerald-400 dark:border-emerald-900/30",
+                      contact:
+                        "bg-violet-50 text-violet-600 border-violet-100 dark:bg-violet-950/20 dark:text-violet-400 dark:border-violet-900/30",
+                      task: "bg-slate-50 text-slate-600 border-slate-100 dark:bg-slate-900 dark:text-slate-400 dark:border-slate-800",
+                      employee:
+                        "bg-orange-50 text-orange-600 border-orange-100 dark:bg-orange-950/20 dark:text-orange-400 dark:border-orange-900/30",
+                    };
+                    return (
+                      <div
+                        key={a.id}
+                        className="flex items-center gap-3 px-4 py-2.5 rounded-xl border border-border/30 bg-muted/10 hover:bg-muted/30 transition-colors duration-200"
                       >
-                        {badge}
-                      </Badge>
-                      <span className="text-[10px] font-semibold text-muted-foreground">
-                        {a.created_at
-                          ? formatDistanceToNow(new Date(a.created_at), {
-                            addSuffix: true,
-                          })
-                          : ""}
-                      </span>
-                    </div>
-                  </div>
-                );
-              })
-            )}
+                        <Avatar className="h-7 w-7 shrink-0 ring-1 ring-primary/5">
+                          <AvatarFallback className="text-[10px] bg-primary/10 text-primary font-bold">
+                            {initials}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm truncate text-foreground/90">
+                            <span className="font-semibold text-foreground">
+                              {a.user_name || "Someone"}
+                            </span>
+                            <span className="text-muted-foreground font-medium">
+                              {" "}
+                              {a.activity_type?.replace(/_/g, " ") ||
+                                "performed an action"}
+                            </span>
+                            {a.title && (
+                              <span className="font-semibold text-foreground/95">
+                                {" "}
+                                — {a.title}
+                              </span>
+                            )}
+                          </p>
+                        </div>
+                        <div className="flex items-center gap-2.5 shrink-0">
+                          <span className="text-[10px] font-semibold text-muted-foreground whitespace-nowrap">
+                            {a.created_at
+                              ? formatDistanceToNow(new Date(a.created_at), {
+                                addSuffix: true,
+                              })
+                              : ""}
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              );
+            })()}
           </div>
         </div>
       )}
