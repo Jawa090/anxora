@@ -281,10 +281,20 @@ export default function LeaveCalendarTab() {
                       </Avatar>
 
                       <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2">
-                          <p className="font-semibold text-sm text-foreground mb-1">
+                        <div className="flex items-center gap-2 flex-wrap mb-1">
+                          <p className="font-semibold text-sm text-foreground">
                             {leave.employee_name}
                           </p>
+                          {leave.probation_status === "on_probation" && (
+                            <span className="bg-amber-500/15 text-amber-500 border border-amber-500/30 text-[10px] px-1.5 py-0.5 rounded font-medium inline-flex items-center">
+                              Probation
+                            </span>
+                          )}
+                          {leave.probation_status === "extended" && (
+                            <span className="bg-orange-500/15 text-orange-400 border border-orange-500/30 text-[10px] px-1.5 py-0.5 rounded font-medium inline-flex items-center">
+                              Extended Probation
+                            </span>
+                          )}
                           {leave.department && (
                             <div className="text-xs text-muted-foreground/80">({leave.department})</div>
                           )}

@@ -57,6 +57,7 @@ const createEmployeeSchema = Joi.object({
   certifications: Joi.array().items(Joi.string()).optional().allow(null),
   languages: Joi.array().items(Joi.string()).optional().allow(null),
   notes: Joi.string().optional().allow('', null),
+  role: Joi.string().valid('super_admin', 'admin', 'manager', 'team_lead', 'employee').optional(),
   attendance_machine_id: Joi.string().optional().allow('', null),
 });
 
@@ -68,6 +69,7 @@ const updateEmployeeSchema = Joi.object({
   department: Joi.string().optional().allow('', null),
   position: Joi.string().optional().allow('', null),
   job_title: Joi.string().optional().allow('', null),
+  role: Joi.string().valid('super_admin', 'admin', 'manager', 'team_lead', 'employee').optional(),
   status: Joi.string().valid('active', 'on_leave', 'remote', 'inactive').optional(),
   hire_date: Joi.date().optional().allow(null),
   salary: Joi.number().optional().allow(null),
@@ -387,7 +389,7 @@ const create = async (req, res, next) => {
           value.email, 
           defaultPasswordHash, 
           fullName || 'Employee', 
-          'employee', 
+          value.role || 'employee', 
           value.department ? value.department.trim().replace(/\b\w/g, (c) => c.toUpperCase()) : null,
           value.phone || null,
           value.position || null,
@@ -475,7 +477,8 @@ const update = async (req, res, next) => {
       if (value.email)      { syncFields.push(`email = $${si++}`);      syncValues.push(updated.email); }
       if (value.phone !== undefined)      { syncFields.push(`phone = $${si++}`);      syncValues.push(updated.phone || null); }
       if (value.department !== undefined) { syncFields.push(`department = $${si++}`); syncValues.push(updated.department || null); }
-      if (value.position !== undefined)   { syncFields.push(`"position" = $${si++}`); syncValues.push(updated.position || null); }
+      if (value.position !== undefined)   { syncFields.push(`"position" = $${si++}`); syncValues.push(value.position || null); }
+      if (value.role !== undefined)       { syncFields.push(`role = $${si++}::user_role`); syncValues.push(value.role); }
       if (value.languages !== undefined)  { syncFields.push(`languages = $${si++}`);  syncValues.push(updated.languages || null); }
       if (value.status !== undefined)     { syncFields.push(`is_active = $${si++}`);  syncValues.push(updated.status === 'active'); }
       if (value.attendance_machine_id !== undefined) { syncFields.push(`attendance_machine_id = $${si++}`); syncValues.push(value.attendance_machine_id); }

@@ -221,6 +221,7 @@ const navigation: NavItem[] = [
     children: [
       { title: "Dashboard", href: "/hrms", icon: BarChart3 },
       { title: "Attendance", href: "/hrms/attendance", icon: ClipboardList },
+      { title: "Leave Management", href: "/hrms/leave", icon: Calendar },
       {
         title: "Shift Planner",
         href: "/hrms/shifts",
@@ -233,7 +234,7 @@ const navigation: NavItem[] = [
         icon: UserCheck,
         roles: ["super_admin", "admin", "manager"],
       },
-      { title: "Leave Management", href: "/hrms/leave", icon: Calendar },
+
       {
         title: "Payroll",
         href: "/hrms/payroll",

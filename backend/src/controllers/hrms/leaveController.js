@@ -457,6 +457,7 @@ const getLeaveRequests = async (req, res, next) => {
         lr.*,
         CONCAT(e.first_name, ' ', e.last_name) as employee_name,
         e.department,
+        e.probation_status,
         lt.name as leave_type_name,
         lt.code as leave_type_code,
         lt.color as leave_type_color,
@@ -511,6 +512,8 @@ const getLeaveRequests = async (req, res, next) => {
       query += ` AND lr.status = $${paramIndex}`;
       params.push(status);
       paramIndex++;
+    } else {
+      query += ` AND lr.status != 'cancelled'`;
     }
 
     if (targetEmployeeId) {
@@ -724,6 +727,20 @@ const updateLeaveRequest = async (req, res, next) => {
 
     const leave = leaveReq.rows[0];
     const year = new Date(leave.start_date).getFullYear();
+
+    // Cancel removes pending request immediately and restores balance
+    if (status === 'cancelled') {
+      if (leave.status === 'pending') {
+        await db.query(
+          `UPDATE employee_leave_balances
+           SET pending = GREATEST(0, pending - $1), updated_at = NOW()
+           WHERE employee_id = $2 AND leave_type_id = $3 AND year = $4`,
+          [leave.days_requested, leave.employee_id, leave.leave_type_id, year]
+        );
+      }
+      await db.query('DELETE FROM leave_requests WHERE id = $1 AND org_id = $2', [id, req.user.orgId]);
+      return res.json({ message: 'Leave request cancelled and removed successfully', id });
+    }
 
     // Determine final paid_status
     const finalPaidStatus = status === 'approved'
@@ -1035,6 +1052,7 @@ const getLeaveCalendar = async (req, res, next) => {
         lr.half_day,
         CONCAT(e.first_name, ' ', e.last_name) as employee_name,
         e.department,
+        e.probation_status,
         lt.name as leave_type_name,
         lt.color as leave_type_color
       FROM leave_requests lr
@@ -1109,37 +1127,62 @@ const deleteLeaveType = async (req, res, next) => {
   }
 };
 
-// Employee can only delete their OWN cancelled requests
+// Admin, Super Admin, and Manager can delete any leave request.
+// Employee can delete own cancelled or rejected requests.
 const deleteLeaveRequest = async (req, res, next) => {
   try {
     const { id } = req.params;
+    const orgId = req.user.orgId;
+    const isElevatedAdmin = ['super_admin', 'admin', 'manager'].includes(req.user.role);
 
-    // Get employee id for this user
-    const empResult = await db.query(
-      'SELECT id FROM employees WHERE email = $1 AND org_id = $2',
-      [req.user.email, req.user.orgId]
-    );
-    if (empResult.rows.length === 0) {
-      return res.status(404).json({ error: 'Employee record not found' });
-    }
-    const employeeId = empResult.rows[0].id;
-
-    // Only allow deleting own cancelled requests
     const check = await db.query(
-      `SELECT id, status, days_requested, leave_type_id, start_date
-       FROM leave_requests WHERE id = $1 AND employee_id = $2 AND org_id = $3`,
-      [id, employeeId, req.user.orgId]
+      `SELECT id, employee_id, status, days_requested, leave_type_id, start_date, paid_status
+       FROM leave_requests WHERE id = $1 AND org_id = $2`,
+      [id, orgId]
     );
+
     if (check.rows.length === 0) {
       return res.status(404).json({ error: 'Leave request not found' });
     }
+
     const req_ = check.rows[0];
-    if (req_.status !== 'cancelled') {
-      return res.status(400).json({ error: 'Only cancelled requests can be deleted' });
+
+    if (!isElevatedAdmin) {
+      // Must be owner
+      const empResult = await db.query(
+        'SELECT id FROM employees WHERE email = $1 AND org_id = $2',
+        [req.user.email, orgId]
+      );
+      if (empResult.rows.length === 0 || empResult.rows[0].id !== req_.employee_id) {
+        return res.status(403).json({ error: 'You do not have permission to delete this request.' });
+      }
+      // Non-admin can only cancel/delete pending or cancelled requests (cannot delete approved or rejected)
+      if (req_.status !== 'pending' && req_.status !== 'cancelled') {
+        return res.status(400).json({ error: 'You cannot delete this leave request once approved or rejected. Only pending requests can be cancelled.' });
+      }
     }
 
-    await db.query('DELETE FROM leave_requests WHERE id = $1', [id]);
-    res.json({ message: 'Leave request deleted' });
+    const year = new Date(req_.start_date).getFullYear();
+
+    // If approved and paid, restore used balance
+    if (req_.status === 'approved' && req_.paid_status === 'paid') {
+      await db.query(
+        `UPDATE employee_leave_balances
+         SET used = GREATEST(0, used - $1), updated_at = NOW()
+         WHERE employee_id = $2 AND leave_type_id = $3 AND year = $4`,
+        [req_.days_requested, req_.employee_id, req_.leave_type_id, year]
+      );
+    } else if (req_.status === 'pending') {
+      await db.query(
+        `UPDATE employee_leave_balances
+         SET pending = GREATEST(0, pending - $1), updated_at = NOW()
+         WHERE employee_id = $2 AND leave_type_id = $3 AND year = $4`,
+        [req_.days_requested, req_.employee_id, req_.leave_type_id, year]
+      );
+    }
+
+    await db.query('DELETE FROM leave_requests WHERE id = $1 AND org_id = $2', [id, orgId]);
+    res.json({ message: 'Leave request deleted successfully', id });
   } catch (err) {
     next(err);
   }

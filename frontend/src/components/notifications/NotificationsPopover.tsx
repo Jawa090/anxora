@@ -143,11 +143,10 @@ export function NotificationsPopover() {
           </h4>
           <div className="flex items-center gap-1">
             <Button
-              variant="ghost"
               size="sm"
               onClick={markAllAsRead}
               disabled={unreadCount === 0}
-              className="text-xs text-muted-foreground hover:text-primary"
+              className="text-xs "
             >
               Mark all read
             </Button>
@@ -237,7 +236,7 @@ export function NotificationsPopover() {
               {unread.length === 0 ? (
                 <EmptyState message="No unread notifications" />
               ) : (
-                <div className="divide-y">
+                <div className="divide-y ">
                   {unread.map((n) => (
                     <NotificationItem
                       key={n.id}
@@ -315,15 +314,15 @@ function NotificationItem({
         <div className="flex justify-between items-start gap-2">
           <p className={cn(
             "text-sm font-semibold leading-snug",
-            !n.is_read ? "text-foreground" : "text-muted-foreground"
+            !n.is_read ? "text-foreground" : "dark:text-gray-400"
           )}>
             {n.title}
           </p>
-          <span className="text-[10px] text-muted-foreground whitespace-nowrap bg-muted/50 px-1.5 py-0.5 rounded shrink-0">
+          <span className="text-[10px] dark:text-gray-300 whitespace-nowrap bg-muted/50 px-1.5 py-0.5 rounded shrink-0">
             {formatDistanceToNow(new Date(n.created_at), { addSuffix: true })}
           </span>
         </div>
-        <p className="text-xs text-muted-foreground line-clamp-2 leading-relaxed">
+        <p className="text-xs dark:text-gray-300 line-clamp-2 leading-relaxed">
           {n.message}
         </p>
       </div>

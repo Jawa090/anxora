@@ -395,6 +395,24 @@ const clockIn = async (req, res, next) => {
       }
     }
 
+    // Validate attendance access rules (Office IP Restriction & WFH)
+    const { validateAttendanceAccess } = require('../../utils/attendanceLocationHelper');
+    const access = await validateAttendanceAccess({
+      req,
+      employeeId,
+      orgId: req.user.orgId,
+      action: 'clock-in',
+    });
+
+    if (!access.allowed) {
+      return res.status(403).json({
+        error: access.error,
+        code: 'ATTENDANCE_LOCATION_RESTRICTED',
+        clientIp: access.clientIp,
+        wfhStatus: access.wfhStatus,
+      });
+    }
+
     // Check if already clocked in today
     const existingRecord = await db.query(
       'SELECT id, clock_in, clock_out, status, notes FROM public.attendance WHERE employee_id = $1 AND DATE(date) = $2 AND org_id = $3',
@@ -540,6 +558,24 @@ const breakStart = async (req, res, next) => {
     const now = new Date();
     const empResult = await findEmployeeByUserOrEmail(req.user.id, req.user.orgId);
     if (empResult.rows.length === 0) return res.status(404).json({ error: 'Employee not found' });
+    const employeeId = empResult.rows[0].id;
+
+    // Validate attendance access rules (Office IP Restriction & WFH)
+    const { validateAttendanceAccess: validateLocation } = require('../../utils/attendanceLocationHelper');
+    const accessBreakStart = await validateLocation({
+      req,
+      employeeId,
+      orgId: req.user.orgId,
+      action: 'break-start',
+    });
+
+    if (!accessBreakStart.allowed) {
+      return res.status(403).json({
+        error: accessBreakStart.error,
+        code: 'ATTENDANCE_LOCATION_RESTRICTED',
+        clientIp: accessBreakStart.clientIp,
+      });
+    }
     const { rows } = await db.query(
       'SELECT id, break_start FROM public.attendance WHERE employee_id = $1 AND DATE(date) = $2 AND org_id = $3',
       [empResult.rows[0].id, today, req.user.orgId]
@@ -565,6 +601,24 @@ const breakEnd = async (req, res, next) => {
     const now = new Date();
     const empResult = await findEmployeeByUserOrEmail(req.user.id, req.user.orgId);
     if (empResult.rows.length === 0) return res.status(404).json({ error: 'Employee not found' });
+    const employeeId = empResult.rows[0].id;
+
+    // Validate attendance access rules (Office IP Restriction & WFH)
+    const { validateAttendanceAccess: validateLocationEnd } = require('../../utils/attendanceLocationHelper');
+    const accessBreakEnd = await validateLocationEnd({
+      req,
+      employeeId,
+      orgId: req.user.orgId,
+      action: 'break-end',
+    });
+
+    if (!accessBreakEnd.allowed) {
+      return res.status(403).json({
+        error: accessBreakEnd.error,
+        code: 'ATTENDANCE_LOCATION_RESTRICTED',
+        clientIp: accessBreakEnd.clientIp,
+      });
+    }
     const { rows } = await db.query(
       'SELECT id, break_start, break_end FROM public.attendance WHERE employee_id = $1 AND DATE(date) = $2 AND org_id = $3',
       [empResult.rows[0].id, today, req.user.orgId]
@@ -598,6 +652,23 @@ const clockOut = async (req, res, next) => {
     }
 
     const employeeId = employeeResult.rows[0].id;
+
+    // Validate attendance access rules (Office IP Restriction & WFH - allow clock-out if active session exists)
+    const { validateAttendanceAccess: validateLocationOut } = require('../../utils/attendanceLocationHelper');
+    const accessOut = await validateLocationOut({
+      req,
+      employeeId,
+      orgId: req.user.orgId,
+      action: 'clock-out',
+    });
+
+    if (!accessOut.allowed) {
+      return res.status(403).json({
+        error: accessOut.error,
+        code: 'ATTENDANCE_LOCATION_RESTRICTED',
+        clientIp: accessOut.clientIp,
+      });
+    }
 
     // Find today's attendance record
     const attendanceResult = await db.query(

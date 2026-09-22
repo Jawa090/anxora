@@ -53,4 +53,21 @@ const requireOrg = (req, res, next) => {
   next();
 };
 
-module.exports = { auth, requireOrg };
+const requireAdmin = (req, res, next) => {
+  const role = req.user?.role;
+  if (role !== 'super_admin' && role !== 'admin') {
+    return res.status(403).json({ error: 'Admin privileges required' });
+  }
+  next();
+};
+
+const requireAdminOrManager = (req, res, next) => {
+  const role = req.user?.role;
+  if (!['super_admin', 'admin', 'manager', 'team_lead'].includes(role)) {
+    return res.status(403).json({ error: 'Manager, Team Lead, or Admin privileges required' });
+  }
+  next();
+};
+
+module.exports = { auth, requireOrg, requireAdmin, requireAdminOrManager };
+

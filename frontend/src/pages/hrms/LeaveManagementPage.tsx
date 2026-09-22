@@ -1,8 +1,9 @@
 import { useState, useEffect } from "react";
 import { useSearchParams } from "react-router-dom";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Calendar, BarChart3, Settings, Users, Clock, Palmtree } from "lucide-react";
+import { Calendar, BarChart3, Settings, Users, Clock, Palmtree, Home } from "lucide-react";
 import MyLeavesTab from "@/components/hrms/leave/MyLeavesTab";
+import WorkFromHomeTab from "@/components/hrms/leave/WorkFromHomeTab";
 import TeamLeavesTab from "@/components/hrms/leave/TeamLeavesTab";
 import LeaveCalendarTab from "@/components/hrms/leave/LeaveCalendarTab";
 import LeaveAnalyticsTab from "@/components/hrms/leave/LeaveAnalyticsTab";
@@ -13,7 +14,10 @@ import { useAuth } from "@/contexts/AuthContext";
 export default function LeaveManagementPage() {
   const { userRole } = useAuth();
   const isSuperAdmin = userRole?.role === "super_admin";
-  const isAdmin = isSuperAdmin || userRole?.role === "admin" || userRole?.role === "manager";
+  const isAdmin =
+    isSuperAdmin ||
+    userRole?.role === "admin" ||
+    userRole?.role === "manager"
   const [searchParams, setSearchParams] = useSearchParams();
   const defaultTab = isSuperAdmin ? "team-leaves" : "my-leaves";
   const [activeTab, setActiveTab] = useState(() => {
@@ -50,9 +54,8 @@ export default function LeaveManagementPage() {
 
       <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-6">
         <TabsList
-          className={`grid w-full lg:w-auto lg:inline-grid ${
-            isSuperAdmin ? "grid-cols-5" : isAdmin ? "grid-cols-6" : "grid-cols-2"
-          }`}
+          className={`grid w-full lg:w-auto lg:inline-grid ${isSuperAdmin ? "grid-cols-6" : isAdmin ? "grid-cols-7" : "grid-cols-3"
+            }`}
         >
           {!isSuperAdmin && (
             <TabsTrigger value="my-leaves" className="gap-2">
@@ -60,16 +63,18 @@ export default function LeaveManagementPage() {
               <span className="hidden sm:inline">My Leaves</span>
             </TabsTrigger>
           )}
-          <TabsTrigger value="holidays" className="gap-2">
-            <Palmtree className="h-4 w-4" />
-            <span className="hidden sm:inline">Public Holidays</span>
+
+          <TabsTrigger value="work-from-home" className="gap-2">
+            <Home className="h-4 w-4" />
+            <span className="hidden sm:inline">Work From Home</span>
           </TabsTrigger>
           {isAdmin && (
             <>
               <TabsTrigger value="team-leaves" className="gap-2">
                 <Users className="h-4 w-4" />
-                <span className="hidden sm:inline">Team Leaves</span>
+                <span className="hidden sm:inline">Approval Leaves</span>
               </TabsTrigger>
+
               <TabsTrigger value="calendar" className="gap-2">
                 <Calendar className="h-4 w-4" />
                 <span className="hidden sm:inline">Calendar</span>
@@ -80,10 +85,14 @@ export default function LeaveManagementPage() {
               </TabsTrigger>
               <TabsTrigger value="settings" className="gap-2">
                 <Settings className="h-4 w-4" />
-                <span className="hidden sm:inline">Settings</span>
+                <span className="hidden sm:inline">Leave Quota</span>
               </TabsTrigger>
             </>
           )}
+          <TabsTrigger value="holidays" className="gap-2">
+            <Palmtree className="h-4 w-4" />
+            <span className="hidden sm:inline">Public Holidays</span>
+          </TabsTrigger>
         </TabsList>
 
         {!isSuperAdmin && (
@@ -91,6 +100,10 @@ export default function LeaveManagementPage() {
             <MyLeavesTab />
           </TabsContent>
         )}
+
+        <TabsContent value="work-from-home" className="space-y-4">
+          <WorkFromHomeTab />
+        </TabsContent>
 
         <TabsContent value="holidays" className="space-y-4">
           <HolidaysPage />

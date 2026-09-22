@@ -349,6 +349,38 @@ export const leaveApi = {
   delete: (id: string) => api.delete(`/leave/${id}`),
 };
 
+export const wfhApi = {
+  getAll: (params?: { status?: string; from?: string; to?: string; scope?: string }) =>
+    api.get<any[]>('/hrms/wfh', params),
+  getRequests: (params?: { status?: string; from?: string; to?: string; scope?: string; mine?: boolean }) =>
+    api.get<any[]>('/hrms/wfh', { ...params, scope: params?.mine ? 'me' : params?.scope }),
+  getTodayStatus: () => api.get<{ hasApprovedWfh: boolean; activeWfh: any }>('/hrms/wfh/today-status'),
+  create: (data: { start_date: string; end_date: string; reason?: string }) =>
+    api.post<any>('/hrms/wfh', data),
+  createRequest: (data: { start_date: string; end_date: string; reason?: string }) =>
+    api.post<any>('/hrms/wfh', data),
+  updateStatus: (id: string, data: { status: 'approved' | 'rejected' | 'cancelled'; rejection_reason?: string }) =>
+    api.patch<any>(`/hrms/wfh/${id}/status`, data),
+  cancel: (id: string) => api.post<any>(`/hrms/wfh/${id}/cancel`),
+  deleteRequest: (id: string) => api.delete<any>(`/hrms/wfh/${id}`),
+  delete: (id: string) => api.delete<any>(`/hrms/wfh/${id}`),
+};
+
+export const ipRestrictionApi = {
+  getSettings: () =>
+    api.get<{ enabled: boolean; restriction_enabled?: boolean; current_ip: string; ips: any[]; allowed_ips?: any[] }>('/organizations/ip-restrictions'),
+  toggle: (enabled: boolean) =>
+    api.post<{ enabled: boolean; restriction_enabled?: boolean; message: string }>('/organizations/ip-restrictions/toggle', { enabled }),
+  toggleRestriction: (enabled: boolean) =>
+    api.post<{ enabled: boolean; restriction_enabled?: boolean; message: string }>('/organizations/ip-restrictions/toggle', { enabled }),
+  addIp: (data: { ip_address: string; label?: string; is_active?: boolean }) =>
+    api.post<any>('/organizations/ip-restrictions', data),
+  updateIp: (id: string, data: { ip_address?: string; label?: string; is_active?: boolean }) =>
+    api.put<any>(`/organizations/ip-restrictions/${id}`, data),
+  deleteIp: (id: string) =>
+    api.delete<any>(`/organizations/ip-restrictions/${id}`),
+};
+
 export const payrollApi = {
   getSalarySlips: (params?: { month?: number; year?: number; employee_id?: string }) =>
     api.get<{ data: any[] }>('/payroll/slips', params),

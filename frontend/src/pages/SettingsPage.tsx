@@ -42,6 +42,7 @@ import {
   Trash2,
 } from "lucide-react";
 import InstantlyIntegrationPanel from "@/components/admin/InstantlyIntegrationPanel";
+import IpRestrictionSettings from "@/components/admin/IpRestrictionSettings";
 import { useQuery } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { useAuth } from "@/contexts/AuthContext";
@@ -79,7 +80,7 @@ export default function SettingsPage() {
 
       <Tabs value={activeTab} onValueChange={handleTabChange}>
         <TabsList
-          className={`grid w-full lg:w-auto lg:inline-grid ${isAdmin ? "grid-cols-4" : "grid-cols-3"}`}
+          className={`grid w-full lg:w-auto lg:inline-grid ${isAdmin ? "grid-cols-5" : "grid-cols-3"}`}
         >
           <TabsTrigger value="profile" className="gap-2">
             <User className="h-4 w-4" />
@@ -96,7 +97,13 @@ export default function SettingsPage() {
           {isAdmin && (
             <TabsTrigger value="integrations" className="gap-2">
               <Plug className="h-4 w-4" />
-              <span className="hidden sm:inline">Integrations</span>
+              <span className="hidden sm:inline">Instantly</span>
+            </TabsTrigger>
+          )}
+          {isAdmin && (
+            <TabsTrigger value="ip-restriction" className="gap-2">
+              <Shield className="h-4 w-4" />
+              <span className="hidden sm:inline">IP Restriction</span>
             </TabsTrigger>
           )}
         </TabsList>
@@ -113,6 +120,11 @@ export default function SettingsPage() {
         {isAdmin && (
           <TabsContent value="integrations" className="mt-6">
             <InstantlyIntegrationPanel />
+          </TabsContent>
+        )}
+        {isAdmin && (
+          <TabsContent value="ip-restriction" className="mt-6">
+            <IpRestrictionSettings />
           </TabsContent>
         )}
         <TabsContent value="appearance" className="mt-6">

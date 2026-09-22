@@ -24,6 +24,16 @@ import {
   DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -39,6 +49,7 @@ import {
   X,
   ChevronLeft,
   ChevronRight,
+  Trash2,
 } from "lucide-react";
 import { api, API_BASE_URL } from "@/lib/api";
 import { toast } from "sonner";
@@ -324,6 +335,27 @@ export default function TeamLeavesTab() {
     onError: () => toast.error("Failed to reject request"),
   });
 
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [selectedDeleteId, setSelectedDeleteId] = useState<string | null>(null);
+
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => api.delete(`/leave/${id}`),
+    onSuccess: () => {
+      invalidateAll();
+      toast.success("Leave request deleted");
+      setDeleteDialogOpen(false);
+      setSelectedDeleteId(null);
+    },
+    onError: (err: any) => {
+      toast.error(err?.response?.data?.error || "Failed to delete leave request");
+    },
+  });
+
+  const handleConfirmDelete = () => {
+    if (!selectedDeleteId) return;
+    deleteMutation.mutate(selectedDeleteId);
+  };
+
   const handleReject = () => {
     if (!selectedRequest) return;
     rejectMutation.mutate({ id: selectedRequest.id, reason: rejectionReason });
@@ -587,9 +619,21 @@ export default function TeamLeavesTab() {
                       <div className="flex-1 min-w-0">
                         <div className="flex items-start justify-between gap-4 mb-2">
                           <div>
-                            <h3 className="font-semibold">
-                              {request.employee_name}
-                            </h3>
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <h3 className="font-semibold">
+                                {request.employee_name}
+                              </h3>
+                              {request.probation_status === "on_probation" && (
+                                <span className="bg-amber-500/15 text-amber-500 border border-amber-500/30 text-[11px] px-2 py-0.5 rounded font-medium inline-flex items-center">
+                                  Probation
+                                </span>
+                              )}
+                              {request.probation_status === "extended" && (
+                                <span className="bg-orange-500/15 text-orange-400 border border-orange-500/30 text-[11px] px-2 py-0.5 rounded font-medium inline-flex items-center">
+                                  Extended Probation
+                                </span>
+                              )}
+                            </div>
                             <p className="text-sm text-gray-400">
                               {request.department || "No Department"}
                             </p>
@@ -685,58 +729,74 @@ export default function TeamLeavesTab() {
                       </div>
 
                       {/* Actions */}
-                      {request.status === "pending" && (
-                        <div className="flex flex-row gap-1.5 shrink-0 flex-wrap justify-end">
-                          <Button
-                            size="sm"
-                            className="h-7 text-xs px-2"
-                            onClick={() => approvePaidMutation.mutate(request.id)}
-                            disabled={approvePaidMutation.isPending || approveUnpaidMutation.isPending}
-                          >
-                            <DollarSign className="h-3 w-3 mr-1" />
-                            Paid
-                          </Button>
-                          <Button
-                            size="sm"
-                            className="h-7 text-xs px-2"
-                            onClick={() => approveUnpaidMutation.mutate(request.id)}
-                            disabled={approvePaidMutation.isPending || approveUnpaidMutation.isPending}
-                          >
-                            <Banknote className="h-3 w-3 mr-1" />
-                            Unpaid
-                          </Button>
-                          <Button
-                            size="sm"
+                      <div className="flex items-center gap-1.5 shrink-0 flex-wrap justify-end">
+                        {request.status === "pending" && (
+                          <>
+                            <Button
+                              size="sm"
+                              className="h-7 text-xs px-2"
+                              onClick={() => approvePaidMutation.mutate(request.id)}
+                              disabled={approvePaidMutation.isPending || approveUnpaidMutation.isPending}
+                            >
+                              <DollarSign className="h-3 w-3 mr-1" />
+                              Paid
+                            </Button>
+                            <Button
+                              size="sm"
+                              className="h-7 text-xs px-2"
+                              onClick={() => approveUnpaidMutation.mutate(request.id)}
+                              disabled={approvePaidMutation.isPending || approveUnpaidMutation.isPending}
+                            >
+                              <Banknote className="h-3 w-3 mr-1" />
+                              Unpaid
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="h-7 text-xs text-destructive hover:text-destructive border-destructive hover:bg-destructive/30 px-2"
+                              onClick={() => {
+                                setSelectedRequest(request);
+                                setRejectDialog(true);
+                              }}
+                            >
+                              <XCircle className="h-3 w-3 mr-1" />
+                              Reject
+                            </Button>
+                          </>
+                        )}
+                        {request.status === "approved" && request.paid_status && (
+                          <Badge
                             variant="outline"
-                            className="h-7 text-xs text-destructive hover:text-destructive border-destructive hover:bg-destructive/30 px-2"
-                            onClick={() => {
-                              setSelectedRequest(request);
-                              setRejectDialog(true);
-                            }}
+                            className={cn(
+                              "shrink-0 text-xs",
+                              request.paid_status === "paid"
+                                ? "bg-green-50 text-green-700 border-green-200"
+                                : "bg-orange-50 text-orange-700 border-orange-200",
+                            )}
                           >
-                            <XCircle className="h-3 w-3 mr-1" />
-                            Reject
-                          </Button>
-                        </div>
-                      )}
-                      {request.status === "approved" && request.paid_status && (
-                        <Badge
-                          variant="outline"
-                          className={cn(
-                            "shrink-0 text-xs",
-                            request.paid_status === "paid"
-                              ? "bg-green-50 text-green-700 border-green-200"
-                              : "bg-orange-50 text-orange-700 border-orange-200",
-                          )}
+                            {request.paid_status === "paid" ? (
+                              <DollarSign className="h-3 w-3 mr-1" />
+                            ) : (
+                              <Banknote className="h-3 w-3 mr-1" />
+                            )}
+                            {request.paid_status === "paid" ? "Paid" : "Unpaid"}
+                          </Badge>
+                        )}
+                        {/* Trash Delete button */}
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          className="h-7 w-7 text-destructive hover:text-destructive hover:bg-destructive/30 shrink-0"
+                          onClick={() => {
+                            setSelectedDeleteId(request.id);
+                            setDeleteDialogOpen(true);
+                          }}
+                          disabled={deleteMutation.isPending}
+                          title="Delete leave request"
                         >
-                          {request.paid_status === "paid" ? (
-                            <DollarSign className="h-3 w-3 mr-1" />
-                          ) : (
-                            <Banknote className="h-3 w-3 mr-1" />
-                          )}
-                          {request.paid_status === "paid" ? "Paid" : "Unpaid"}
-                        </Badge>
-                      )}
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
                     </div>
                   </div>
                 );
@@ -892,6 +952,32 @@ export default function TeamLeavesTab() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </div >
+
+      {/* Delete Confirmation AlertDialog */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent className="sm:max-w-[420px]">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2 text-destructive">
+              <Trash2 className="h-5 w-5" /> Delete Leave Request
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-sm leading-relaxed text-muted-foreground">
+              Are you sure you want to permanently delete this leave request? If this was an approved leave, the employee's leave balance will be restored.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setSelectedDeleteId(null)}>
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleConfirmDelete}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              disabled={deleteMutation.isPending}
+            >
+              {deleteMutation.isPending ? "Deleting..." : "Yes, Delete"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </div>
   );
 }

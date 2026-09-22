@@ -20,6 +20,8 @@ const CATEGORY_MAP = {
   attendance_clock_out: 'hrms',
   leave_requested: 'hrms',
   leave_status_changed: 'hrms',
+  wfh_requested: 'hrms',
+  wfh_status_changed: 'hrms',
   // Tasks / Projects
   task_assigned: 'tasks',
   task_completed: 'tasks',

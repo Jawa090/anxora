@@ -55,8 +55,11 @@ import {
   TrendingUp,
   TrendingDown,
   Users,
+  AlertTriangle,
+  AlertCircle,
+  WifiOff,
 } from "lucide-react";
-import { api, API_BASE_URL } from "@/lib/api";
+import { api, API_BASE_URL, ipRestrictionApi, wfhApi } from "@/lib/api";
 import { toast } from "sonner";
 import {
   format,
@@ -267,6 +270,7 @@ export default function AttendancePage() {
   const [search, setSearch] = useState("");
   const [clockDialog, setClockDialog] = useState(false);
   const [clockType, setClockType] = useState<ClockType>("clock_in");
+  const [clockError, setClockError] = useState<string | null>(null);
   const [notes, setNotes] = useState("");
   const [location, setLocation] = useState<{ lat: number; lng: number } | null>(
     null,
@@ -482,11 +486,84 @@ export default function AttendancePage() {
     myCurrentPage * myPageSize,
   );
 
+  // Instantly detect client's active Wi-Fi public IP directly from browser
+  const { data: clientLiveIp } = useQuery({
+    queryKey: ["client-live-ip-attendance"],
+    queryFn: async () => {
+      try {
+        const res = await fetch("https://api.ipify.org?format=json", { cache: "no-store" });
+        if (res.ok) {
+          const json = await res.json();
+          return json?.ip || null;
+        }
+      } catch {
+        // ignore
+      }
+      return null;
+    },
+    refetchInterval: 5000,
+    refetchOnWindowFocus: true,
+  });
+
+  const { data: ipSettings } = useQuery({
+    queryKey: ["org-ip-restrictions"],
+    queryFn: () => ipRestrictionApi.getSettings(),
+    refetchInterval: 5000,
+    refetchOnWindowFocus: true,
+  });
+
+  const { data: wfhTodayStatus } = useQuery({
+    queryKey: ["wfh-today-status"],
+    queryFn: () => wfhApi.getTodayStatus(),
+    refetchInterval: 10000,
+    refetchOnWindowFocus: true,
+  });
+
+  const allowedIps = useMemo(() => {
+    return ipSettings?.allowed_ips || ipSettings?.ips || [];
+  }, [ipSettings]);
+
+  const currentIp = clientLiveIp || ipSettings?.current_ip || "";
+  const isIpRestrictionActive = Boolean(
+    ipSettings?.restriction_enabled !== false &&
+    ipSettings?.enabled !== false &&
+    allowedIps.some((i: any) => i.is_active)
+  );
+
+  const isCurrentIpOffice = useMemo(() => {
+    if (!isIpRestrictionActive) return true;
+    if (!currentIp) return false;
+    return allowedIps.some(
+      (item: any) =>
+        item.is_active &&
+        (item.ip_address === currentIp || currentIp.startsWith(item.ip_address))
+    );
+  }, [isIpRestrictionActive, currentIp, allowedIps]);
+
+  const hasApprovedWfh = Boolean(wfhTodayStatus?.hasApprovedWfh);
+  const isOutsideOfficeAndNoWfh = isIpRestrictionActive && !isCurrentIpOffice && !hasApprovedWfh;
+
+  const latestAllowed = useMemo(() => {
+    return (ipSettings as any)?.latest_allowed || (allowedIps.length > 0 ? allowedIps[0] : null);
+  }, [ipSettings, allowedIps]);
+
+  const latestOfficeName = latestAllowed?.label || "Office Wi-Fi";
+  const latestOfficeIp = latestAllowed?.ip_address || "";
+
+  const isActionLocationBlocked = (type: ClockType) => {
+    if (!isOutsideOfficeAndNoWfh) return false;
+    if (type === "clock_out" && myAttendance?.clock_in && !myAttendance?.clock_out) {
+      return false; // Active session check-out is allowed
+    }
+    return true;
+  };
+
   const clockMutation = useMutation({
     mutationFn: (type: string) =>
       api.post(`/hrms/attendance/${type.replace(/_/g, "-")}`, {
         notes,
         location,
+        client_public_ip: currentIp,
       }),
     onSuccess: (_, type) => {
       qc.invalidateQueries({ queryKey: ["attendance"] });
@@ -496,9 +573,14 @@ export default function AttendancePage() {
       qc.invalidateQueries({ queryKey: ["hrms-stats"] });
       toast.success(`${type.replace(/_/g, " ")} recorded`);
       setClockDialog(false);
+      setClockError(null);
       setNotes("");
     },
-    onError: (e: any) => toast.error(e.response?.data?.error || "Failed"),
+    onError: (e: any) => {
+      const errorMsg = e?.message || e?.response?.data?.error || "Failed to record attendance";
+      toast.error(errorMsg);
+      setClockError(errorMsg);
+    },
   });
 
   const editMutation = useMutation({
@@ -1270,25 +1352,58 @@ export default function AttendancePage() {
             ))}
           </div>
           {!isLiveAttendanceEnabled ? (
-            <div className="flex flex-wrap gap-2">
-              {ACTIONS.map(({ type, label, icon: Icon, cls }) => (
-                <Button
-                  key={type}
-                  size="sm"
-                  disabled={!canDo(type) || clockMutation.isPending}
-                  onClick={() => {
-                    setClockType(type);
-                    setClockDialog(true);
-                  }}
-                  className={cn(
-                    "gap-1.5 h-8 text-xs",
-                    canDo(type) ? cls : "opacity-40",
-                  )}
-                  variant="outline"
-                >
-                  <Icon className="h-3.5 w-3.5" /> {label}
-                </Button>
-              ))}
+            <div className="space-y-3">
+              <div className="flex flex-wrap gap-2">
+                {ACTIONS.map(({ type, label, icon: Icon, cls }) => {
+                  const isBlocked = isActionLocationBlocked(type);
+                  const isDisabled = !canDo(type) || isBlocked || clockMutation.isPending;
+                  return (
+                    <Button
+                      key={type}
+                      size="sm"
+                      disabled={isDisabled}
+                      title={
+                        isBlocked
+                          ? `Blocked: Outside office network (Your IP: ${currentIp || "Unauthorized"})`
+                          : undefined
+                      }
+                      onClick={() => {
+                        setClockError(null);
+                        setClockType(type);
+                        setClockDialog(true);
+                      }}
+                      className={cn(
+                        "gap-1.5 h-8 text-xs",
+                        canDo(type) && !isBlocked ? cls : "opacity-40 cursor-not-allowed",
+                      )}
+                      variant="outline"
+                    >
+                      <Icon className="h-3.5 w-3.5" /> {label}
+                    </Button>
+                  );
+                })}
+              </div>
+
+              {isOutsideOfficeAndNoWfh && (
+                <div className="p-3 rounded-lg bg-amber-500/10 border border-amber-500/25 text-amber-800 dark:text-amber-300 text-xs flex items-start gap-2.5">
+                  <WifiOff className="h-4 w-4 shrink-0 mt-0.5 text-amber-600 dark:text-amber-400" />
+                  <div className="space-y-0.5 leading-relaxed">
+                    <p className="font-semibold text-amber-700 dark:text-amber-300">
+                      Office Network Required: {latestOfficeName}
+                    </p>
+                    <p>
+                      You are connected from an outside network (Current IP:{" "}
+                      <span className="font-mono font-semibold">{currentIp || "checking..."}</span>
+                      ). Clock In and Breaks are disabled unless you connect to authorized office Wi-Fi{" "}
+                      <strong className="text-amber-900 dark:text-amber-200">
+                        {latestOfficeName}
+                        {latestOfficeIp ? ` (${latestOfficeIp})` : ""}
+                      </strong>{" "}
+                      or have an approved Work From Home (WFH) request.
+                    </p>
+                  </div>
+                </div>
+              )}
             </div>
           ) : (
             <div className="text-xs mt-2 bg-primary/10 text-primary p-2.5 rounded-lg inline-flex items-center gap-2 border border-primary/20">
@@ -1452,6 +1567,31 @@ export default function AttendancePage() {
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-3 py-1">
+            {clockError && (
+              <div className="p-3 rounded-lg bg-destructive/15 border border-destructive/30 text-destructive text-xs flex items-start gap-2.5">
+                <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
+                <div className="space-y-0.5 leading-relaxed">
+                  <p className="font-semibold">Action Blocked</p>
+                  <p>{clockError}</p>
+                </div>
+              </div>
+            )}
+            {isActionLocationBlocked(clockType) && !clockError && (
+              <div className="p-3 rounded-lg bg-amber-500/15 border border-amber-500/30 text-amber-800 dark:text-amber-300 text-xs flex items-start gap-2.5">
+                <WifiOff className="h-4 w-4 shrink-0 mt-0.5 text-amber-600 dark:text-amber-400" />
+                <div className="space-y-0.5 leading-relaxed">
+                  <p className="font-semibold text-amber-700 dark:text-amber-300">
+                    Office Network Required: {latestOfficeName}
+                  </p>
+                  <p>
+                    Your IP (<span className="font-mono font-medium">{currentIp || "Unauthorized"}</span>) is outside the authorized office network. Connect to{" "}
+                    <strong>{latestOfficeName}{latestOfficeIp ? ` (${latestOfficeIp})` : ""}</strong>{" "}
+                    or request an approved Work From Home (WFH) schedule to continue.
+                  </p>
+                </div>
+              </div>
+            )}
+
             <div className="rounded-lg bg-muted/30 px-4 py-3 text-center">
               <p className="text-2xl font-bold tabular-nums">
                 {format(now, "HH:mm:ss")}
@@ -1480,7 +1620,10 @@ export default function AttendancePage() {
             <Button
               variant="outline"
               size="sm"
-              onClick={() => setClockDialog(false)}
+              onClick={() => {
+                setClockDialog(false);
+                setClockError(null);
+              }}
               className="hover:bg-secondary-foreground dark:hover:bg-primary hover:text-white"
             >
               Cancel
@@ -1488,7 +1631,7 @@ export default function AttendancePage() {
             <Button
               size="sm"
               onClick={() => clockMutation.mutate(clockType)}
-              disabled={clockMutation.isPending}
+              disabled={clockMutation.isPending || isActionLocationBlocked(clockType)}
             >
               {clockMutation.isPending ? "Recording..." : "Confirm"}
             </Button>
