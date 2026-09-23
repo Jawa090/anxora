@@ -38,6 +38,10 @@ export interface Task {
   created_by_avatar?: string | null;
   timer_start_at?: string | null;
   timer_user_id?: string | null;
+  attachments_count?: number;
+  comments_count?: number;
+  subtasks_count?: number;
+  completed_subtasks?: number;
   created_at: string;
   updated_at: string;
 }

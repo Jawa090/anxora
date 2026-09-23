@@ -89,7 +89,7 @@ interface ProjectTasksViewProps {
 
 export function ProjectTasksView({ tasks, onEditTask }: ProjectTasksViewProps) {
     const { profile, userRole } = useAuth();
-    const isAdmin = userRole?.role === "admin" || userRole?.role === "super_admin" || userRole?.role === "manager" || userRole?.role === "team_lead";
+    const isAdmin = ["admin", "super_admin", "manager", "hr_manager", "team_lead"].includes(userRole?.role || "");
     const updateTask = useUpdateTask();
     const deleteTask = useDeleteTask();
     const [taskToDelete, setTaskToDelete] = useState<string | null>(null);

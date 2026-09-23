@@ -47,7 +47,7 @@ export function ProjectListView({
   onSelectProject,
 }: ProjectListViewProps) {
   const { profile, userRole } = useAuth();
-  const isAdmin = ["super_admin", "admin", "manager"].includes(userRole?.role || "");
+  const isAdmin = ["super_admin", "admin", "manager", "hr_manager"].includes(userRole?.role || "");
   const deleteProject = useDeleteProject();
 
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);

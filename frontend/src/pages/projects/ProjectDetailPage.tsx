@@ -266,7 +266,7 @@ export default function ProjectDetailPage() {
   const navigate = useNavigate();
   const { profile, userRole } = useAuth();
   const isAdmin =
-    userRole?.role === "admin" || userRole?.role === "super_admin" || userRole?.role === "manager";
+    userRole?.role === "admin" || userRole?.role === "super_admin" || userRole?.role === "manager" || userRole?.role === "hr_manager";
 
   // ─── Refs for debouncing ────────────────────────────────────────────────────
   const sliderTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -548,6 +548,31 @@ export default function ProjectDetailPage() {
       setSelectedTaskForDrawer(latest);
     }
   }, [projectTasks, selectedTaskForDrawer?.id]);
+
+  // Close Task Detail Drawer on outside click or Escape key
+  const taskDrawerRef = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    if (!selectedTaskForDrawer) return;
+
+    const handlePointerDown = (e: MouseEvent | TouchEvent) => {
+      if (taskDrawerRef.current && !taskDrawerRef.current.contains(e.target as Node)) {
+        setSelectedTaskForDrawer(null);
+      }
+    };
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setSelectedTaskForDrawer(null);
+      }
+    };
+
+    document.addEventListener("mousedown", handlePointerDown);
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.removeEventListener("mousedown", handlePointerDown);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [selectedTaskForDrawer]);
 
   // ─── Edit task form ─────────────────────────────────────────────────────────
   const [editTaskTitle, setEditTaskTitle] = useState("");
@@ -2711,7 +2736,9 @@ export default function ProjectDetailPage() {
                               </Button>
                               {(profile?.id === file.uploaded_by ||
                                 userRole?.role === "admin" ||
-                                userRole?.role === "super_admin") && (
+                                userRole?.role === "super_admin" ||
+                                userRole?.role === "manager" ||
+                                userRole?.role === "hr_manager") && (
                                   <Button
                                     variant="ghost"
                                     size="icon"
@@ -3425,7 +3452,16 @@ export default function ProjectDetailPage() {
 
       {/* ══ TASK DETAIL DRAWER ═══════════════════════════════════════════════ */}
       {selectedTaskForDrawer && (
-        <div className="fixed inset-y-0 right-0 w-[420px] bg-popover border-l border-border/75 shadow-2xl z-50 flex flex-col p-6 text-xs">
+        <>
+          {/* Backdrop overlay — closes drawer when clicking anywhere outside */}
+          <div
+            className="fixed inset-0 bg-black/40 backdrop-blur-[2px] z-50 animate-in fade-in duration-200 cursor-pointer"
+            onClick={() => setSelectedTaskForDrawer(null)}
+          />
+          <div
+            ref={taskDrawerRef}
+            className="fixed inset-y-0 right-0 w-[420px] bg-popover border-l border-border/75 shadow-2xl z-50 flex flex-col p-6 text-xs animate-in slide-in-from-right duration-200"
+          >
           <div className="flex items-center justify-between pb-4 border-b border-border mb-5 shrink-0">
             <div className="flex items-center gap-2">
               <Badge className="bg-blue-500/10 text-primary border-none uppercase tracking-wider text-[10px]">
@@ -3582,7 +3618,9 @@ export default function ProjectDetailPage() {
               <Button
                 size="sm"
                 onClick={() => {
-                  handleOpenEditTask(selectedTaskForDrawer);
+                  const t = selectedTaskForDrawer;
+                  setSelectedTaskForDrawer(null);
+                  handleOpenEditTask(t);
                 }}
                 className="h-8 rounded-xl font-bold bg-transparent border border-border text-foreground hover:text-white hover:bg-secondary-foreground hover:dark:bg-primary text-xs gap-1.5"
               >
@@ -3598,6 +3636,7 @@ export default function ProjectDetailPage() {
             </div>
           </div>
         </div>
+        </>
       )}
 
       {/* ══ DIALOGS ══════════════════════════════════════════════════════════ */}
@@ -3757,7 +3796,7 @@ export default function ProjectDetailPage() {
             ? (projectTasks as any[])?.find((t: any) => t.id === editingTask.id)
             : null;
           const isSuperAdmin =
-            userRole?.role === "admin" || userRole?.role === "super_admin" || userRole?.role === "manager";
+            userRole?.role === "admin" || userRole?.role === "super_admin" || userRole?.role === "manager" || userRole?.role === "hr_manager";
           const isProjectManager =
             project &&
             (project.manager_id === profile?.id ||

@@ -89,7 +89,7 @@ interface TaskListViewProps {
 
 export function TaskListView({ tasks, onEditTask, onToggleStar }: TaskListViewProps) {
   const { profile, userRole } = useAuth();
-  const isAdmin = userRole?.role === 'admin' || userRole?.role === 'super_admin' || userRole?.role === 'manager' || userRole?.role === 'team_lead';
+  const isAdmin = ["admin", "super_admin", "manager", "hr_manager", "team_lead"].includes(userRole?.role || "");
   const [selectedTasks, setSelectedTasks] = useState<Set<string>>(new Set());
   const updateTask = useUpdateTask();
   const deleteTask = useDeleteTask();

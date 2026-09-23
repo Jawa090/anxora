@@ -109,7 +109,7 @@ export function ProjectDialog({
     }
   }, [project, open]);
 
-  const isAdmin = userRole?.role === 'admin' || userRole?.role === 'super_admin' || userRole?.role === 'manager';
+  const isAdmin = userRole?.role === 'admin' || userRole?.role === 'super_admin' || userRole?.role === 'manager' || userRole?.role === 'hr_manager';
   const isManager = userRole?.role === 'manager' || userRole?.role === 'hr_manager' || userRole?.role === 'inventory_manager';
   const isCreator = !project || project.created_by === profile?.id;
   const canEditCoreFields = isCreator || isAdmin;

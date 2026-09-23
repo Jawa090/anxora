@@ -130,7 +130,7 @@ const remove = async (req, res, next) => {
 
     const file = fileResult.rows[0];
     const isOwner = file.uploaded_by === req.user.id;
-    const isAdmin = req.user.role === 'super_admin' || req.user.role === 'admin';
+    const isAdmin = ['super_admin', 'admin', 'manager', 'hr_manager'].includes(req.user.role);
 
     if (!isOwner && !isAdmin) {
       return res.status(403).json({ error: 'You do not have permission to delete this file' });

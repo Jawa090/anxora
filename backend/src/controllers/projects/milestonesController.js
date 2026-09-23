@@ -5,7 +5,7 @@ const realtimeService = require('../../services/realtimeService');
 const getByProject = async (req, res, next) => {
   try {
     const { projectId } = req.params;
-    const isAdmin = req.user.role === 'super_admin' || req.user.role === 'admin';
+    const isAdmin = ['super_admin', 'admin', 'manager', 'hr_manager'].includes(req.user.role);
     
     let query = `
       SELECT m.*
@@ -133,7 +133,7 @@ const update = async (req, res, next) => {
     }
 
     // Role and permission verification
-    const isAdmin = ['super_admin', 'admin', 'manager'].includes(req.user.role);
+    const isAdmin = ['super_admin', 'admin', 'manager', 'hr_manager'].includes(req.user.role);
     const projRes = await db.query(
       'SELECT created_by, manager_id, owner_id FROM public.projects WHERE id = $1',
       [oldMs.project_id]
@@ -431,7 +431,7 @@ const removeAssignee = async (req, res, next) => {
 
 const getAll = async (req, res, next) => {
   try {
-    const isAdmin = req.user.role === 'super_admin' || req.user.role === 'admin';
+    const isAdmin = ['super_admin', 'admin', 'manager', 'hr_manager'].includes(req.user.role);
 
     let query = `
       SELECT m.*, p.name AS project_name, p.color AS project_color

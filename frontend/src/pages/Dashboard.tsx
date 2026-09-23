@@ -117,20 +117,16 @@ export default function Dashboard() {
 
   const isManager = currentRole === 'manager';
   const isHr = currentRole === 'hr_manager' || userDept === 'hr' || userDept.includes('hr');
-  const shouldHideCrm = isManager || isHr;
+  const isSuperOrAdmin = currentRole === 'super_admin' || currentRole === 'admin';
+  const isSalesUser = currentRole === 'sales_rep' || userDept === 'sales' || userDept.includes('sales');
+  const shouldHideCrm = !isSuperOrAdmin && !isSalesUser;
 
   const isExecutiveOrSuperAdmin = currentRole === 'super_admin' || (currentRole === 'admin' && userDept === 'executive');
-  const canViewWorkforceTrend = currentRole === 'super_admin' || currentRole === 'admin' || isHr || isManager;
+  const canViewWorkforceTrend = isSuperOrAdmin || isHr || isManager;
   const canViewPersonalTrend = !isExecutiveOrSuperAdmin;
-  const isSalesUser = currentRole === 'sales_rep' || userDept === 'sales' || userDept.includes('sales');
-  const canViewSalesChart =
-    !shouldHideCrm && (
-      currentRole === 'super_admin' ||
-      currentRole === 'admin' ||
-      isSalesUser
-    );
-  const canViewCrmCharts = !shouldHideCrm && canViewSalesChart;
-  const canViewRecentActivity = canViewSalesChart || shouldHideCrm;
+  const canViewSalesChart = isSuperOrAdmin || isSalesUser;
+  const canViewCrmCharts = isSuperOrAdmin || isSalesUser;
+  const canViewRecentActivity = isSuperOrAdmin || isSalesUser;
 
   // CRM
   const { data: leadStats } = useLeadStats();
@@ -351,7 +347,7 @@ export default function Dashboard() {
           </span>
         </div>
         <button
-          onClick={() => navigate("/tasks")}
+          onClick={() => navigate("/projects?tab=tasks")}
           className="text-xs font-semibold text-[#2DD4BF] hover:text-[#14858E] transition-colors flex items-center gap-0.5 cursor-pointer"
         >
           View all <ArrowUpRight className="h-3 w-3" />
@@ -460,7 +456,7 @@ export default function Dashboard() {
                 sub={`${taskStats.done} completed · ${taskStats.overdue} overdue`}
                 icon={CheckCircle2}
                 gradient="bg-gradient-to-tr from-[#003136] to-[#0D646B]"
-                onClick={() => navigate("/tasks")}
+                onClick={() => navigate("/projects?tab=tasks")}
               />
             </div>
             <div className="col-span-2 sm:col-span-2 lg:col-span-2">
@@ -474,7 +470,7 @@ export default function Dashboard() {
                     ? "bg-gradient-to-tr from-[#991B1B] to-[#EF4444]"
                     : "bg-gradient-to-tr from-[#0D646B] to-[#14858E]"
                 }
-                onClick={() => navigate("/tasks")}
+                onClick={() => navigate("/projects?tab=overdue")}
               />
             </div>
           </>

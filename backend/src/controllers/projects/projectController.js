@@ -6,7 +6,7 @@ const getAll = async (req, res, next) => {
     const { page = 1, limit = 50, status } = req.query;
     const offset = (page - 1) * limit;
 
-    const isAdmin = req.user.role === 'super_admin' || req.user.role === 'admin';
+    const isAdmin = ['super_admin', 'admin', 'manager', 'hr_manager'].includes(req.user.role);
 
     let query = `SELECT p.*, 
         u_creator.full_name AS created_by_name, u_creator.avatar_url AS created_by_avatar,
@@ -152,7 +152,7 @@ const update = async (req, res, next) => {
     }
     const existing = projectCheck.rows[0];
 
-    const isAdmin = req.user.role === 'super_admin' || req.user.role === 'admin';
+    const isAdmin = ['super_admin', 'admin', 'manager', 'hr_manager'].includes(req.user.role);
     const isSystemManager = ['manager', 'hr_manager', 'inventory_manager'].includes(req.user.role);
     const isCreator = existing.created_by === req.user.id || existing.owner_id === req.user.id;
     const isCurrentManager = existing.manager_id === req.user.id;
@@ -254,7 +254,7 @@ const remove = async (req, res, next) => {
     }
 
     const project = projectCheck.rows[0];
-    const isAdmin = ['super_admin', 'admin', 'manager', 'team_lead'].includes(req.user.role);
+    const isAdmin = ['super_admin', 'admin', 'manager', 'hr_manager', 'team_lead'].includes(req.user.role);
     const isCreator = project.created_by === req.user.id;
     const isOwner = project.owner_id === req.user.id;
     const isManager = project.manager_id === req.user.id;

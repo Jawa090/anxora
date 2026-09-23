@@ -141,7 +141,7 @@ export function TaskDialog({
     onSubmit(payload);
   };
 
-  const isAdmin = userRole?.role === 'admin' || userRole?.role === 'super_admin' || userRole?.role === 'manager';
+  const isAdmin = userRole?.role === 'admin' || userRole?.role === 'super_admin' || userRole?.role === 'manager' || userRole?.role === 'hr_manager';
   const isManager = userRole?.role === 'manager' || userRole?.role === 'hr_manager' || userRole?.role === 'inventory_manager';
 
   // Agar task ka project_id projects list mein nahi (user member nahi), to separately fetch karo
@@ -180,7 +180,7 @@ export function TaskDialog({
       : false  // new task pe delegation default OFF
   );
 
-  const isSuperAdmin = userRole?.role === 'admin' || userRole?.role === 'super_admin' || userRole?.role === 'manager';
+  const isSuperAdmin = userRole?.role === 'admin' || userRole?.role === 'super_admin' || userRole?.role === 'manager' || userRole?.role === 'hr_manager';
 
   // ─── UNIFORM ASSIGNMENT RULE ───
   // Assign kar sakta hai agar:

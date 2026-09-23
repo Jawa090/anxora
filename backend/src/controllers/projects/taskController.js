@@ -49,7 +49,7 @@ const getAll = async (req, res, next) => {
     const { page = 1, limit = 50, projectId, status, assignedTo } = req.query;
     const offset = (page - 1) * limit;
 
-    const isAdmin = req.user.role === 'super_admin' || req.user.role === 'admin';
+    const isAdmin = ['super_admin', 'admin', 'manager', 'hr_manager'].includes(req.user.role);
 
     let query = `
       SELECT t.*,
@@ -272,7 +272,7 @@ const update = async (req, res, next) => {
     }
     const existingTask = taskCheck.rows[0];
 
-    const isAdmin = req.user.role === 'super_admin' || req.user.role === 'admin';
+    const isAdmin = ['super_admin', 'admin', 'manager', 'hr_manager'].includes(req.user.role);
     const isManager = ['manager', 'hr_manager', 'inventory_manager'].includes(req.user.role);
     const isTaskCreator = existingTask.created_by === req.user.id;
     const isAssignee = existingTask.assigned_to === req.user.id;
@@ -520,7 +520,7 @@ const updateStatus = async (req, res, next) => {
 const remove = async (req, res, next) => {
   try {
     const { id } = req.params;
-    const isAdmin = ['super_admin', 'admin', 'manager', 'team_lead'].includes(req.user.role);
+    const isAdmin = ['super_admin', 'admin', 'manager', 'hr_manager', 'team_lead'].includes(req.user.role);
 
     let result;
     if (isAdmin) {

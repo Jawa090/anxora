@@ -111,7 +111,7 @@ interface TaskBoardViewProps {
 
 function TaskCard({ task, onEdit, onToggleStar }: { task: Task; onEdit?: (task: Task) => void; onToggleStar?: (task: Task) => void }) {
   const { profile, userRole } = useAuth();
-  const isAdmin = userRole?.role === "admin" || userRole?.role === "super_admin" || userRole?.role === "manager" || userRole?.role === "team_lead";
+  const isAdmin = ["admin", "super_admin", "manager", "hr_manager", "team_lead"].includes(userRole?.role || "");
   const updateTask = useUpdateTask();
   const deleteTask = useDeleteTask();
   const [detailOpen, setDetailOpen] = useState(false);
