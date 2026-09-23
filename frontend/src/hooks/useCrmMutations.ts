@@ -13,6 +13,7 @@ export function useConvertLeadToDeal() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['leads'] });
       queryClient.invalidateQueries({ queryKey: ['deals'] });
+      queryClient.invalidateQueries({ queryKey: ['contacts'] });
       toast.success('Lead converted to deal successfully');
     },
     onError: (error: Error) => toast.error(error.message),

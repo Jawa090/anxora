@@ -266,10 +266,10 @@ export default function CreateDealPage() {
   const selectedPipeline = form.watch("pipeline") || "default";
 
   const departmentFilter = selectedPipeline === "marketing"
-    ? "Marketing"
+    ? "Email Marketing"
     : selectedPipeline === "sales"
       ? "Sales"
-      : "Sales,Marketing"; // standard = both
+      : "Sales, Email Marketing"; // standard = both (Sales & Email Marketing)
 
   const { data: members = [] } = useOrganizationProfiles({
     department: departmentFilter,
@@ -640,6 +640,11 @@ export default function CreateDealPage() {
                         <Label className="text-sm font-medium text-foreground flex items-center gap-2">
                           <Users className="h-4 w-4" />
                           Assigned To
+                          {departmentFilter && (
+                            <span className="text-[10px] font-normal text-muted-foreground bg-muted px-1.5 py-0.5 rounded">
+                              {departmentFilter} only
+                            </span>
+                          )}
                         </Label>
                         <MemberSearchSelect
                           members={members}

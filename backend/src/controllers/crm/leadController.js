@@ -3,6 +3,7 @@ const Joi = require('joi');
 const { fireWorkflows } = require('../../services/advancedWorkflowEngine');
 const notificationService = require('../../services/notificationService');
 const realtimeService = require('../../services/realtimeService');
+const { findOrCreateContact, linkDealContact } = require('../../services/crmContactService');
 
 // Map database status/stage values to frontend expected values
 const mapStatusToFrontend = (status) => {
@@ -1383,6 +1384,21 @@ const convertToDeal = async (req, res, next) => {
     const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
     const validateUuid = (val) => val && uuidRegex.test(val) ? val : null;
 
+    // Resolve or automatically create contact in Customer > Contacts (deduplicated by email)
+    const resolvedContactId = await findOrCreateContact({
+      orgId: req.user.orgId,
+      userId: req.user.id,
+      contactId: lead.contact_id,
+      email: lead.email,
+      name: lead.contact_name || lead.name || lead.contact_person || (lead.title && !lead.title.toLowerCase().includes('lead') && !lead.title.toLowerCase().includes('deal') ? lead.title : null),
+      phone: lead.phone,
+      companyId: lead.company_id,
+      companyName: lead.company_name,
+      position: lead.designation,
+      source: lead.source || 'Lead Conversion',
+      address: lead.address,
+    });
+
     const { rows: dealRows } = await db.query(
       `INSERT INTO public.deals
        (
@@ -1410,7 +1426,7 @@ const convertToDeal = async (req, res, next) => {
         req.user.id,
         validateUuid(lead.created_by) || req.user.id,
         lead.title || lead.name || 'Converted Lead',
-        validateUuid(lead.contact_id),
+        resolvedContactId || validateUuid(lead.contact_id),
         validateUuid(lead.company_id),
         stage,
         status,
@@ -1461,6 +1477,16 @@ const convertToDeal = async (req, res, next) => {
     );
 
     const deal = dealRows[0];
+
+    // Link contact to deal in deal_contacts
+    if (resolvedContactId) {
+      await linkDealContact(req.user.orgId, deal.id, resolvedContactId, 'Primary Contact', true);
+
+      // If lead had no contact_id saved, associate it now
+      if (!lead.contact_id) {
+        await db.query('UPDATE public.leads SET contact_id = $1 WHERE id = $2', [resolvedContactId, id]);
+      }
+    }
 
     await db.query(
       `UPDATE public.leads SET converted_to_deal_id = $1, converted_at = now(), status = 'converted', updated_at = now() WHERE id = $2`,

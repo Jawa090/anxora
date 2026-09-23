@@ -1,6 +1,7 @@
 const db = require('../../config/database');
 const Joi = require('joi');
 const { fireWorkflows } = require('../../services/advancedWorkflowEngine');
+const { findOrCreateContact, linkDealContact } = require('../../services/crmContactService');
 
 const DEFAULT_DEAL_STAGES = [
   { key: 'drawings_received', label: 'Drawings Received', color: 'bg-chart-3', prob: 10, order: 1 },
@@ -737,6 +738,21 @@ const create = async (req, res, next) => {
       lastContactedDate, nextFollowUpDate, responsiblePerson, assignedTo, deadline, campaignId, campaignName, customFields
     } = value;
 
+    // Resolve or automatically create contact in Customer > Contacts (deduplicated by email)
+    const resolvedContactId = await findOrCreateContact({
+      orgId: req.user.orgId,
+      userId: req.user.id,
+      contactId: contactId,
+      email: email,
+      name: contactName,
+      phone: phone,
+      companyId: companyId,
+      companyName: companyName,
+      position: designation,
+      source: source || 'Deal',
+      address: address,
+    });
+
     const result = await db.query(
       `INSERT INTO public.deals 
        (
@@ -761,7 +777,7 @@ const create = async (req, res, next) => {
        )
        RETURNING *`,
       [
-        req.user.orgId, req.user.id, title, contactId, companyId, stage, status,
+        req.user.orgId, req.user.id, title, resolvedContactId || contactId || null, companyId, stage, status,
         dealValue, currency, probability, notes, tags, expectedCloseDate,
         contactName, companyName, phone, email, priority, source, description,
         designation, website, address, companyPhone, companyEmail, companySize,
@@ -789,6 +805,11 @@ const create = async (req, res, next) => {
     }
 
     const deal = result.rows[0];
+
+    // Link contact to deal in deal_contacts
+    if (resolvedContactId) {
+      await linkDealContact(req.user.orgId, deal.id, resolvedContactId, 'Primary Contact', true);
+    }
 
     // Fire workflow trigger (non-blocking)
     fireWorkflows(req.user.orgId, 'deal_created', deal, req.user.id);
@@ -924,6 +945,11 @@ const update = async (req, res, next) => {
 
     const deal = result.rows[0];
     const oldDeal = existingDeal.rows[0];
+
+    // Ensure contact is linked in deal_contacts
+    if (deal.contact_id) {
+      await linkDealContact(req.user.orgId, deal.id, deal.contact_id, 'Primary Contact', true);
+    }
 
     if (value.stage && value.stage !== oldDeal.stage) {
       fireWorkflows(req.user.orgId, 'deal_stage_changed', deal, req.user.id);

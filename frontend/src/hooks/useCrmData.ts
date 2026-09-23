@@ -323,6 +323,7 @@ export function useCreateDeal() {
     mutationFn: (dealData: Record<string, unknown>) => dealsApi.create(dealData),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['deals'] });
+      queryClient.invalidateQueries({ queryKey: ['contacts'] });
       toast.success('Deal created successfully');
     },
     onError: (error: Error) => toast.error(error.message),

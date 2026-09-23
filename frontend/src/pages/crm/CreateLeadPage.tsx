@@ -480,10 +480,10 @@ export default function CreateLeadPage() {
   // Filter Assigned To members based on selected pipeline
   const assignedToDepartment =
     selectedPipeline === "marketing"
-      ? "Marketing"
+      ? "Email Marketing"
       : selectedPipeline === "sales"
         ? "Sales"
-        : "Sales,Marketing"; // standard = both
+        : "Sales, Email Marketing"; // standard = both (Sales & Email Marketing)
 
   const { data: members = [] } = useOrganizationProfiles({
     department: assignedToDepartment,

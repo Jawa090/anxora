@@ -190,7 +190,7 @@ export default function LeadsPage() {
   });
   const { data: users = [] } = useUsers({ department: 'Sales', includeSelf: true });
   const { data: allMembers = [] } = useOrganizationProfiles({ includeSelf: true });
-  const { data: salesMarketingMembers = [] } = useOrganizationProfiles({ includeSelf: true, department: 'sales,marketing' });
+  const { data: salesMarketingMembers = [] } = useOrganizationProfiles({ includeSelf: true, department: 'sales,email marketing' });
   const { data: pipelineStages = [] } = usePipelineStages();
   const deleteLead = useDeleteLead();
   const bulkDeleteLeads = useBulkDeleteLeads();
